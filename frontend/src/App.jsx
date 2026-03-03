@@ -3,7 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 
 import Login from './pages/Login';
-import ChangePassword from './pages/ChangePassword';
+
 
 import AdminLayout from './pages/admin/AdminLayout';
 import AdminDashboard from './pages/admin/Dashboard';
@@ -53,7 +53,7 @@ export default function App() {
       <BrowserRouter>
         <Routes>
           <Route path="/login" element={<Login />} />
-          <Route path="/change-password" element={<ChangePassword />} />
+          
 
           <Route path="/admin" element={<PrivateRoute><AdminLayout /></PrivateRoute>}>
             <Route index element={<AdminDashboard />} />
@@ -96,8 +96,8 @@ export default function App() {
             <Route path="complaints" element={<ParentComplaint />} />
           </Route>
 
-          <Route path="/" element={<Navigate to="/login" replace />} />
-          <Route path="*" element={<Navigate to="/login" replace />} />
+          <Route path="/" element={<Navigate to="/admin" replace />} />
+          <Route path="*" element={<Navigate to="/admin" replace />} />
         </Routes>
       </BrowserRouter>
     </AuthProvider>
