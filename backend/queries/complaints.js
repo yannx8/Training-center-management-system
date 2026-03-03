@@ -8,6 +8,17 @@ function createComplaint(parentId, studentId, subject, description, priority) {
     return [sql, [parentId, studentId, subject, description, priority]];
 }
 
+function createMarkComplaint(studentId, trainerId, courseId, certificationId, subject, description) {
+    const sql = `
+    INSERT INTO mark_complaints (student_id, trainer_id, course_id, certification_id, subject, description)
+    VALUES ($1,$2,$3,$4,$5,$6) 
+    ON CONFLICT (student_id, course_id) DO UPDATE 
+    SET subject = $5, description = $6, status = 'pending', trainer_response = NULL
+    RETURNING *
+  `;
+    return [sql, [studentId, trainerId, courseId || null, certificationId || null, subject, description]];
+}
+
 function getAllComplaints() {
     const sql = `
     SELECT co.*, pu.full_name AS parent_name, su.full_name AS student_name, s.matricule
@@ -29,14 +40,6 @@ function updateComplaintStatus(id, status, adminResponse) {
     return [sql, [id, status, adminResponse]];
 }
 
-function createMarkComplaint(studentId, trainerId, courseId, certificationId, subject, description) {
-    const sql = `
-    INSERT INTO mark_complaints (student_id, trainer_id, course_id, certification_id, subject, description)
-    VALUES ($1,$2,$3,$4,$5,$6) RETURNING *
-  `;
-    return [sql, [studentId, trainerId, courseId || null, certificationId || null, subject, description]];
-}
-
 function getMarkComplaintsByTrainer(trainerId) {
     const sql = `
     SELECT mc.*, su.full_name AS student_name, s.matricule,
@@ -52,4 +55,10 @@ function getMarkComplaintsByTrainer(trainerId) {
     return [sql, [trainerId]];
 }
 
-module.exports = { createComplaint, getAllComplaints, updateComplaintStatus, createMarkComplaint, getMarkComplaintsByTrainer };
+module.exports = {
+    createComplaint,
+    createMarkComplaint,
+    getAllComplaints,
+    updateComplaintStatus,
+    getMarkComplaintsByTrainer
+};

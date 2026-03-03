@@ -1,8 +1,10 @@
 // FILE: /frontend/src/api/secretaryApi.js
-import api from './axiosInstance';
+import axiosInstance from './axiosInstance';
 
-export const registerStudent = (data) => api.post('/secretary/register-student', data);
-export const getStudents = (params) => api.get('/secretary/students', { params });
-export const getParents = () => api.get('/secretary/parents');
-export const getPrograms = () => api.get('/secretary/programs');
-export const getCertifications = () => api.get('/secretary/certifications');
+export const secretaryApi = {
+    registerStudent: (data) => axiosInstance.post('/secretary/register-student', data),
+    getStudents: (params) => axiosInstance.get('/secretary/students', { params }),
+    getParents: () => axiosInstance.get('/secretary/parents'),
+    getPrograms: () => axiosInstance.get('/secretary/programs'),
+    getCertifications: () => axiosInstance.get('/secretary/certifications'),
+};

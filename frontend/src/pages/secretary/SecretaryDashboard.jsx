@@ -1,242 +1,365 @@
 // FILE: /frontend/src/pages/secretary/SecretaryDashboard.jsx
 import { useState, useEffect } from 'react';
-import { getStudents, getParents, getPrograms, registerStudent } from '../../api/secretaryApi';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
+import { secretaryApi } from '../../api/secretaryApi';
+import StatCard from '../../components/StatCard';
+import Table from '../../components/Table';
+import Button from '../../components/Button';
+import Modal from '../../components/Modal';
+import Badge from '../../components/Badge';
 import '../../styles/Secretary.css';
 
-const DAYS = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
-const RELATIONSHIPS = ['Father','Mother','Guardian'];
-
 export default function SecretaryDashboard() {
-  const [activeTab, setActiveTab] = useState('register');
-  const [students, setStudents] = useState([]);
-  const [parents, setParents] = useState([]);
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const [stats, setStats] = useState({
+    totalStudents: 0,
+    totalParents: 0,
+    activePrograms: 0,
+    todayRegistrations: 0
+  });
+  const [recentStudents, setRecentStudents] = useState([]);
   const [programs, setPrograms] = useState([]);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [filterProgram, setFilterProgram] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [certifications, setCertifications] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showRegisterModal, setShowRegisterModal] = useState(false);
 
-  // Registration wizard state
-  const [step, setStep] = useState(1);
-  const [studentForm, setStudentForm] = useState({ firstName: '', lastName: '', matricule: '', dateOfBirth: '', programId: '', email: '', phone: '' });
-  const [parentForms, setParentForms] = useState([{ firstName: '', lastName: '', email: '', phone: '', relationship: 'Father' }]);
-  const [regError, setRegError] = useState('');
-  const [regSuccess, setRegSuccess] = useState('');
+  // Registration form state
+  const [formData, setFormData] = useState({
+    student: {
+      firstName: '',
+      lastName: '',
+      email: '',
+      phone: '',
+      dateOfBirth: '',
+      matricule: ''
+    },
+    parents: [{ firstName: '', lastName: '', email: '', phone: '', relationship: 'Father' }],
+    enrollmentType: 'program',
+    programId: '',
+    certificationId: ''
+  });
 
   useEffect(() => {
-    loadPrograms();
+    loadDashboardData();
   }, []);
 
-  useEffect(() => {
-    if (activeTab === 'students') loadStudents();
-    if (activeTab === 'parents') loadParents();
-  }, [activeTab]);
-
-  async function loadPrograms() {
-    try { const res = await getPrograms(); setPrograms(res.data.data); } catch {}
-  }
-
-  async function loadStudents() {
-    setLoading(true);
+  const loadDashboardData = async () => {
     try {
-      const res = await getStudents({ search: searchQuery || undefined, programId: filterProgram || undefined });
-      setStudents(res.data.data);
-    } catch {} finally { setLoading(false); }
-  }
+      setLoading(true);
+      const [studentsRes, parentsRes, programsRes, certsRes] = await Promise.all([
+        secretaryApi.getStudents(),
+        secretaryApi.getParents(),
+        secretaryApi.getPrograms(),
+        secretaryApi.getCertifications()
+      ]);
 
-  async function loadParents() {
-    setLoading(true);
-    try { const res = await getParents(); setParents(res.data.data); } catch {} finally { setLoading(false); }
-  }
+      const students = studentsRes.data.data || [];
+      const parents = parentsRes.data.data || [];
+      const progs = programsRes.data.data || [];
+      const certs = certificationsRes.data.data || [];
 
-  async function handleSearch(e) {
-    e.preventDefault();
-    loadStudents();
-  }
-
-  function addParent() {
-    setParentForms([...parentForms, { firstName: '', lastName: '', email: '', phone: '', relationship: 'Father' }]);
-  }
-
-  function updateParent(index, field, value) {
-    const updated = [...parentForms];
-    updated[index][field] = value;
-    setParentForms(updated);
-  }
-
-  async function handleRegister() {
-    setRegError('');
-    if (!studentForm.programId)
-      return setRegError('Please select a program');
-    try {
-      await registerStudent({
-        student: studentForm,
-        parents: parentForms.filter(p => p.firstName && p.email),
-        enrollmentType: 'program',
-        programId: studentForm.programId,
+      setStats({
+        totalStudents: students.length,
+        totalParents: parents.length,
+        activePrograms: progs.filter(p => p.status === 'active').length,
+        todayRegistrations: students.filter(s => {
+          const created = new Date(s.created_at);
+          const today = new Date();
+          return created.toDateString() === today.toDateString();
+        }).length
       });
-      setRegSuccess('Student registered successfully!');
-      setStep(1);
-      setStudentForm({ firstName: '', lastName: '', matricule: '', dateOfBirth: '', programId: '', email: '', phone: '' });
-      setParentForms([{ firstName: '', lastName: '', email: '', phone: '', relationship: 'Father' }]);
-      setTimeout(() => setRegSuccess(''), 4000);
-    } catch (err) {
-      setRegError(err.response?.data?.message || 'Registration failed');
-    }
-  }
 
-  const step1Valid = studentForm.firstName && studentForm.lastName && studentForm.dateOfBirth && studentForm.programId;
+      setRecentStudents(students.slice(0, 5));
+      setPrograms(progs);
+      setCertifications(certs);
+    } catch (error) {
+      console.error('Failed to load dashboard:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRegisterStudent = async (e) => {
+    e.preventDefault();
+    try {
+      await secretaryApi.registerStudent(formData);
+      setShowRegisterModal(false);
+      setFormData({
+        student: { firstName: '', lastName: '', email: '', phone: '', dateOfBirth: '', matricule: '' },
+        parents: [{ firstName: '', lastName: '', email: '', phone: '', relationship: 'Father' }],
+        enrollmentType: 'program',
+        programId: '',
+        certificationId: ''
+      });
+      loadDashboardData();
+      alert('Student registered successfully!');
+    } catch (error) {
+      alert(error.response?.data?.message || 'Registration failed');
+    }
+  };
+
+  const addParent = () => {
+    setFormData({
+      ...formData,
+      parents: [...formData.parents, { firstName: '', lastName: '', email: '', phone: '', relationship: 'Mother' }]
+    });
+  };
+
+  const removeParent = (index) => {
+    const newParents = formData.parents.filter((_, i) => i !== index);
+    setFormData({ ...formData, parents: newParents });
+  };
+
+  const updateParent = (index, field, value) => {
+    const newParents = [...formData.parents];
+    newParents[index][field] = value;
+    setFormData({ ...formData, parents: newParents });
+  };
+
+  const studentColumns = [
+    { key: 'matricule', header: 'Matricule' },
+    { key: 'full_name', header: 'Name' },
+    { key: 'program_name', header: 'Program' },
+    { key: 'email', header: 'Email' },
+    { 
+      key: 'created_at', 
+      header: 'Registered',
+      render: (row) => new Date(row.created_at).toLocaleDateString()
+    }
+  ];
+
+  if (loading) return <div className="loading">Loading...</div>;
 
   return (
-    <div className="secretary-body">
-      <div className="sec-tabs">
-        <button className={`sec-tab${activeTab === 'register' ? ' active' : ''}`} onClick={() => setActiveTab('register')}>
-          Register Student
-        </button>
-        <button className={`sec-tab${activeTab === 'students' ? ' active' : ''}`} onClick={() => setActiveTab('students')}>
-          Enrolled Students {students.length > 0 ? students.length : 0}
-        </button>
-        <button className={`sec-tab${activeTab === 'parents' ? ' active' : ''}`} onClick={() => setActiveTab('parents')}>
-          Registered Parents {parents.length > 0 ? parents.length : 0}
-        </button>
+    <div className="secretary-dashboard">
+      <div className="dashboard-header">
+        <h1>Secretary Dashboard</h1>
+        <p>Welcome, {user?.fullName}</p>
       </div>
 
-      {/* REGISTER TAB */}
-      {activeTab === 'register' && (
-        <div className="reg-card">
-          {regSuccess && <div className="reg-success">{regSuccess}</div>}
-          <div className="reg-steps">
-            <div className={`reg-step${step === 1 ? ' active' : ' done'}`}>
-              <span className="reg-step-icon">👤</span> Student Information
+      <div className="stats-grid">
+        <StatCard 
+          title="Total Students" 
+          value={stats.totalStudents} 
+          icon="👨‍🎓" 
+          color="#3498db"
+        />
+        <StatCard 
+          title="Total Parents" 
+          value={stats.totalParents} 
+          icon="👨‍👩‍👧" 
+          color="#2ecc71"
+        />
+        <StatCard 
+          title="Active Programs" 
+          value={stats.activePrograms} 
+          icon="📚" 
+          color="#9b59b6"
+        />
+        <StatCard 
+          title="Today's Registrations" 
+          value={stats.todayRegistrations} 
+          icon="✅" 
+          color="#e67e22"
+        />
+      </div>
+
+      <div className="dashboard-actions">
+        <Button variant="primary" onClick={() => setShowRegisterModal(true)}>
+          + Register New Student
+        </Button>
+      </div>
+
+      <div className="recent-section">
+        <h2>Recent Registrations</h2>
+        <Table 
+          columns={studentColumns}
+          data={recentStudents}
+          emptyMessage="No students registered yet"
+        />
+      </div>
+
+      {/* Registration Modal */}
+      <Modal
+        isOpen={showRegisterModal}
+        onClose={() => setShowRegisterModal(false)}
+        title="Register New Student"
+        size="large"
+      >
+        <form onSubmit={handleRegisterStudent} className="registration-form">
+          <div className="form-section">
+            <h3>Student Information</h3>
+            <div className="form-row">
+              <input
+                type="text"
+                placeholder="First Name *"
+                value={formData.student.firstName}
+                onChange={(e) => setFormData({
+                  ...formData,
+                  student: { ...formData.student, firstName: e.target.value }
+                })}
+                required
+              />
+              <input
+                type="text"
+                placeholder="Last Name *"
+                value={formData.student.lastName}
+                onChange={(e) => setFormData({
+                  ...formData,
+                  student: { ...formData.student, lastName: e.target.value }
+                })}
+                required
+              />
             </div>
-            <div className="reg-step-line" />
-            <div className={`reg-step${step === 2 ? ' active' : ''}`}>
-              <span className="reg-step-icon">👥</span> Parent Information
+            <div className="form-row">
+              <input
+                type="email"
+                placeholder="Email (optional)"
+                value={formData.student.email}
+                onChange={(e) => setFormData({
+                  ...formData,
+                  student: { ...formData.student, email: e.target.value }
+                })}
+              />
+              <input
+                type="tel"
+                placeholder="Phone"
+                value={formData.student.phone}
+                onChange={(e) => setFormData({
+                  ...formData,
+                  student: { ...formData.student, phone: e.target.value }
+                })}
+              />
+            </div>
+            <div className="form-row">
+              <input
+                type="date"
+                placeholder="Date of Birth *"
+                value={formData.student.dateOfBirth}
+                onChange={(e) => setFormData({
+                  ...formData,
+                  student: { ...formData.student, dateOfBirth: e.target.value }
+                })}
+                required
+              />
+              <input
+                type="text"
+                placeholder="Matricule (auto-generated if empty)"
+                value={formData.student.matricule}
+                onChange={(e) => setFormData({
+                  ...formData,
+                  student: { ...formData.student, matricule: e.target.value }
+                })}
+              />
             </div>
           </div>
 
-          {step === 1 && (
-            <>
-              <h3 className="reg-section-title">Student Details</h3>
-              <div className="reg-form-grid">
-                <div className="form-field"><label>First Name *</label><input value={studentForm.firstName} onChange={e => setStudentForm({...studentForm, firstName: e.target.value})} placeholder="Enter first name" /></div>
-                <div className="form-field"><label>Last Name *</label><input value={studentForm.lastName} onChange={e => setStudentForm({...studentForm, lastName: e.target.value})} placeholder="Enter last name" /></div>
-                <div className="form-field"><label>Matricule Number *</label><input value={studentForm.matricule} onChange={e => setStudentForm({...studentForm, matricule: e.target.value})} placeholder="e.g., MAT2024001" /></div>
-                <div className="form-field"><label>Date of Birth *</label><input type="date" value={studentForm.dateOfBirth} onChange={e => setStudentForm({...studentForm, dateOfBirth: e.target.value})} /></div>
-              </div>
-              <div className="form-field"><label>Program *</label>
-                <select value={studentForm.programId} onChange={e => setStudentForm({...studentForm, programId: e.target.value})} className="program-select">
-                  <option value="">Select a program</option>
-                  {programs.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                </select>
-              </div>
-              <div className="reg-actions">
-                <button className="btn-next" disabled={!step1Valid} onClick={() => setStep(2)}>
-                  Next: Add Parents →
-                </button>
-              </div>
-            </>
-          )}
-
-          {step === 2 && (
-            <>
-              <h3 className="reg-section-title">Parent/Guardian Information</h3>
-              <p className="reg-note">Or Create New Parent Accounts</p>
-              {parentForms.map((p, i) => (
-                <div key={i} className="parent-block">
-                  <div className="parent-block-title">Parent/Guardian #{i + 1}</div>
-                  <div className="reg-form-grid">
-                    <div className="form-field"><label>First Name</label><input value={p.firstName} onChange={e => updateParent(i, 'firstName', e.target.value)} placeholder="Enter first name" /></div>
-                    <div className="form-field"><label>Last Name</label><input value={p.lastName} onChange={e => updateParent(i, 'lastName', e.target.value)} placeholder="Enter last name" /></div>
-                    <div className="form-field"><label>Email</label><input type="email" value={p.email} onChange={e => updateParent(i, 'email', e.target.value)} placeholder="parent@example.com" /></div>
-                    <div className="form-field"><label>Phone</label><input value={p.phone} onChange={e => updateParent(i, 'phone', e.target.value)} placeholder="+1 (555) 000-0000" /></div>
-                  </div>
-                  <div className="form-field"><label>Relationship</label>
-                    <select value={p.relationship} onChange={e => updateParent(i, 'relationship', e.target.value)}>
-                      {RELATIONSHIPS.map(r => <option key={r}>{r}</option>)}
-                    </select>
-                  </div>
-                </div>
-              ))}
-              <button className="btn-add-parent" onClick={addParent}>+ Add Another Parent/Guardian</button>
-              {regError && <div className="form-error">{regError}</div>}
-              <div className="reg-actions" style={{ justifyContent: 'space-between' }}>
-                <button className="btn-back" onClick={() => setStep(1)}>Back</button>
-                <button className="btn-complete" onClick={handleRegister}>Complete Registration</button>
-              </div>
-            </>
-          )}
-        </div>
-      )}
-
-      {/* STUDENTS TAB */}
-      {activeTab === 'students' && (
-        <div className="sec-content">
-          <div className="sec-search-bar">
-            <form onSubmit={handleSearch} style={{ flex: 1 }}>
-              <div className="search-input-wrap">
-                <span className="search-icon">🔍</span>
-                <input value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Search students..." />
-              </div>
-            </form>
-            <div className="form-field" style={{ minWidth: 200 }}>
-              <label>Filter by Program</label>
-              <select value={filterProgram} onChange={e => { setFilterProgram(e.target.value); }}>
-                <option value="">All Programs</option>
-                {programs.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+          <div className="form-section">
+            <h3>Enrollment</h3>
+            <div className="form-row">
+              <select
+                value={formData.enrollmentType}
+                onChange={(e) => setFormData({ ...formData, enrollmentType: e.target.value })}
+              >
+                <option value="program">Academic Program</option>
+                <option value="certification">Certification</option>
               </select>
+              
+              {formData.enrollmentType === 'program' ? (
+                <select
+                  value={formData.programId}
+                  onChange={(e) => setFormData({ ...formData, programId: e.target.value })}
+                  required
+                >
+                  <option value="">Select Program *</option>
+                  {programs.map(p => (
+                    <option key={p.id} value={p.id}>{p.name}</option>
+                  ))}
+                </select>
+              ) : (
+                <select
+                  value={formData.certificationId}
+                  onChange={(e) => setFormData({ ...formData, certificationId: e.target.value })}
+                  required
+                >
+                  <option value="">Select Certification *</option>
+                  {certifications.map(c => (
+                    <option key={c.id} value={c.id}>{c.name}</option>
+                  ))}
+                </select>
+              )}
             </div>
           </div>
-          <div className="sec-count">Showing <strong>{students.length}</strong> of <strong>{students.length}</strong> students</div>
-          {students.length === 0
-            ? (
-              <div className="empty-state">
-                <div className="empty-icon">👤</div>
-                <h3>No students found</h3>
-                <p>Start by registering your first student.</p>
-              </div>
-            )
-            : (
-              <div className="table-card">
-                <table className="data-table">
-                  <thead><tr><th>Name</th><th>Matricule</th><th>Program</th><th>Email</th><th>Phone</th></tr></thead>
-                  <tbody>
-                    {students.map(s => (
-                      <tr key={s.id}>
-                        <td>{s.full_name}</td>
-                        <td>{s.matricule}</td>
-                        <td>{s.program_name}</td>
-                        <td>{s.email}</td>
-                        <td>{s.phone}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )
-          }
-        </div>
-      )}
 
-      {/* PARENTS TAB */}
-      {activeTab === 'parents' && (
-        <div className="sec-content">
-          {parents.length === 0
-            ? <div className="empty-state"><div className="empty-icon">👥</div><h3>No parents registered</h3></div>
-            : (
-              <div className="table-card">
-                <table className="data-table">
-                  <thead><tr><th>Name</th><th>Email</th><th>Phone</th><th>Relationship</th><th>Students</th></tr></thead>
-                  <tbody>
-                    {parents.map(p => (
-                      <tr key={p.id}><td>{p.full_name}</td><td>{p.email}</td><td>{p.phone}</td><td>{p.relationship}</td><td>{p.student_count}</td></tr>
-                    ))}
-                  </tbody>
-                </table>
+          <div className="form-section">
+            <div className="section-header">
+              <h3>Parent/Guardian Information</h3>
+              <Button type="button" variant="secondary" onClick={addParent}>
+                + Add Parent
+              </Button>
+            </div>
+            
+            {formData.parents.map((parent, index) => (
+              <div key={index} className="parent-form">
+                <div className="form-row">
+                  <input
+                    type="text"
+                    placeholder="First Name *"
+                    value={parent.firstName}
+                    onChange={(e) => updateParent(index, 'firstName', e.target.value)}
+                    required
+                  />
+                  <input
+                    type="text"
+                    placeholder="Last Name"
+                    value={parent.lastName}
+                    onChange={(e) => updateParent(index, 'lastName', e.target.value)}
+                  />
+                  <select
+                    value={parent.relationship}
+                    onChange={(e) => updateParent(index, 'relationship', e.target.value)}
+                  >
+                    <option value="Father">Father</option>
+                    <option value="Mother">Mother</option>
+                    <option value="Guardian">Guardian</option>
+                  </select>
+                  {formData.parents.length > 1 && (
+                    <Button type="button" variant="danger" onClick={() => removeParent(index)}>
+                      Remove
+                    </Button>
+                  )}
+                </div>
+                <div className="form-row">
+                  <input
+                    type="email"
+                    placeholder="Email *"
+                    value={parent.email}
+                    onChange={(e) => updateParent(index, 'email', e.target.value)}
+                    required
+                  />
+                  <input
+                    type="tel"
+                    placeholder="Phone"
+                    value={parent.phone}
+                    onChange={(e) => updateParent(index, 'phone', e.target.value)}
+                  />
+                </div>
               </div>
-            )
-          }
-        </div>
-      )}
+            ))}
+          </div>
+
+          <div className="form-actions">
+            <Button type="button" variant="secondary" onClick={() => setShowRegisterModal(false)}>
+              Cancel
+            </Button>
+            <Button type="submit" variant="primary">
+              Register Student
+            </Button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }

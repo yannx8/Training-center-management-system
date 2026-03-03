@@ -1,9 +1,11 @@
 // FILE: /frontend/src/App.jsx
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider, useAuth } from './context/AuthContext';
-
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { AuthProvider } from './context/AuthContext';
+import { useAuth } from './context/AuthContext';
 import Login from './pages/Login';
+import SelectRole from './pages/SelectRole';
 
+// Admin
 import AdminLayout from './pages/admin/AdminLayout';
 import AdminDashboard from './pages/admin/Dashboard';
 import UserManagement from './pages/admin/UserManagement';
@@ -11,93 +13,135 @@ import Departments from './pages/admin/Departments';
 import Programs from './pages/admin/Programs';
 import AcademicYears from './pages/admin/AcademicYears';
 import Rooms from './pages/admin/Rooms';
-import AdminComplaints from './pages/admin/Complaints';
+import Complaints from './pages/admin/Complaints';
 
-// FIX: actual filename is secretaryLayout.jsx (lowercase 's')
+// Secretary
 import SecretaryLayout from './pages/secretary/secretaryLayout';
 import SecretaryDashboard from './pages/secretary/SecretaryDashboard';
 
+// HOD
+import HodLayout from './pages/hod/HodLayout';
+import HodDashboard from './pages/hod/HodDashboard';
+import HodAvailability from './pages/hod/HodAvailability';
+import HodTimetable from './pages/hod/HodTimetable';
+
+// Trainer
 import TrainerLayout from './pages/trainer/TrainerLayout';
 import TrainerDashboard from './pages/trainer/TrainerDashboard';
 import TrainerCourses from './pages/trainer/TrainerCourses';
-import TrainerCertifications from './pages/trainer/TrainerCertifications';
 import TrainerAvailability from './pages/trainer/TrainerAvailability';
 import TrainerTimetable from './pages/trainer/TrainerTimetable';
 import TrainerComplaints from './pages/trainer/TrainerComplaints';
 
-import HodLayout from './pages/hod/HodLayout';
-import HodDashboard from './pages/hod/HodDashboard';
-import HodTimetable from './pages/hod/HodTimetable';
-import HodAvailability from './pages/hod/HodAvailability';
-
+// Student
 import StudentLayout from './pages/student/StudentLayout';
 import StudentDashboard from './pages/student/StudentDashboard';
-import StudentTimetable from './pages/student/StudentTimetable';
 import StudentGrades from './pages/student/StudentGrades';
+import StudentTimetable from './pages/student/StudentTimetable';
 import StudentComplaints from './pages/student/StudentComplaints';
 
+// Parent
 import ParentLayout from './pages/parent/ParentLayout';
 import ParentDashboard from './pages/parent/ParentDashboard';
+import ChildSelection from './pages/parent/ChildSelection';
+import ChildTimetable from './pages/parent/ChildTimetable';
 import ParentComplaint from './pages/parent/ParentComplaint';
 
-function PrivateRoute({ children }) {
-  const { isAuthenticated } = useAuth();
-  return isAuthenticated ? children : <Navigate to="/login" replace />;
+function ProtectedRoute({ children, allowedRoles }) {
+  const { user, isAuthenticated } = useAuth();
+  
+  if (!isAuthenticated) return <Navigate to="/login" />;
+  if (allowedRoles && !allowedRoles.includes(user?.roleName)) {
+    return <Navigate to="/select-role" />;
+  }
+  return children;
 }
 
-export default function App() {
+function App() {
   return (
     <AuthProvider>
-      <BrowserRouter>
+      <Router>
         <Routes>
           <Route path="/login" element={<Login />} />
-
-          <Route path="/admin" element={<PrivateRoute><AdminLayout /></PrivateRoute>}>
+          <Route path="/select-role" element={<SelectRole />} />
+          
+          {/* Admin Routes */}
+          <Route path="/admin" element={
+            <ProtectedRoute allowedRoles={['admin']}>
+              <AdminLayout />
+            </ProtectedRoute>
+          }>
             <Route index element={<AdminDashboard />} />
             <Route path="users" element={<UserManagement />} />
             <Route path="departments" element={<Departments />} />
             <Route path="programs" element={<Programs />} />
             <Route path="academic-years" element={<AcademicYears />} />
             <Route path="rooms" element={<Rooms />} />
-            <Route path="complaints" element={<AdminComplaints />} />
+            <Route path="complaints" element={<Complaints />} />
           </Route>
 
-          <Route path="/secretary" element={<PrivateRoute><SecretaryLayout /></PrivateRoute>}>
+          {/* Secretary Routes */}
+          <Route path="/secretary" element={
+            <ProtectedRoute allowedRoles={['secretary']}>
+              <SecretaryLayout />
+            </ProtectedRoute>
+          }>
             <Route index element={<SecretaryDashboard />} />
           </Route>
 
-          <Route path="/trainer" element={<PrivateRoute><TrainerLayout /></PrivateRoute>}>
+          {/* HOD Routes */}
+          <Route path="/hod" element={
+            <ProtectedRoute allowedRoles={['hod']}>
+              <HodLayout />
+            </ProtectedRoute>
+          }>
+            <Route index element={<HodDashboard />} />
+            <Route path="availability" element={<HodAvailability />} />
+            <Route path="timetable" element={<HodTimetable />} />
+          </Route>
+
+          {/* Trainer Routes */}
+          <Route path="/trainer" element={
+            <ProtectedRoute allowedRoles={['trainer']}>
+              <TrainerLayout />
+            </ProtectedRoute>
+          }>
             <Route index element={<TrainerDashboard />} />
             <Route path="courses" element={<TrainerCourses />} />
-            <Route path="certifications" element={<TrainerCertifications />} />
             <Route path="availability" element={<TrainerAvailability />} />
             <Route path="timetable" element={<TrainerTimetable />} />
             <Route path="complaints" element={<TrainerComplaints />} />
           </Route>
 
-          <Route path="/hod" element={<PrivateRoute><HodLayout /></PrivateRoute>}>
-            <Route index element={<HodDashboard />} />
-            <Route path="timetable" element={<HodTimetable />} />
-            <Route path="availability" element={<HodAvailability />} />
-          </Route>
-
-          <Route path="/student" element={<PrivateRoute><StudentLayout /></PrivateRoute>}>
+          {/* Student Routes */}
+          <Route path="/student" element={
+            <ProtectedRoute allowedRoles={['student']}>
+              <StudentLayout />
+            </ProtectedRoute>
+          }>
             <Route index element={<StudentDashboard />} />
-            <Route path="timetable" element={<StudentTimetable />} />
             <Route path="grades" element={<StudentGrades />} />
+            <Route path="timetable" element={<StudentTimetable />} />
             <Route path="complaints" element={<StudentComplaints />} />
           </Route>
 
-          <Route path="/parent" element={<PrivateRoute><ParentLayout /></PrivateRoute>}>
+          {/* Parent Routes */}
+          <Route path="/parent" element={
+            <ProtectedRoute allowedRoles={['parent']}>
+              <ParentLayout />
+            </ProtectedRoute>
+          }>
             <Route index element={<ParentDashboard />} />
-            <Route path="complaints" element={<ParentComplaint />} />
+            <Route path="children" element={<ChildSelection />} />
+            <Route path="timetable/:studentId" element={<ChildTimetable />} />
+            <Route path="complaint" element={<ParentComplaint />} />
           </Route>
 
-          {/* FIX: redirect to /login not /admin */}
-          <Route path="/" element={<Navigate to="/login" replace />} />
-          <Route path="*" element={<Navigate to="/login" replace />} />
+          <Route path="/" element={<Navigate to="/login" />} />
         </Routes>
-      </BrowserRouter>
+      </Router>
     </AuthProvider>
   );
 }
+
+export default App;

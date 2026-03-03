@@ -5,7 +5,6 @@ function getTrainerByUserId(userId) {
     return [sql, [userId]];
 }
 
-// Returns academic program courses assigned to this trainer
 function getMyCourses(trainerId) {
     const sql = `
     SELECT c.id, c.name, c.code, c.credits, c.hours_per_week,
@@ -20,7 +19,6 @@ function getMyCourses(trainerId) {
     return [sql, [trainerId]];
 }
 
-// Returns certifications assigned to this trainer
 function getMyCertifications(trainerId) {
     const sql = `
     SELECT cert.id, cert.name, cert.code, cert.duration_hours, cert.status
@@ -31,7 +29,6 @@ function getMyCertifications(trainerId) {
     return [sql, [trainerId]];
 }
 
-// Students enrolled in a specific course
 function getCourseStudents(courseId) {
     const sql = `
     SELECT s.id AS student_id, u.full_name, s.matricule,
@@ -47,7 +44,6 @@ function getCourseStudents(courseId) {
     return [sql, [courseId]];
 }
 
-// Students enrolled in a specific certification
 function getCertificationStudents(certificationId) {
     const sql = `
     SELECT s.id AS student_id, u.full_name, s.matricule,
@@ -62,7 +58,6 @@ function getCertificationStudents(certificationId) {
     return [sql, [certificationId]];
 }
 
-// Upsert grade — ON CONFLICT handles re-submission
 function submitGradeForCourse(studentId, courseId, trainerId, grade, gradeLetter, academicYearId) {
     const sql = `
     INSERT INTO grades (student_id, course_id, trainer_id, grade, grade_letter, academic_year_id)
@@ -85,7 +80,6 @@ function submitGradeForCertification(studentId, certificationId, trainerId, grad
     return [sql, [studentId, certificationId, trainerId, grade, gradeLetter, academicYearId]];
 }
 
-// Mark complaints directed at this trainer
 function getMarkComplaints(trainerId) {
     const sql = `
     SELECT mc.*, u.full_name AS student_name, s.matricule,
@@ -111,69 +105,67 @@ function reviewMarkComplaint(complaintId, response) {
     return [sql, [complaintId, response]];
 }
 
-// Trainer's personal timetable — both course and certification slots
-function getMyTimetable(trainerId) {
+function submitAvailability(trainerId, academicWeekId, dayOfWeek, timeStart, timeEnd) {
     const sql = `
-    SELECT ts.id, ts.day_of_week, ts.time_start, ts.time_end,
-           r.name AS room_name, r.code AS room_code,
-           c.name AS course_name, c.code AS course_code,
-           cert.name AS certification_name, cert.code AS certification_code,
-           t.week_start
-    FROM timetable_slots ts
-    JOIN timetables t ON ts.timetable_id = t.id
-    LEFT JOIN rooms r ON ts.room_id = r.id
-    LEFT JOIN courses c ON ts.course_id = c.id
-    LEFT JOIN certifications cert ON ts.certification_id = cert.id
-    WHERE ts.trainer_id=$1 AND t.status='published'
-    ORDER BY
-      CASE ts.day_of_week
-        WHEN 'Monday' THEN 1 WHEN 'Tuesday' THEN 2 WHEN 'Wednesday' THEN 3
-        WHEN 'Thursday' THEN 4 WHEN 'Friday' THEN 5 WHEN 'Saturday' THEN 6
-      END, ts.time_start
-  `;
-    return [sql, [trainerId]];
+        INSERT INTO availability (trainer_id, academic_week_id, day_of_week, time_start, time_end)
+        VALUES ($1, $2, $3, $4, $5)
+        ON CONFLICT (trainer_id, academic_week_id, day_of_week, time_start, time_end) DO NOTHING
+        RETURNING *
+    `;
+    return [sql, [trainerId, academicWeekId, dayOfWeek, timeStart, timeEnd]];
 }
 
-function submitAvailability(trainerId, dayOfWeek, timeStart, timeEnd) {
+function getMyAvailability(trainerId, academicWeekId = null) {
+    const weekFilter = academicWeekId ? 'AND a.academic_week_id = $2' : '';
+    const params = academicWeekId ? [trainerId, academicWeekId] : [trainerId];
     const sql = `
-    INSERT INTO availability (trainer_id, day_of_week, time_start, time_end)
-    VALUES ($1, $2, $3, $4)
-    RETURNING *
-  `;
-    return [sql, [trainerId, dayOfWeek, timeStart, timeEnd]];
-}
-
-function getMyAvailability(trainerId) {
-    const sql = `
-    SELECT * FROM availability WHERE trainer_id=$1 ORDER BY
-    CASE day_of_week
-      WHEN 'Monday' THEN 1 WHEN 'Tuesday' THEN 2 WHEN 'Wednesday' THEN 3
-      WHEN 'Thursday' THEN 4 WHEN 'Friday' THEN 5 WHEN 'Saturday' THEN 6
-    END, time_start
-  `;
-    return [sql, [trainerId]];
+        SELECT a.*, aw.label as week_label, aw.start_date, aw.end_date
+        FROM availability a
+        LEFT JOIN academic_weeks aw ON a.academic_week_id = aw.id
+        WHERE a.trainer_id = $1 ${weekFilter}
+        ORDER BY
+            CASE a.day_of_week
+                WHEN 'Monday' THEN 1 WHEN 'Tuesday' THEN 2 WHEN 'Wednesday' THEN 3
+                WHEN 'Thursday' THEN 4 WHEN 'Friday' THEN 5 WHEN 'Saturday' THEN 6
+            END, a.time_start
+    `;
+    return [sql, params];
 }
 
 function deleteAvailability(id, trainerId) {
-    // trainerId in WHERE clause prevents a trainer deleting another trainer's slot
     const sql = `DELETE FROM availability WHERE id=$1 AND trainer_id=$2 RETURNING id`;
     return [sql, [id, trainerId]];
 }
 
-function getAvailabilityLock(hodUserId) {
-    const sql = `SELECT is_locked FROM availability_locks WHERE hod_user_id=$1 LIMIT 1`;
-    return [sql, [hodUserId]];
+function getAvailabilityLock(hodUserId, academicWeekId = null) {
+    const weekFilter = academicWeekId ? 'AND al.academic_week_id = $2' : '';
+    const params = academicWeekId ? [hodUserId, academicWeekId] : [hodUserId];
+    const sql = `SELECT al.is_locked, al.academic_week_id 
+                 FROM availability_locks al 
+                 WHERE al.hod_user_id = $1 ${weekFilter} LIMIT 1`;
+    return [sql, params];
 }
 
-function upsertAvailabilityLock(hodUserId, isLocked) {
+function upsertAvailabilityLock(hodUserId, academicWeekId, isLocked) {
     const sql = `
-    INSERT INTO availability_locks (hod_user_id, is_locked, updated_at)
-    VALUES ($1, $2, NOW())
-    ON CONFLICT (hod_user_id)
-    DO UPDATE SET is_locked=$2, updated_at=NOW()
-    RETURNING *
-  `;
-    return [sql, [hodUserId, isLocked]];
+        INSERT INTO availability_locks (hod_user_id, academic_week_id, is_locked, updated_at)
+        VALUES ($1, $2, $3, NOW())
+        ON CONFLICT (hod_user_id, academic_week_id)
+        DO UPDATE SET is_locked = $3, updated_at = NOW()
+        RETURNING *
+    `;
+    return [sql, [hodUserId, academicWeekId, isLocked]];
+}
+
+function getAllTrainerWeeks(trainerId) {
+    const sql = `
+        SELECT DISTINCT aw.id, aw.label, aw.start_date, aw.end_date, aw.status
+        FROM academic_weeks aw
+        JOIN availability a ON a.academic_week_id = aw.id
+        WHERE a.trainer_id = $1
+        ORDER BY aw.start_date DESC
+    `;
+    return [sql, [trainerId]];
 }
 
 module.exports = {
@@ -186,10 +178,10 @@ module.exports = {
     submitGradeForCertification,
     getMarkComplaints,
     reviewMarkComplaint,
-    getMyTimetable,
     submitAvailability,
     getMyAvailability,
     deleteAvailability,
     getAvailabilityLock,
     upsertAvailabilityLock,
+    getAllTrainerWeeks,
 };

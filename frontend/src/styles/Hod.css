@@ -393,3 +393,90 @@
     font-size: 0.85rem;
     margin-bottom: 1rem;
 }
+
+
+/* APPEND to /frontend/src/styles/Hod.css */
+
+
+/* ── HOD Timetable Grid ── */
+
+.hod-tt-grid {
+    display: grid;
+    grid-template-columns: 72px repeat(6, 1fr);
+    gap: 1px;
+    background: #ddd;
+    border: 1px solid #ddd;
+    overflow-x: auto;
+    margin-top: 0.5rem;
+}
+
+.hod-tt-header {
+    background: #1a1a2e;
+    color: #fff;
+    padding: 0.6rem 0.4rem;
+    font-size: 0.73rem;
+    font-weight: 700;
+    text-align: center;
+    letter-spacing: 0.02em;
+}
+
+.hod-tt-timecell {
+    background: #1a1a2e;
+    color: rgba(255, 255, 255, 0.85);
+    padding: 0.6rem 0.4rem;
+    font-size: 0.68rem;
+    font-weight: 600;
+    text-align: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.hod-tt-cell {
+    background: #fff;
+    padding: 0.45rem 0.5rem;
+    min-height: 58px;
+    font-size: 0.75rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.hod-tt-cell-filled {
+    background: #eef2ff;
+    border-left: 3px solid #1a1a2e;
+}
+
+.hod-tt-cell-empty {
+    background: #fafafa;
+}
+
+
+/* ── Trainer Availability cells ── */
+
+.trainer-avail-cell {
+    cursor: pointer;
+    transition: background 0.12s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 58px;
+    user-select: none;
+}
+
+.trainer-avail-selected {
+    background: #dcfce7 !important;
+    border: 2px solid #16a34a;
+}
+
+.trainer-avail-empty {
+    background: #fff;
+}
+
+.trainer-avail-empty:hover {
+    background: #f0fdf4;
+}
+
+.trainer-avail-selected:hover {
+    background: #bbf7d0 !important;
+}

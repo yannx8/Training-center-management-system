@@ -6,6 +6,3 @@ export const loginApi = (email, password) =>
 
 export const selectRoleApi = (userId, roleId) =>
     api.post('/auth/select-role', { userId, roleId });
-
-export const changePasswordApi = (newPassword) =>
-    api.post('/auth/change-password', { newPassword });
