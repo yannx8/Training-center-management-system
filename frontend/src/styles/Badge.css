@@ -1,0 +1,93 @@
+.badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.badge-active {
+    background: #dcfce7;
+    color: #16a34a;
+}
+
+.badge-inactive {
+    background: #f1f5f9;
+    color: #64748b;
+}
+
+.badge-occupied {
+    background: #e0e7ff;
+    color: #4338ca;
+}
+
+.badge-available {
+    background: #dcfce7;
+    color: #16a34a;
+}
+
+.badge-hod {
+    background: #f3e8ff;
+    color: #7c3aed;
+}
+
+.badge-trainer {
+    background: #dbeafe;
+    color: #2563eb;
+}
+
+.badge-secretary {
+    background: #dcfce7;
+    color: #16a34a;
+}
+
+.badge-admin {
+    background: #fee2e2;
+    color: #dc2626;
+}
+
+.badge-student {
+    background: #fef3c7;
+    color: #d97706;
+}
+
+.badge-parent {
+    background: #e0f2fe;
+    color: #0284c7;
+}
+
+.badge-pending {
+    background: #fef3c7;
+    color: #d97706;
+}
+
+.badge-inprogress {
+    background: #dbeafe;
+    color: #2563eb;
+}
+
+.badge-resolved {
+    background: #dcfce7;
+    color: #16a34a;
+}
+
+.badge-high {
+    background: #fee2e2;
+    color: #dc2626;
+}
+
+.badge-medium {
+    background: #fed7aa;
+    color: #c2410c;
+}
+
+.badge-low {
+    background: #f1f5f9;
+    color: #64748b;
+}
+
+.badge-default {
+    background: #f1f5f9;
+    color: #64748b;
+}
