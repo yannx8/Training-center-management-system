@@ -7,8 +7,6 @@ const adminNav = [
   { to: '/admin/users', label: 'User Management', icon: '👤' },
   { to: '/admin/departments', label: 'Departments', icon: '🏢' },
   { to: '/admin/programs', label: 'Programs', icon: '📚' },
-  { to: '/admin/academic-levels', label: 'Academic Levels', icon: '🎓' },
-  { to: '/admin/semesters', label: 'Semesters', icon: '📅' },
   { to: '/admin/academic-years', label: 'Academic Years', icon: '🗓' },
   { to: '/admin/rooms', label: 'Rooms', icon: '🚪' },
   { to: '/admin/complaints', label: 'Complaints', icon: '💬' },

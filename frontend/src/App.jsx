@@ -4,7 +4,6 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 
 import Login from './pages/Login';
 
-
 import AdminLayout from './pages/admin/AdminLayout';
 import AdminDashboard from './pages/admin/Dashboard';
 import UserManagement from './pages/admin/UserManagement';
@@ -14,7 +13,8 @@ import AcademicYears from './pages/admin/AcademicYears';
 import Rooms from './pages/admin/Rooms';
 import AdminComplaints from './pages/admin/Complaints';
 
-import SecretaryLayout from './pages/secretary/SecretaryLayout';
+// FIX: actual filename is secretaryLayout.jsx (lowercase 's')
+import SecretaryLayout from './pages/secretary/secretaryLayout';
 import SecretaryDashboard from './pages/secretary/SecretaryDashboard';
 
 import TrainerLayout from './pages/trainer/TrainerLayout';
@@ -40,8 +40,6 @@ import ParentLayout from './pages/parent/ParentLayout';
 import ParentDashboard from './pages/parent/ParentDashboard';
 import ParentComplaint from './pages/parent/ParentComplaint';
 
-// PrivateRoute: redirects to login if not authenticated.
-// Not a HOC — it's a component that wraps the route element directly.
 function PrivateRoute({ children }) {
   const { isAuthenticated } = useAuth();
   return isAuthenticated ? children : <Navigate to="/login" replace />;
@@ -53,7 +51,6 @@ export default function App() {
       <BrowserRouter>
         <Routes>
           <Route path="/login" element={<Login />} />
-          
 
           <Route path="/admin" element={<PrivateRoute><AdminLayout /></PrivateRoute>}>
             <Route index element={<AdminDashboard />} />
@@ -96,8 +93,9 @@ export default function App() {
             <Route path="complaints" element={<ParentComplaint />} />
           </Route>
 
-          <Route path="/" element={<Navigate to="/admin" replace />} />
-          <Route path="*" element={<Navigate to="/admin" replace />} />
+          {/* FIX: redirect to /login not /admin */}
+          <Route path="/" element={<Navigate to="/login" replace />} />
+          <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
       </BrowserRouter>
     </AuthProvider>

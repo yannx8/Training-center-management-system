@@ -23,12 +23,12 @@ export default function Login() {
     setLoading(true);
     try {
       const res = await loginApi(email, password);
-      const { userId, roles, fullName, requiresPasswordChange } = res.data.data;
+      const { userId, roles} = res.data.data;
       setUserId(userId);
       setRoles(roles);
       if (roles.length === 1) {
         // Only one role — skip selection screen
-        await finishLogin(userId, roles[0].role_id, roles[0].role_name, fullName, requiresPasswordChange);
+        await finishLogin(userId, roles[0].role_id, roles[0].role_name);
       } else {
         setSelectedRole(roles[0].role_id);
         setStep('role');
@@ -46,10 +46,9 @@ export default function Login() {
     setLoading(true);
     try {
       const res = await selectRoleApi(userId, selectedRole);
-      const { token, user, requiresPasswordChange } = res.data.data;
+      const { token, user } = res.data.data;
       login(user, token);
-      if (requiresPasswordChange) navigate('/change-password');
-      else navigate(`/${user.roleName}`);
+      navigate(`/${user.roleName}`);
     } catch (err) {
       setError(err.response?.data?.message || 'Role selection failed');
     } finally {
@@ -57,12 +56,11 @@ export default function Login() {
     }
   }
 
-  async function finishLogin(uid, roleId, roleName, fullName, requiresPasswordChange) {
+  async function finishLogin(uid, roleId, roleName) {
     const res = await selectRoleApi(uid, roleId);
     const { token, user } = res.data.data;
     login(user, token);
-    if (requiresPasswordChange) navigate('/change-password');
-    else navigate(`/${roleName}`);
+    navigate(`/${roleName}`);
   }
 
   if (step === 'role') {

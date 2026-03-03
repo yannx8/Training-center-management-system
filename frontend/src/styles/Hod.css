@@ -1,0 +1,395 @@
+/* FILE: /frontend/src/pages/hod/Hod.css */
+
+
+/* ── Layout ── */
+
+.hod-shell {
+    display: flex;
+    min-height: 100vh;
+    background: #f0f2f5;
+}
+
+
+/* ── Sidebar — dark navy matching screenshot ── */
+
+.hod-sidebar {
+    width: 230px;
+    min-width: 230px;
+    background: #1a1a2e;
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    position: sticky;
+    top: 0;
+}
+
+.hod-brand {
+    padding: 1.25rem 1.5rem;
+    font-size: 1rem;
+    font-weight: 700;
+    color: #fff;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    letter-spacing: 0.01em;
+}
+
+.hod-nav {
+    flex: 1;
+    padding: 0.75rem 0;
+}
+
+.hod-link {
+    display: block;
+    padding: 0.7rem 1.5rem;
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 0.875rem;
+    font-weight: 500;
+    text-decoration: none;
+}
+
+.hod-link:hover {
+    color: #fff;
+    background: rgba(255, 255, 255, 0.06);
+}
+
+.hod-link-active {
+    color: #fff;
+    background: rgba(255, 255, 255, 0.1);
+    border-left: 3px solid #fff;
+    padding-left: calc(1.5rem - 3px);
+}
+
+.hod-footer {
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    padding: 1rem 1.5rem;
+}
+
+.hod-footer-name {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: #fff;
+}
+
+.hod-footer-role {
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.45);
+    margin-bottom: 0.6rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.hod-footer-logout {
+    width: 100%;
+    padding: 0.4rem;
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: rgba(255, 255, 255, 0.6);
+    border-radius: 4px;
+    font-size: 0.8rem;
+    cursor: pointer;
+}
+
+.hod-footer-logout:hover {
+    color: #fff;
+    border-color: rgba(255, 255, 255, 0.5);
+}
+
+
+/* ── Main ── */
+
+.hod-main {
+    flex: 1;
+    padding: 2rem;
+    overflow-y: auto;
+}
+
+
+/* ── Page header ── */
+
+.hod-page-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 1.25rem;
+    gap: 1rem;
+}
+
+.hod-title {
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: #1a1a2e;
+    margin: 0 0 0.2rem;
+}
+
+.hod-sub {
+    font-size: 0.85rem;
+    color: #555;
+    margin: 0;
+}
+
+
+/* ── Cards ── */
+
+.hod-card {
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 1.25rem;
+    margin-bottom: 1rem;
+}
+
+.hod-card-title {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #1a1a2e;
+    margin: 0 0 0.9rem;
+}
+
+
+/* ── Tables ── */
+
+.hod-table-wrap {
+    overflow-x: auto;
+}
+
+.hod-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.875rem;
+}
+
+.hod-table th {
+    text-align: left;
+    padding: 0.55rem 0.75rem;
+    font-size: 0.73rem;
+    font-weight: 700;
+    color: #555;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    border-bottom: 2px solid #e5e5e5;
+    background: #fafafa;
+}
+
+.hod-table td {
+    padding: 0.6rem 0.75rem;
+    border-bottom: 1px solid #efefef;
+    color: #222;
+    vertical-align: top;
+}
+
+.hod-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.hod-table tbody tr:hover td {
+    background: #fafafa;
+}
+
+.hod-inner {
+    margin: 0;
+}
+
+.hod-inner th,
+.hod-inner td {
+    padding: 0.45rem 0.65rem;
+}
+
+.hod-expand-cell {
+    background: #f8f9fa;
+    padding: 0.75rem 1rem !important;
+}
+
+.hod-day-cell {
+    font-weight: 600;
+    background: #f8f9fa;
+    white-space: nowrap;
+}
+
+
+/* ── Availability grid ── */
+
+.hod-avail-grid {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 0.75rem;
+}
+
+.hod-avail-col {
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.hod-avail-header {
+    background: #1a1a2e;
+    color: #fff;
+    text-align: center;
+    padding: 0.5rem;
+    font-size: 0.78rem;
+    font-weight: 600;
+}
+
+.hod-avail-none {
+    padding: 0.75rem;
+    text-align: center;
+    color: #aaa;
+    font-size: 0.8rem;
+}
+
+.hod-avail-slot {
+    padding: 0.45rem 0.6rem;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.hod-avail-slot:last-child {
+    border-bottom: none;
+}
+
+.hod-avail-trainer {
+    display: block;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #1a1a2e;
+}
+
+.hod-avail-time {
+    display: block;
+    font-size: 0.75rem;
+    color: #777;
+}
+
+
+/* ── Form controls ── */
+
+.hod-row {
+    display: flex;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.hod-input,
+.hod-select {
+    padding: 0.5rem 0.7rem;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 0.875rem;
+    background: #fff;
+    outline: none;
+}
+
+.hod-input {
+    flex: 1;
+    min-width: 180px;
+}
+
+.hod-select {
+    min-width: 190px;
+}
+
+.hod-input:focus,
+.hod-select:focus {
+    border-color: #1a1a2e;
+}
+
+
+/* ── Buttons ── */
+
+.hod-btn {
+    padding: 0.5rem 1rem;
+    background: #1a1a2e;
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.hod-btn:hover:not(:disabled) {
+    background: #2d2d50;
+}
+
+.hod-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.hod-btn-outline {
+    background: #fff;
+    color: #1a1a2e;
+    border: 1px solid #1a1a2e;
+}
+
+.hod-btn-outline:hover:not(:disabled) {
+    background: #1a1a2e;
+    color: #fff;
+}
+
+.hod-btn-danger {
+    background: #fff;
+    color: #b91c1c;
+    border: 1px solid #b91c1c;
+}
+
+.hod-btn-danger:hover {
+    background: #b91c1c;
+    color: #fff;
+}
+
+.hod-btn-sm {
+    padding: 0.3rem 0.7rem;
+    font-size: 0.8rem;
+    font-weight: 500;
+    border: 1px solid #1a1a2e;
+    background: #fff;
+    color: #1a1a2e;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.hod-btn-sm:hover {
+    background: #1a1a2e;
+    color: #fff;
+}
+
+
+/* ── Misc ── */
+
+.hod-msg {
+    padding: 1.5rem;
+    color: #555;
+    font-size: 0.875rem;
+}
+
+.hod-err {
+    color: #b91c1c;
+}
+
+.hod-dim {
+    color: #aaa;
+    font-style: italic;
+}
+
+.hod-ok {
+    margin-top: 0.5rem;
+    font-size: 0.85rem;
+    color: #166534;
+}
+
+.hod-err-text {
+    margin-top: 0.5rem;
+    font-size: 0.85rem;
+    color: #b91c1c;
+}
+
+.hod-notice {
+    background: #fef9c3;
+    border: 1px solid #fde68a;
+    color: #92400e;
+    padding: 0.6rem 1rem;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    margin-bottom: 1rem;
+}

@@ -105,8 +105,8 @@ export default function Programs() {
           setCurrentProgram(r);
           refetchCourses();
         }}>View Courses</button>
-        <button className="btn-icon" onClick={() => openEdit(r)}>✏️</button>
-        <button className="btn-icon btn-icon-danger" onClick={() => handleDelete(r.id)}>🗑️</button>
+                    <button className="um-btn-edit" onClick={() => openEdit(r)}>Edit</button>
+                    <button className="um-btn-del" onClick={() => handleDelete(r.id)}>Delete</button>
       </div>
     )},
   ];
@@ -117,8 +117,8 @@ export default function Programs() {
     { key: 'trainer_name', label: 'Trainer' },
     { key: 'actions', label: 'Actions', render: r => (
       <div className="action-btns">
-        <button className="btn-icon" onClick={() => openCourseEdit(r)}>✏️</button>
-        <button className="btn-icon btn-icon-danger" onClick={() => handleCourseDelete(r.id)}>🗑️</button>
+                    <button className="um-btn-edit" onClick={() => openCourseEdit(r)}>Edit</button>
+                    <button className="um-btn-del" onClick={() => handleCourseDelete(r.id)}>Delete</button>
       </div>
     )},
   ];

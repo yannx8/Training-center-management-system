@@ -1,25 +1,30 @@
-// src/components/Header.jsx
-import React from 'react';
-import { useAuth } from '../App';
+// FILE: /frontend/src/components/Header.jsx
+import { useAuth } from '../context/AuthContext';
+
+// FIX: was importing useAuth from '../App' which doesn't export it — crashes entire app
 
 function Header({ title, subtitle }) {
   const { user } = useAuth();
 
-  return React.createElement('header', { className: 'page-header-main' },
-    React.createElement('div', { className: 'header-content' },
-      React.createElement('div', { className: 'header-title' },
-        React.createElement('h1', null, title),
-        subtitle && React.createElement('p', { className: 'header-subtitle' }, subtitle)
-      ),
-      React.createElement('div', { className: 'header-user' },
-        React.createElement('span', { className: 'header-user-name' }, 
-          user?.full_name || 'Admin User'
-        ),
-        React.createElement('span', { className: 'header-user-role' }, 
-          `(${user?.role?.charAt(0).toUpperCase() + user?.role?.slice(1) || 'Administrator'})`
-        )
-      )
-    )
+  return (
+    <header className="page-header-main">
+      <div className="header-content">
+        <div className="header-title">
+          <h1>{title}</h1>
+          {subtitle && <p className="header-subtitle">{subtitle}</p>}
+        </div>
+        <div className="header-user">
+          <span className="header-user-name">
+            {user?.fullName || 'User'}
+          </span>
+          <span className="header-user-role">
+            ({user?.roleName
+              ? user.roleName.charAt(0).toUpperCase() + user.roleName.slice(1)
+              : 'Guest'})
+          </span>
+        </div>
+      </div>
+    </header>
   );
 }
 

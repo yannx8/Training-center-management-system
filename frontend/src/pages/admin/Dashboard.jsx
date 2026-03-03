@@ -15,7 +15,7 @@ export default function AdminDashboard() {
   const stats = data?.stats || {};
   const deptOverview = data?.departmentOverview || [];
   const pendingComplaints = data?.pendingComplaints || [];
-  const highPriority = data?.highPriorityIssues || [];
+
 
   return (
     <div>
@@ -49,21 +49,6 @@ export default function AdminDashboard() {
                 <div>
                   <strong>{c.subject}</strong>
                   <div className="complaint-meta">Parent: {c.parent_name} | Student: {c.student_name}</div>
-                </div>
-                <Badge label={c.priority} type="status" />
-              </div>
-            ))
-          }
-        </div>
-        <div className="dash-card">
-          <h3 className="dash-card-title">🔴 High Priority Issues</h3>
-          {highPriority.length === 0
-            ? <p className="empty-text">No high priority issues</p>
-            : highPriority.map(c => (
-              <div key={c.id} className="complaint-item">
-                <div>
-                  <strong>{c.subject}</strong>
-                  <div className="complaint-meta">Status: {c.status}</div>
                 </div>
                 <Badge label={c.priority} type="status" />
               </div>

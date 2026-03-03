@@ -1,4 +1,3 @@
-// FILE: /frontend/src/pages/admin/Departments.jsx
 import { useState } from 'react';
 import { useFetch } from '../../hooks/useFetch';
 import { getDepartments, createDepartment, updateDepartment, deleteDepartment, getUsers } from '../../api/adminApi';
@@ -48,8 +47,8 @@ export default function Departments() {
     { key: 'status', label: 'Status', render: r => <Badge label={r.status} /> },
     { key: 'actions', label: 'Actions', render: r => (
       <div className="action-btns">
-        <button className="btn-icon" onClick={() => openEdit(r)}>✏️</button>
-        <button className="btn-icon btn-icon-danger" onClick={() => handleDelete(r.id)}>🗑️</button>
+            <button className="um-btn-edit" onClick={() => openEdit(r)}>Edit</button>
+            <button className="um-btn-del" onClick={() => handleDelete(r.id)}>Delete</button>
       </div>
     )},
   ];

@@ -8,7 +8,9 @@ const {
     updateUser,
     deleteUser,
     checkEmailExists,
-    getRoleByName
+    getRoleByName,
+    findUserById,
+    removeAllUserRoles, // FIX: was used but never imported -> ReferenceError crash
 } = require('../queries/users');
 const {
     getDashboardStats,
@@ -27,30 +29,26 @@ const {
     createRoom,
     updateRoom,
     deleteRoom,
-    getDepartmentOverview
+    getDepartmentOverview,
 } = require('../queries/admin');
 const { getAllComplaints, updateComplaintStatus } = require('../queries/complaints');
 
 async function getDashboard(req, res) {
     const [statsSql, statsParams] = getDashboardStats();
     const statsResult = await pool.query(statsSql, statsParams);
-
     const [deptSql, deptParams] = getDepartmentOverview();
     const deptResult = await pool.query(deptSql, deptParams);
-
-    const [complaintsSql, complaintsParams] = getAllComplaints();
-    const complaintsResult = await pool.query(complaintsSql, complaintsParams);
-
-    const pending = complaintsResult.rows.filter(c => c.status === 'pending');
-    const highPriority = complaintsResult.rows.filter(c => c.priority === 'high' && c.status === 'pending');
-
+    const [cSql, cParams] = getAllComplaints();
+    const cResult = await pool.query(cSql, cParams);
+    const pending = cResult.rows.filter(c => c.status === 'pending');
+    const high = cResult.rows.filter(c => c.priority === 'high' && c.status === 'pending');
     return res.json({
         success: true,
         data: {
             stats: statsResult.rows[0],
             departmentOverview: deptResult.rows,
             pendingComplaints: pending.slice(0, 5),
-            highPriorityIssues: highPriority.slice(0, 5),
+            highPriorityIssues: high.slice(0, 5),
         },
     });
 }
@@ -76,23 +74,33 @@ async function createUserHandler(req, res) {
     if (!roleResult.rows.length)
         return res.status(400).json({ success: false, message: 'Invalid role name', code: 'INVALID_ROLE' });
 
-    // Default password = phone number
-    let hash;
-    try {
-        hash = await bcrypt.hash(phone, parseInt(process.env.SALT_ROUNDS) || 12);
-    } catch {
-        return res.status(500).json({ success: false, message: 'Password hashing failed', code: 'HASH_ERROR' });
+    // HOD constraint: one HOD per department
+    if (roleName === 'hod' && department) {
+        const conflict = await pool.query(
+            `SELECT d.id FROM departments d
+             JOIN users u ON d.hod_user_id = u.id
+             WHERE d.name = $1 AND d.hod_user_id IS NOT NULL`, [department]
+        );
+        if (conflict.rows.length)
+            return res.status(409).json({ success: false, message: 'This department already has an HOD assigned', code: 'HOD_CONFLICT' });
     }
+
+    let hash;
+    try { hash = await bcrypt.hash(phone, parseInt(process.env.SALT_ROUNDS) || 12); } catch { return res.status(500).json({ success: false, message: 'Password hashing failed', code: 'HASH_ERROR' }); }
 
     const [createSql, createParams] = createUser(fullName, email, hash, phone, department || null, status || 'active');
     const newUser = await pool.query(createSql, createParams);
-
     const [assignSql, assignParams] = assignRoleToUser(newUser.rows[0].id, roleResult.rows[0].id);
     await pool.query(assignSql, assignParams);
 
-    // If trainer role, create trainer record
-    if (roleName === 'trainer') {
+    if (roleName === 'trainer')
         await pool.query('INSERT INTO trainers (user_id) VALUES ($1) ON CONFLICT DO NOTHING', [newUser.rows[0].id]);
+
+    // If HOD, link them to the department record
+    if (roleName === 'hod' && department) {
+        await pool.query(
+            `UPDATE departments SET hod_user_id=$1, hod_name=$2 WHERE name=$3`, [newUser.rows[0].id, fullName, department]
+        );
     }
 
     return res.status(201).json({ success: true, data: {...newUser.rows[0], roleName } });
@@ -109,13 +117,23 @@ async function updateUserHandler(req, res) {
     if (!result.rows.length)
         return res.status(404).json({ success: false, message: 'User not found', code: 'NOT_FOUND' });
 
-    // Handle multiple roles assignment
     if (roles !== undefined) {
-        // Remove all existing roles for the user
+        // HOD constraint check before reassigning roles
+        if (roles.includes('hod') && department) {
+            const conflict = await pool.query(
+                `SELECT d.id FROM departments d
+                 WHERE d.name=$1 AND d.hod_user_id IS NOT NULL AND d.hod_user_id != $2`, [department, id]
+            );
+            if (conflict.rows.length)
+                return res.status(409).json({ success: false, message: 'This department already has an HOD assigned', code: 'HOD_CONFLICT' });
+        }
+
+        // Clear old HOD link if this user was previously an HOD
+        await pool.query('UPDATE departments SET hod_user_id=NULL, hod_name=NULL WHERE hod_user_id=$1', [id]);
+
         const [removeSql, removeParams] = removeAllUserRoles(id);
         await pool.query(removeSql, removeParams);
 
-        // Assign each role in the array
         for (const roleName of roles) {
             const [roleSql, roleParams] = getRoleByName(roleName);
             const roleResult = await pool.query(roleSql, roleParams);
@@ -124,6 +142,10 @@ async function updateUserHandler(req, res) {
                 await pool.query(assignSql, assignParams);
             }
         }
+
+        // Re-link if new roles include HOD
+        if (roles.includes('hod') && department)
+            await pool.query('UPDATE departments SET hod_user_id=$1, hod_name=$2 WHERE name=$3', [id, fullName, department]);
     }
 
     return res.json({ success: true, data: result.rows[0] });
@@ -131,6 +153,8 @@ async function updateUserHandler(req, res) {
 
 async function deleteUserHandler(req, res) {
     const { id } = req.params;
+    // Clear HOD link before deleting
+    await pool.query('UPDATE departments SET hod_user_id=NULL, hod_name=NULL WHERE hod_user_id=$1', [id]);
     const [sql, params] = deleteUser(id);
     const result = await pool.query(sql, params);
     if (!result.rows.length)
@@ -148,16 +172,22 @@ async function createDepartmentHandler(req, res) {
     const { name, code, hodUserId, status } = req.body;
     if (!name || !code)
         return res.status(400).json({ success: false, message: 'name and code required', code: 'MISSING_FIELDS' });
-    
-    // Get the user info for the HOD
+
+    // One-HOD-per-department: check no other department has the same HOD
+    if (hodUserId) {
+        const conflict = await pool.query(
+            'SELECT id FROM departments WHERE hod_user_id=$1', [hodUserId]
+        );
+        if (conflict.rows.length)
+            return res.status(409).json({ success: false, message: 'This user is already HOD of another department', code: 'HOD_CONFLICT' });
+    }
+
     let hodName = '';
     if (hodUserId) {
         const [userSql, userParams] = findUserById(hodUserId);
         const userResult = await pool.query(userSql, userParams);
         if (userResult.rows.length) {
             hodName = userResult.rows[0].full_name;
-            
-            // Assign HOD role to the user if they don't already have it
             const [roleSql, roleParams] = getRoleByName('hod');
             const roleResult = await pool.query(roleSql, roleParams);
             if (roleResult.rows.length) {
@@ -166,7 +196,7 @@ async function createDepartmentHandler(req, res) {
             }
         }
     }
-    
+
     const [sql, params] = createDepartment(name, code, hodName, hodUserId, status || 'active');
     const result = await pool.query(sql, params);
     return res.status(201).json({ success: true, data: result.rows[0] });
@@ -175,6 +205,15 @@ async function createDepartmentHandler(req, res) {
 async function updateDepartmentHandler(req, res) {
     const { id } = req.params;
     const { name, code, hodName, hodUserId, status } = req.body;
+
+    if (hodUserId) {
+        const conflict = await pool.query(
+            'SELECT id FROM departments WHERE hod_user_id=$1 AND id!=$2', [hodUserId, id]
+        );
+        if (conflict.rows.length)
+            return res.status(409).json({ success: false, message: 'This user is already HOD of another department', code: 'HOD_CONFLICT' });
+    }
+
     const [sql, params] = updateDepartment(id, name, code, hodName, hodUserId, status);
     const result = await pool.query(sql, params);
     if (!result.rows.length)
