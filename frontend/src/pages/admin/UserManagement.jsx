@@ -1,39 +1,35 @@
 // FILE: /frontend/src/pages/admin/UserManagement.jsx
 import { useState } from 'react';
 import { useFetch } from '../../hooks/useFetch';
-import { getUsers, createUser, updateUser, deleteUser } from '../../api/adminApi';
+import { getUsers, createUser, updateUser, deleteUser, getDepartments } from '../../api/adminApi';
 import Table from '../../components/Table';
 import Modal from '../../components/Modal';
 import Badge from '../../components/Badge';
 import '../../styles/Page.css';
 
-const ROLES = ['HOD', 'Trainer', 'Secretary'];
-const TABS = ['All Users', 'HOD', 'Trainers', 'Secretaries'];
+const ROLES = ['All', 'HOD', 'Trainer', 'Secretary'];
 
 export default function UserManagement() {
   const { data: users, loading, refetch } = useFetch(getUsers);
-  const [activeTab, setActiveTab] = useState('All Users');
+  const { data: departments } = useFetch(getDepartments);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [roleFilter, setRoleFilter] = useState('All');
   const [showModal, setShowModal] = useState(false);
   const [editUser, setEditUser] = useState(null);
   const [form, setForm] = useState({ fullName: '', email: '', roleName: 'Trainer', department: '', phone: '', status: 'active' });
   const [error, setError] = useState('');
 
+  // Filter users based on both search term and role filter
   const filtered = (users || []).filter(u => {
-    if (activeTab === 'All Users') return true;
-    if (activeTab === 'HOD') return u.roles?.includes('hod');
-    if (activeTab === 'Trainers') return u.roles?.includes('trainer');
-    if (activeTab === 'Secretaries') return u.roles?.includes('secretary');
-    return true;
+    const matchesSearch = !searchTerm || 
+      u.full_name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+      u.email.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    const matchesRole = roleFilter === 'All' || 
+      (u.roles && Array.isArray(u.roles) && u.roles.some(role => role.toLowerCase() === roleFilter.toLowerCase()));
+    
+    return matchesSearch && matchesRole;
   });
-
-  function countFor(tab) {
-    if (!users) return 0;
-    if (tab === 'All Users') return users.length;
-    if (tab === 'HOD') return users.filter(u => u.roles?.includes('hod')).length;
-    if (tab === 'Trainers') return users.filter(u => u.roles?.includes('trainer')).length;
-    if (tab === 'Secretaries') return users.filter(u => u.roles?.includes('secretary')).length;
-    return 0;
-  }
 
   function openCreate() {
     setEditUser(null);
@@ -44,7 +40,16 @@ export default function UserManagement() {
 
   function openEdit(u) {
     setEditUser(u);
-    setForm({ fullName: u.full_name, email: u.email, roleName: u.roles?.split(',')[0] || 'Trainer', department: u.department || '', phone: u.phone || '', status: u.status });
+    // Split the roles string into an array
+    const userRoles = u.roles ? u.roles.split(',') : [];
+    setForm({ 
+      fullName: u.full_name, 
+      email: u.email, 
+      roles: userRoles, // Store roles as an array
+      department: u.department || '', 
+      phone: u.phone || '', 
+      status: u.status 
+    });
     setError('');
     setShowModal(true);
   }
@@ -52,9 +57,32 @@ export default function UserManagement() {
   async function handleSubmit() {
     try {
       if (editUser) {
-        await updateUser(editUser.id, { fullName: form.fullName, email: form.email, phone: form.phone, department: form.department, status: form.status });
+        // Prepare user data for update
+        const userData = { 
+          fullName: form.fullName, 
+          email: form.email, 
+          phone: form.phone, 
+          department: form.department, 
+          status: form.status,
+          roles: form.roles // Send roles as an array
+        };
+        
+        await updateUser(editUser.id, userData);
       } else {
-        await createUser({ fullName: form.fullName, email: form.email, roleName: form.roleName.toLowerCase(), department: form.department, phone: form.phone, status: form.status });
+        // Only include department if role is Trainer or HOD
+        const userData = {
+          fullName: form.fullName,
+          email: form.email,
+          roleName: form.roleName.toLowerCase(),
+          phone: form.phone,
+          status: form.status
+        };
+        
+        if (['trainer', 'hod'].includes(form.roleName.toLowerCase())) {
+          userData.department = form.department;
+        }
+        
+        await createUser(userData);
       }
       setShowModal(false);
       refetch();
@@ -78,7 +106,7 @@ export default function UserManagement() {
     { key: 'status', label: 'Status', render: row => <Badge label={row.status} type="status" /> },
     { key: 'actions', label: 'Actions', render: row => (
       <div className="action-btns">
-        <button className="btn-icon" onClick={() => openEdit(row)} title="Edit">✏️</button>
+        <button className="btn-primary" onClick={() => openEdit(row)} title="Edit">Edit</button>
         <button className="btn-icon btn-icon-danger" onClick={() => handleDelete(row.id)} title="Delete">🗑️</button>
       </div>
     )},
@@ -94,16 +122,22 @@ export default function UserManagement() {
         <button className="btn-primary" onClick={openCreate}>+ Add User</button>
       </div>
 
-      <div className="tabs">
-        {TABS.map(tab => (
-          <button
-            key={tab}
-            className={`tab${activeTab === tab ? ' active' : ''}`}
-            onClick={() => setActiveTab(tab)}
-          >
-            {tab} ({countFor(tab)})
-          </button>
-        ))}
+      <div className="filters">
+        <div className="search-bar">
+          <input
+            type="text"
+            placeholder="Search by name or email..."
+            value={searchTerm}
+            onChange={e => setSearchTerm(e.target.value)}
+          />
+        </div>
+        <div className="filter-select">
+          <select value={roleFilter} onChange={e => setRoleFilter(e.target.value)}>
+            {ROLES.map(role => (
+              <option key={role} value={role}>{role}</option>
+            ))}
+          </select>
+        </div>
       </div>
 
       {loading ? <div className="page-loading">Loading...</div> : (
@@ -130,14 +164,52 @@ export default function UserManagement() {
             <div className="form-field">
               <label>Role *</label>
               <select value={form.roleName} onChange={e => setForm({ ...form, roleName: e.target.value })}>
-                {ROLES.map(r => <option key={r} value={r}>{r}</option>)}
+                {ROLES.slice(1).map(r => <option key={r} value={r}>{r}</option>)}
               </select>
             </div>
           )}
-          <div className="form-field">
-            <label>Department</label>
-            <input value={form.department} onChange={e => setForm({ ...form, department: e.target.value })} placeholder="Enter department" />
-          </div>
+          {editUser && (
+            <div className="form-field">
+              <label>Roles</label>
+              <div className="role-checkboxes">
+                {ROLES.slice(1).map(role => (
+                  <label key={role} className="checkbox-label">
+                    <input
+                      type="checkbox"
+                      checked={form.roles.includes(role.toLowerCase())}
+                      onChange={e => {
+                        if (e.target.checked) {
+                          setForm(prev => ({
+                            ...prev,
+                            roles: [...prev.roles, role.toLowerCase()]
+                          }));
+                        } else {
+                          setForm(prev => ({
+                            ...prev,
+                            roles: prev.roles.filter(r => r !== role.toLowerCase())
+                          }));
+                        }
+                      }}
+                    />
+                    {role}
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
+          {/* Show department field only for Trainer and HOD roles */}
+          {(!editUser && ['Trainer', 'HOD'].includes(form.roleName)) || 
+           (editUser && form.roles.some(role => ['trainer', 'hod'].includes(role))) ? (
+            <div className="form-field">
+              <label>Department</label>
+              <select value={form.department} onChange={e => setForm({ ...form, department: e.target.value })}>
+                <option value="">Select Department</option>
+                {(departments || []).map(dept => (
+                  <option key={dept.id} value={dept.name}>{dept.name}</option>
+                ))}
+              </select>
+            </div>
+          ) : null}
           <div className="form-field">
             <label>Phone Number *</label>
             <input value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} placeholder="+1 234-567-8900" />

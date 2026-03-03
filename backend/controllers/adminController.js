@@ -100,7 +100,7 @@ async function createUserHandler(req, res) {
 
 async function updateUserHandler(req, res) {
     const { id } = req.params;
-    const { fullName, email, phone, department, status } = req.body;
+    const { fullName, email, phone, department, status, roles } = req.body;
     if (!fullName || !email)
         return res.status(400).json({ success: false, message: 'fullName and email required', code: 'MISSING_FIELDS' });
 
@@ -108,6 +108,23 @@ async function updateUserHandler(req, res) {
     const result = await pool.query(sql, params);
     if (!result.rows.length)
         return res.status(404).json({ success: false, message: 'User not found', code: 'NOT_FOUND' });
+
+    // Handle multiple roles assignment
+    if (roles !== undefined) {
+        // Remove all existing roles for the user
+        const [removeSql, removeParams] = removeAllUserRoles(id);
+        await pool.query(removeSql, removeParams);
+
+        // Assign each role in the array
+        for (const roleName of roles) {
+            const [roleSql, roleParams] = getRoleByName(roleName);
+            const roleResult = await pool.query(roleSql, roleParams);
+            if (roleResult.rows.length) {
+                const [assignSql, assignParams] = assignRoleToUser(id, roleResult.rows[0].id);
+                await pool.query(assignSql, assignParams);
+            }
+        }
+    }
 
     return res.json({ success: true, data: result.rows[0] });
 }
@@ -128,9 +145,28 @@ async function getDepartmentsHandler(req, res) {
 }
 
 async function createDepartmentHandler(req, res) {
-    const { name, code, hodName, hodUserId, status } = req.body;
+    const { name, code, hodUserId, status } = req.body;
     if (!name || !code)
         return res.status(400).json({ success: false, message: 'name and code required', code: 'MISSING_FIELDS' });
+    
+    // Get the user info for the HOD
+    let hodName = '';
+    if (hodUserId) {
+        const [userSql, userParams] = findUserById(hodUserId);
+        const userResult = await pool.query(userSql, userParams);
+        if (userResult.rows.length) {
+            hodName = userResult.rows[0].full_name;
+            
+            // Assign HOD role to the user if they don't already have it
+            const [roleSql, roleParams] = getRoleByName('hod');
+            const roleResult = await pool.query(roleSql, roleParams);
+            if (roleResult.rows.length) {
+                const [assignSql, assignParams] = assignRoleToUser(hodUserId, roleResult.rows[0].id);
+                await pool.query(assignSql, assignParams);
+            }
+        }
+    }
+    
     const [sql, params] = createDepartment(name, code, hodName, hodUserId, status || 'active');
     const result = await pool.query(sql, params);
     return res.status(201).json({ success: true, data: result.rows[0] });

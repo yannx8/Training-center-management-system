@@ -1,7 +1,7 @@
 // FILE: /frontend/src/pages/admin/Departments.jsx
 import { useState } from 'react';
 import { useFetch } from '../../hooks/useFetch';
-import { getDepartments, createDepartment, updateDepartment, deleteDepartment } from '../../api/adminApi';
+import { getDepartments, createDepartment, updateDepartment, deleteDepartment, getUsers } from '../../api/adminApi';
 import Table from '../../components/Table';
 import Modal from '../../components/Modal';
 import Badge from '../../components/Badge';
@@ -9,18 +9,28 @@ import '../../styles/Page.css';
 
 export default function Departments() {
   const { data: departments, loading, refetch } = useFetch(getDepartments);
+  const { data: users } = useFetch(getUsers);
   const [showModal, setShowModal] = useState(false);
   const [editItem, setEditItem] = useState(null);
-  const [form, setForm] = useState({ name: '', code: '', hodName: '', status: 'active' });
+  const [form, setForm] = useState({ name: '', code: '', hodUserId: '', status: 'active' });
   const [error, setError] = useState('');
 
-  function openCreate() { setEditItem(null); setForm({ name: '', code: '', hodName: '', status: 'active' }); setError(''); setShowModal(true); }
-  function openEdit(d) { setEditItem(d); setForm({ name: d.name, code: d.code, hodName: d.hod_name || '', status: d.status }); setError(''); setShowModal(true); }
+  function openCreate() { setEditItem(null); setForm({ name: '', code: '', hodUserId: '', status: 'active' }); setError(''); setShowModal(true); }
+  function openEdit(d) { setEditItem(d); setForm({ name: d.name, code: d.code, hodUserId: d.hod_user_id || '', status: d.status }); setError(''); setShowModal(true); }
 
   async function handleSubmit() {
     try {
       if (editItem) await updateDepartment(editItem.id, form);
-      else await createDepartment(form);
+      else {
+        // Find the selected trainer user
+        const selectedUser = (users || []).find(user => user.id == form.hodUserId);
+        if (selectedUser) {
+          // Update the user to also have HOD role
+          const updatedRoles = [...new Set([...selectedUser.roles?.split(',') || [], 'hod'])];
+          await updateDepartment(editItem.id, {...form, hodName: selectedUser.full_name});
+        }
+        await createDepartment(form);
+      }
       setShowModal(false); refetch();
     } catch (err) { setError(err.response?.data?.message || 'Failed'); }
   }
@@ -57,7 +67,14 @@ export default function Departments() {
         <Modal title={editItem ? 'Edit Department' : 'Create New Department'} onClose={() => setShowModal(false)}>
           <div className="form-field"><label>Department Name *</label><input value={form.name} onChange={e => setForm({...form, name: e.target.value})} placeholder="e.g., Computer Science" /></div>
           <div className="form-field"><label>Department Code *</label><input value={form.code} onChange={e => setForm({...form, code: e.target.value})} placeholder="e.g., CS" /></div>
-          <div className="form-field"><label>Head of Department *</label><input value={form.hodName} onChange={e => setForm({...form, hodName: e.target.value})} placeholder="Enter HOD name" /></div>
+          <div className="form-field"><label>Head of Department *</label>
+            <select value={form.hodUserId} onChange={e => setForm({...form, hodUserId: e.target.value})}>
+              <option value="">Select HOD</option>
+              {(users || []).filter(user => user.roles?.toLowerCase().includes('trainer')).map(user => (
+                <option key={user.id} value={user.id}>{user.full_name}</option>
+              ))}
+            </select>
+          </div>
           <div className="form-field"><label>Status</label>
             <select value={form.status} onChange={e => setForm({...form, status: e.target.value})}>
               <option value="active">Active</option><option value="inactive">Inactive</option>

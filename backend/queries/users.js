@@ -86,6 +86,16 @@ function getRoleByName(name) {
     return [sql, [name]];
 }
 
+function removeUserRole(userId, roleId) {
+    const sql = `DELETE FROM user_roles WHERE user_id=$1 AND role_id=$2`;
+    return [sql, [userId, roleId]];
+}
+
+function removeAllUserRoles(userId) {
+    const sql = `DELETE FROM user_roles WHERE user_id=$1`;
+    return [sql, [userId]];
+}
+
 module.exports = {
     findUserByEmail,
     findUserById,
@@ -98,4 +108,6 @@ module.exports = {
     checkEmailExists,
     markPasswordChanged,
     getRoleByName,
+    removeUserRole,
+    removeAllUserRoles,
 };
