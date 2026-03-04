@@ -4,6 +4,36 @@
 -- Run this on a fresh database: psql -U postgres -d training_center_db -f db.sql
 -- ============================================================
 
+-- Drop everything cleanly if re-running
+DROP TABLE IF EXISTS announcements CASCADE;
+DROP TABLE IF EXISTS mark_complaints CASCADE;
+DROP TABLE IF EXISTS complaints CASCADE;
+DROP TABLE IF EXISTS attendance CASCADE;
+DROP TABLE IF EXISTS timetable_slots CASCADE;
+DROP TABLE IF EXISTS timetables CASCADE;
+DROP TABLE IF EXISTS availability_locks CASCADE;
+DROP TABLE IF EXISTS availability CASCADE;
+DROP TABLE IF EXISTS grades CASCADE;
+DROP TABLE IF EXISTS enrollments CASCADE;
+DROP TABLE IF EXISTS parent_student_links CASCADE;
+DROP TABLE IF EXISTS parents CASCADE;
+DROP TABLE IF EXISTS students CASCADE;
+DROP TABLE IF EXISTS trainer_courses CASCADE;
+DROP TABLE IF EXISTS trainers CASCADE;
+DROP TABLE IF EXISTS courses CASCADE;
+DROP TABLE IF EXISTS academic_weeks CASCADE;
+DROP TABLE IF EXISTS rooms CASCADE;
+DROP TABLE IF EXISTS sessions CASCADE;
+DROP TABLE IF EXISTS academic_years CASCADE;
+DROP TABLE IF EXISTS semesters CASCADE;
+DROP TABLE IF EXISTS academic_levels CASCADE;
+DROP TABLE IF EXISTS programs CASCADE;
+DROP TABLE IF EXISTS certifications CASCADE;
+DROP TABLE IF EXISTS departments CASCADE;
+DROP TABLE IF EXISTS user_roles CASCADE;
+DROP TABLE IF EXISTS users CASCADE;
+DROP TABLE IF EXISTS roles CASCADE;
+
 -- Extensions
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
