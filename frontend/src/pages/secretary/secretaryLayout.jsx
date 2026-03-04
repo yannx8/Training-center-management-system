@@ -1,43 +1,46 @@
 // FILE: /frontend/src/pages/secretary/secretaryLayout.jsx
-import { Outlet, NavLink } from 'react-router-dom';
+import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import Header from '../../components/Header';
-import '../../styles/Sidebar.css';
+import '../../styles/Secretary.css';
+
+const NAV = [
+    { to: '/secretary', label: 'Student Management', end: true },
+];
 
 export default function SecretaryLayout() {
-  const { user, logout } = useAuth();
+    const { user, logout } = useAuth();
+    const navigate = useNavigate();
 
-  const navItems = [
-    { path: '/secretary', label: 'Dashboard', icon: '📊' },
-    { path: '/secretary/students', label: 'Students', icon: '👨‍🎓' },
-    { path: '/secretary/parents', label: 'Parents', icon: '👨‍👩‍👧' },
-  ];
+    function handleLogout() {
+        logout();
+        navigate('/login');
+    }
 
-  return (
-    <div className="layout">
-      <Header user={user} onLogout={logout} />
-      <div className="layout-body">
-        <aside className="sidebar">
-          <nav className="sidebar-nav">
-            {navItems.map(item => (
-              <NavLink
-                key={item.path}
-                to={item.path}
-                end={item.path === '/secretary'}
-                className={({ isActive }) => 
-                  isActive ? 'nav-item active' : 'nav-item'
-                }
-              >
-                <span className="nav-icon">{item.icon}</span>
-                <span className="nav-label">{item.label}</span>
-              </NavLink>
-            ))}
-          </nav>
-        </aside>
-        <main className="main-content">
-          <Outlet />
-        </main>
-      </div>
-    </div>
-  );
+    return (
+        <div className="secretary-shell">
+            <aside className="secretary-sidebar">
+                <div className="secretary-brand">VTC Manager</div>
+                <nav className="secretary-nav">
+                    {NAV.map(n => (
+                        <NavLink
+                            key={n.to}
+                            to={n.to}
+                            end={n.end}
+                            className={({ isActive }) => `secretary-link${isActive ? ' secretary-link-active' : ''}`}
+                        >
+                            {n.label}
+                        </NavLink>
+                    ))}
+                </nav>
+                <div className="secretary-footer">
+                    <div className="secretary-footer-name">{user?.fullName}</div>
+                    <div className="secretary-footer-role">SECRETARY</div>
+                    <button className="secretary-footer-logout" onClick={handleLogout}>Logout</button>
+                </div>
+            </aside>
+            <main className="secretary-main">
+                <Outlet />
+            </main>
+        </div>
+    );
 }

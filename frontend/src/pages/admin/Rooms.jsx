@@ -1,4 +1,3 @@
-// FILE: /frontend/src/pages/admin/Rooms.jsx
 import { useState } from 'react';
 import { useFetch } from '../../hooks/useFetch';
 import { getRooms, createRoom, updateRoom, deleteRoom } from '../../api/adminApi';

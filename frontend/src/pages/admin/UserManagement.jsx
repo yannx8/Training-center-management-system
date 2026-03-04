@@ -1,4 +1,3 @@
-// FILE: /frontend/src/pages/admin/UserManagement.jsx
 import { useState } from 'react';
 import { useFetch } from '../../hooks/useFetch';
 import { getUsers, createUser, updateUser, deleteUser, getDepartments } from '../../api/adminApi';

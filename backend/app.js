@@ -1,17 +1,13 @@
-// FILE: /backend/app.js
-// NOTE: server.js is the real entry point (runs app.listen).
-// This file just configures and exports the Express app,
-// useful for testing. It must NOT call app.listen here.
-require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
-const { errorHandler } = require('./middleware/errorHandler');
+const errorHandler = require('./middleware/errorHandler');
 
 const app = express();
 
-app.use(cors({ origin: process.env.FRONTEND_URL || 'http://localhost:5173', credentials: true }));
+app.use(cors());
 app.use(express.json());
 
+// Routes
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/admin', require('./routes/admin'));
 app.use('/api/secretary', require('./routes/secretary'));

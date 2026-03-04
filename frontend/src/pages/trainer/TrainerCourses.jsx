@@ -1,4 +1,3 @@
-// FILE: /frontend/src/pages/trainer/TrainerCourses.jsx
 import { useState } from 'react';
 import { useFetch } from '../../hooks/useFetch';
 import { getCourses, getCourseStudents, submitGrades } from '../../api/trainerApi';

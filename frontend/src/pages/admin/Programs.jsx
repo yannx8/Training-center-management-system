@@ -1,4 +1,3 @@
-// FILE: /frontend/src/pages/admin/Programs.jsx
 import { useState } from 'react';
 import { useFetch } from '../../hooks/useFetch';
 import { getPrograms, createProgram, updateProgram, deleteProgram, getDepartments, getCourses, createCourse, updateCourse, deleteCourse, getUsers } from '../../api/adminApi';

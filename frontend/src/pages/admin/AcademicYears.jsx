@@ -1,4 +1,3 @@
-// FILE: /frontend/src/pages/admin/AcademicYears.jsx
 import { useState } from 'react';
 import { useFetch } from '../../hooks/useFetch';
 import { getAcademicYears, createAcademicYear, updateAcademicYear } from '../../api/adminApi';

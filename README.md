@@ -1,76 +1,40 @@
-# Training Center Management System (TCMS) 
- 
-A comprehensive full-stack application for managing vocational training centers with multi-role access control. 
- 
-## Features 
- 
-- **Multi-Role System**: Admin, HOD, Trainer, Secretary, Student, Parent 
-- **Academic Management**: Programs, courses, certifications, timetables 
-- **User Management**: Role-based access with multiple roles per user 
-- **Scheduling**: Automated timetable generation with conflict detection 
-- **Grading**: Grade entry with complaint/appeal system 
-- **Parent Portal**: Monitor children's progress and submit complaints 
- 
-## Tech Stack 
- 
-### Backend 
-- Node.js with Express 
-- PostgreSQL database 
-- JWT authentication 
-- bcrypt password hashing 
- 
-### Frontend 
-- React 19 with Vite 
-- React Router for navigation 
-- Axios for API communication 
-- CSS modules for styling 
- 
-## Project Structure 
- 
-``` 
-training-center-management-system/ 
-ÃÄÄ backend/          # Node.js/Express API 
-ÃÄÄ frontend/         # React 19 application 
-ÀÄÄ database/         # SQL schema and seed data 
-``` 
- 
-## Getting Started 
- 
-### Prerequisites 
-- Node.js (v18+) 
-- PostgreSQL (v14+) 
-- Git 
- 
-### Backend Setup 
- 
-```bash 
-cd backend 
-npm install 
-# Create .env file based on .env.example 
-npm run dev 
-``` 
- 
-### Frontend Setup 
- 
-```bash 
-cd frontend 
-npm install 
-npm run dev 
-``` 
- 
-### Database Setup 
- 
-1. Create PostgreSQL database 
-2. Run `database/db.sql` to create schema and seed data 
- 
-## Default Credentials 
- 
-| Role | Email | Password | 
-|------|-------|----------| 
-| Admin | admin@center.com | admin1234 | 
- 
-Other demo accounts use: `password123` 
- 
-## License 
- 
-ISC 
+# Training Center Management System (TCMS)
+
+A web-based platform for managing vocational training centers.
+
+## Tech Stack
+- **Backend:** Node.js, Express, PostgreSQL
+- **Frontend:** React (Vite), Standard CSS
+- **Authentication:** JWT with multi-role support
+- **Security:** Bcrypt hashing, Parameterized SQL
+
+## Key Features
+- **Multi-Role Authentication:** Support for Admin, Secretary, HOD, Trainer, Student, and Parent roles.
+- **Atomic Student Registration:** Transactional creation of student, parent, and enrollment records.
+- **Automated Timetable Generation:** Conflict detection for trainers and rooms.
+- **Grade Management:** Trainer-led grade entry with student appeal workflow.
+- **Complaint System:** Integrated feedback loops for students and parents.
+
+## Setup Instructions
+
+### Backend
+1. Navigate to `backend/`
+2. Run `npm install`
+3. Create a `.env` file with:
+   ```
+   DB_USER=your_user
+   DB_HOST=localhost
+   DB_NAME=tcms
+   DB_PASSWORD=your_password
+   DB_PORT=5432
+   JWT_SECRET=your_secret
+   ```
+4. Run `node server.js`
+
+### Frontend
+1. Navigate to `frontend/`
+2. Run `npm install`
+3. Run `npm run dev`
+
+### Database
+1. Run the `db.sql` script in your PostgreSQL instance.

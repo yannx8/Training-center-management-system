@@ -1,36 +1,44 @@
 // FILE: /frontend/src/pages/student/StudentLayout.jsx
-import { Outlet } from 'react-router-dom';
-import Sidebar from '../../components/Sidebar';
+import { NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
 import '../../styles/Student.css';
 
-const studentNav = [
-    { to: '/student', label: 'Dashboard', icon: '⊞' },
-    { to: '/student/timetable', label: 'My Timetable', icon: '📅' },
-    { to: '/student/grades', label: 'My Grades', icon: '📊' },
-    { to: '/student/complaints', label: 'Grade Appeals', icon: '💬' },
+const NAV = [
+    { to: '/student',            label: 'Dashboard',    end: true  },
+    { to: '/student/timetable',  label: 'My Timetable', end: false },
+    { to: '/student/grades',     label: 'My Grades',    end: false },
+    { to: '/student/complaints', label: 'Grade Appeals', end: false },
 ];
 
 export default function StudentLayout() {
+    const { user, logout } = useAuth();
+    const navigate = useNavigate();
+
+    function handleLogout() {
+        logout();
+        navigate('/login');
+    }
+
     return (
         <div className="student-shell">
             <aside className="student-sidebar">
                 <div className="student-brand">Student Portal</div>
                 <nav className="student-nav">
-                    {studentNav.map(item => (
-                        <a
-                            key={item.to}
-                            href={item.to}
-                            className={`student-link${window.location.pathname === item.to ? ' student-link-active' : ''}`}
+                    {NAV.map(n => (
+                        <NavLink
+                            key={n.to}
+                            to={n.to}
+                            end={n.end}
+                            className={({ isActive }) => `student-link${isActive ? ' student-link-active' : ''}`}
                         >
-                            <span className="sidebar-icon">{item.icon}</span>
-                            {item.label}
-                        </a>
+                            {n.label}
+                        </NavLink>
                     ))}
                 </nav>
                 <div className="student-footer">
-                    <div className="student-footer-name">Student</div>
+                    <div className="student-footer-name">{user?.fullName}</div>
                     <div className="student-footer-role">STUDENT</div>
-                    <button className="student-footer-logout">Logout</button>
+                    <button className="student-footer-logout" onClick={handleLogout}>Logout</button>
                 </div>
             </aside>
             <main className="student-main">

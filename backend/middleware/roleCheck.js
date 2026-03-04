@@ -1,22 +1,16 @@
-// FILE: /backend/middleware/roleCheck.js
-// Why no try/catch: role mismatch is a business rule, not an exception.
-// We read roleName from the JWT payload (set in auth.js) and compare directly.
-const { USER_ROLES } = require('../constants/roles');
-
-function roleCheck(...allowedRoles) {
+const roleCheck = (allowedRoles) => {
     return (req, res, next) => {
-        if (!req.user || !req.user.roleName) {
-            return res.status(403).json({ success: false, message: 'Access denied', code: 'FORBIDDEN' });
+        if (!req.user || !req.user.role) {
+            return res.status(403).json({ success: false, message: 'Forbidden: No role assigned' });
         }
-        if (!allowedRoles.includes(req.user.roleName)) {
-            return res.status(403).json({
-                success: false,
-                message: `Role '${req.user.roleName}' is not permitted to access this resource`,
-                code: 'ROLE_NOT_PERMITTED',
-            });
+
+        const hasPermission = allowedRoles.some(role => role.toLowerCase() === req.user.role.toLowerCase());
+
+        if (!hasPermission) {
+            return res.status(403).json({ success: false, message: 'Forbidden: Insufficient permissions' });
         }
         next();
     };
-}
+};
 
 module.exports = { roleCheck };

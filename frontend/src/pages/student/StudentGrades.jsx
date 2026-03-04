@@ -1,110 +1,147 @@
 // FILE: /frontend/src/pages/student/StudentGrades.jsx
 import { useState, useEffect } from 'react';
 import { getGrades, getGradePeriods } from '../../api/studentApi';
-import Badge from '../../components/Badge';
 import '../../styles/Student.css';
+
+function gradePillClass(letter) {
+    if (!letter) return '';
+    if (letter.startsWith('A')) return 'A';
+    if (letter.startsWith('B')) return 'B';
+    if (letter.startsWith('C')) return 'C';
+    if (letter.startsWith('D')) return 'D';
+    return 'F';
+}
 
 export default function StudentGrades() {
     const [periods, setPeriods] = useState([]);
-    const [periodsLoading, setPeriodsLoading] = useState(true);
     const [selectedPeriodId, setSelectedPeriodId] = useState('');
     const [grades, setGrades] = useState([]);
-    const [gradesLoading, setGradesLoading] = useState(false);
+    const [loading, setLoading] = useState(false);
+    const [periodsLoading, setPeriodsLoading] = useState(true);
 
     useEffect(() => {
         getGradePeriods()
             .then(res => {
                 const p = res.data.data || [];
                 setPeriods(p);
-                if (p.length) setSelectedPeriodId(String(p[0].id));
+                // Don't auto-select — let user choose
                 setPeriodsLoading(false);
             })
             .catch(() => setPeriodsLoading(false));
     }, []);
 
     useEffect(() => {
-        if (!selectedPeriodId) { setGrades([]); return; }
-        setGradesLoading(true);
-        getGrades({ periodId: selectedPeriodId })
+        setLoading(true);
+        getGrades(selectedPeriodId ? { periodId: selectedPeriodId } : {})
             .then(res => setGrades(res.data.data || []))
             .catch(() => setGrades([]))
-            .finally(() => setGradesLoading(false));
+            .finally(() => setLoading(false));
     }, [selectedPeriodId]);
 
-    const currentPeriod = periods.find(p => String(p.id) === selectedPeriodId);
-    const formatDate = (d) => d ? new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '';
+    const gpa = grades.length
+        ? (grades.reduce((acc, g) => acc + (parseFloat(g.grade) || 0), 0) / grades.length).toFixed(2)
+        : '—';
+
+    const passed = grades.filter(g => parseFloat(g.grade) >= 50).length;
 
     return (
         <div>
             <div className="student-page-head">
-                <h1 className="student-title">My Grades</h1>
+                <div>
+                    <h1 className="student-title">My Grades</h1>
+                    <p className="student-sub">Select a school period to filter your grades</p>
+                </div>
             </div>
 
-            {periodsLoading ? (
-                <div className="student-msg">Loading periods…</div>
-            ) : !periods.length ? (
-                <div className="student-card">
-                    <p className="student-msg">No school periods available yet.</p>
+            {/* Stats */}
+            <div className="student-stats">
+                <div className="student-stat">
+                    <div className="student-stat-value">{grades.length}</div>
+                    <div className="student-stat-label">Courses Graded</div>
                 </div>
-            ) : (
-                <div className="student-card">
-                    <div className="student-row" style={{ marginBottom: '1rem' }}>
-                        <label style={{ fontSize: '0.875rem', fontWeight: 600, color: '#2c3e50' }}>Select School Period:</label>
-                        <select
-                            className="student-select"
-                            value={selectedPeriodId}
-                            onChange={e => setSelectedPeriodId(e.target.value)}
-                        >
-                            {periods.map(p => (
-                                <option key={p.id} value={p.id}>
-                                    {p.label} ({formatDate(p.start_date)} – {formatDate(p.end_date)})
-                                </option>
-                            ))}
-                        </select>
+                <div className="student-stat">
+                    <div className="student-stat-value">{gpa}</div>
+                    <div className="student-stat-label">Average Grade</div>
+                </div>
+                <div className="student-stat">
+                    <div className="student-stat-value">{passed}</div>
+                    <div className="student-stat-label">Courses Passed</div>
+                </div>
+            </div>
+
+            <div className="student-card">
+                {/* Period filter */}
+                <div className="student-row" style={{ marginBottom: '1.25rem' }}>
+                    <label style={{ fontSize: '0.875rem', fontWeight: 600, color: '#0f4c3a', whiteSpace: 'nowrap' }}>
+                        School Period:
+                    </label>
+                    <select
+                        className="student-select"
+                        value={selectedPeriodId}
+                        onChange={e => setSelectedPeriodId(e.target.value)}
+                        style={{ flex: 1, maxWidth: 400 }}
+                    >
+                        <option value="">— All Periods —</option>
+                        {periods.map(p => (
+                            <option key={p.id} value={p.id}>{p.label}</option>
+                        ))}
+                    </select>
+                </div>
+
+                {loading ? (
+                    <div className="student-msg">Loading grades…</div>
+                ) : !grades.length ? (
+                    <div className="student-msg">
+                        {selectedPeriodId ? 'No grades found for this school period.' : 'No grades available yet.'}
                     </div>
-
-                    {currentPeriod && (
-                        <p style={{ fontSize: '0.82rem', color: '#7f8c8d', marginBottom: '0.75rem' }}>
-                            <strong style={{ color: '#2c3e50' }}>{currentPeriod.label}</strong>
-                            &nbsp;·&nbsp; {formatDate(currentPeriod.start_date)} – {formatDate(currentPeriod.end_date)}
-                        </p>
-                    )}
-
-                    {gradesLoading ? (
-                        <div className="student-msg">Loading grades…</div>
-                    ) : !grades.length ? (
-                        <div className="empty-state" style={{ textAlign: 'center', padding: '2rem 0' }}>
-                            <div style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>📊</div>
-                            <p style={{ color: '#7f8c8d', fontSize: '0.9rem' }}>No grades recorded for this school period</p>
-                        </div>
-                    ) : (
-                        <div className="hod-table-wrap">
-                            <table className="data-table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
-                                <thead>
-                                    <tr>
-                                        <th style={{ textAlign: 'left', padding: '0.55rem 0.75rem', borderBottom: '2px solid #e0e0e0', color: '#555', textTransform: 'uppercase', fontSize: '0.73rem', letterSpacing: '0.04em' }}>Course</th>
-                                        <th style={{ textAlign: 'left', padding: '0.55rem 0.75rem', borderBottom: '2px solid #e0e0e0', color: '#555', textTransform: 'uppercase', fontSize: '0.73rem', letterSpacing: '0.04em' }}>Trainer</th>
-                                        <th style={{ textAlign: 'left', padding: '0.55rem 0.75rem', borderBottom: '2px solid #e0e0e0', color: '#555', textTransform: 'uppercase', fontSize: '0.73rem', letterSpacing: '0.04em' }}>Grade</th>
-                                        <th style={{ textAlign: 'left', padding: '0.55rem 0.75rem', borderBottom: '2px solid #e0e0e0', color: '#555', textTransform: 'uppercase', fontSize: '0.73rem', letterSpacing: '0.04em' }}>Letter</th>
-                                        <th style={{ textAlign: 'left', padding: '0.55rem 0.75rem', borderBottom: '2px solid #e0e0e0', color: '#555', textTransform: 'uppercase', fontSize: '0.73rem', letterSpacing: '0.04em' }}>School Period</th>
+                ) : (
+                    <div style={{ overflowX: 'auto' }}>
+                        <table className="student-table">
+                            <thead>
+                                <tr>
+                                    <th>Course / Certification</th>
+                                    <th>School Period</th>
+                                    <th>Trainer</th>
+                                    <th>Grade</th>
+                                    <th>Letter</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {grades.map(g => (
+                                    <tr key={g.id}>
+                                        <td>
+                                            <strong>{g.course_name || g.certification_name || '—'}</strong>
+                                            {(g.course_code || g.certification_code) && (
+                                                <div style={{ fontSize: '0.75rem', color: '#888' }}>
+                                                    {g.course_code || g.certification_code}
+                                                </div>
+                                            )}
+                                        </td>
+                                        <td style={{ fontSize: '0.82rem', color: '#666' }}>
+                                            {g.school_period || g.academic_year || '—'}
+                                        </td>
+                                        <td style={{ fontSize: '0.875rem' }}>{g.trainer_name || '—'}</td>
+                                        <td style={{ fontWeight: 700, fontSize: '1rem' }}>{g.grade ?? '—'}</td>
+                                        <td>
+                                            {g.grade_letter ? (
+                                                <span className={`grade-pill ${gradePillClass(g.grade_letter)}`}>
+                                                    {g.grade_letter}
+                                                </span>
+                                            ) : '—'}
+                                        </td>
+                                        <td>
+                                            <span className={`status-badge ${parseFloat(g.grade) >= 50 ? 'status-reviewed' : 'status-pending'}`}>
+                                                {parseFloat(g.grade) >= 50 ? 'Passed' : 'Failed'}
+                                            </span>
+                                        </td>
                                     </tr>
-                                </thead>
-                                <tbody>
-                                    {grades.map(g => (
-                                        <tr key={g.id} style={{ borderBottom: '1px solid #f0f0f0' }}>
-                                            <td style={{ padding: '0.6rem 0.75rem', color: '#222' }}>{g.course_name || g.certification_name}</td>
-                                            <td style={{ padding: '0.6rem 0.75rem', color: '#555' }}>{g.trainer_name || '—'}</td>
-                                            <td style={{ padding: '0.6rem 0.75rem', fontWeight: 600, color: '#2c3e50' }}>{g.grade ?? '—'}</td>
-                                            <td style={{ padding: '0.6rem 0.75rem' }}><Badge label={g.grade_letter || '—'} /></td>
-                                            <td style={{ padding: '0.6rem 0.75rem', color: '#7f8c8d', fontSize: '0.82rem' }}>{g.school_period || currentPeriod?.label}</td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    )}
-                </div>
-            )}
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                )}
+            </div>
         </div>
     );
 }

@@ -17,7 +17,7 @@ const {
     publishAcademicWeek,
 } = require('../queries/timetables');
 
-// Helper: get HOD's department
+// ── helper: get HOD's department ──────────────────────────────────────────────
 async function getHodDepartment(userId) {
     const r = await pool.query(
         `SELECT id AS dept_id, name AS dept_name
@@ -49,15 +49,43 @@ async function getDashboard(req, res) {
              FROM sessions s
              JOIN courses c ON c.session_id = s.id
              LEFT JOIN trainer_courses tc ON tc.course_id = c.id
-             LEFT JOIN trainers tr ON tc.trainer_id = tr.id
-             LEFT JOIN users u ON tr.user_id = u.id
+             LEFT JOIN trainers        tr ON tc.trainer_id = tr.id
+             LEFT JOIN users           u  ON tr.user_id   = u.id
              WHERE s.program_id = $1
              ORDER BY c.name`, [prog.id]
         );
         programs.push({...prog, courses: coursesRes.rows });
     }
 
-    return res.json({ success: true, data: { department: dept.dept_name, programs } });
+    // Stats
+    const weekCountRes = await pool.query(
+        `SELECT COUNT(*) as count FROM academic_weeks WHERE department_id=$1`, [dept.dept_id]
+    );
+    const ttCountRes = await pool.query(
+        `SELECT COUNT(*) as count FROM timetables t
+         JOIN academic_weeks aw ON t.academic_week_id = aw.id
+         WHERE aw.department_id=$1`, [dept.dept_id]
+    );
+    const trainerCountRes = await pool.query(
+        `SELECT COUNT(DISTINCT t.id) as count FROM trainers t
+         JOIN users u ON t.user_id = u.id
+         WHERE u.department = $1`, [dept.dept_name]
+    );
+
+    return res.json({
+        success: true,
+        data: {
+            department: dept.dept_name,
+            departmentId: dept.dept_id,
+            programs,
+            stats: {
+                programCount: programs.length,
+                weekCount: parseInt(weekCountRes.rows[0].count),
+                timetableCount: parseInt(ttCountRes.rows[0].count),
+                trainerCount: parseInt(trainerCountRes.rows[0].count),
+            }
+        }
+    });
 }
 
 // GET /hod/programs
@@ -72,6 +100,22 @@ async function getProgramsHandler(req, res) {
     return res.json({ success: true, data: result.rows });
 }
 
+// GET /hod/academic-years — get active academic years for department programs
+async function getAcademicYearsHandler(req, res) {
+    const dept = await getHodDepartment(req.user.userId);
+    if (!dept)
+        return res.status(404).json({ success: false, message: 'No department assigned', code: 'NO_DEPT' });
+
+    const result = await pool.query(
+        `SELECT ay.id, ay.name, ay.start_date, ay.end_date, ay.is_active, p.name as program_name
+         FROM academic_years ay
+         JOIN programs p ON ay.program_id = p.id
+         WHERE p.department_id = $1
+         ORDER BY ay.start_date DESC`, [dept.dept_id]
+    );
+    return res.json({ success: true, data: result.rows });
+}
+
 // POST /hod/weeks
 async function createAcademicWeekHandler(req, res) {
     const dept = await getHodDepartment(req.user.userId);
@@ -82,7 +126,9 @@ async function createAcademicWeekHandler(req, res) {
     if (!weekNumber || !label || !startDate || !endDate)
         return res.status(400).json({ success: false, message: 'weekNumber, label, startDate, endDate required', code: 'MISSING_FIELDS' });
 
-    const [sql, params] = createAcademicWeek(academicYearId, weekNumber, label, startDate, endDate, req.user.userId);
+    const [sql, params] = createAcademicWeek(
+        academicYearId || null, weekNumber, label, startDate, endDate, req.user.userId, dept.dept_id
+    );
     const result = await pool.query(sql, params);
     return res.status(201).json({ success: true, data: result.rows[0] });
 }
@@ -98,7 +144,7 @@ async function getAcademicWeeksHandler(req, res) {
     return res.json({ success: true, data: result.rows });
 }
 
-// GET /hod/weeks/latest
+// GET /hod/weeks/latest — latest registered week
 async function getLatestWeekHandler(req, res) {
     const dept = await getHodDepartment(req.user.userId);
     if (!dept)
@@ -109,7 +155,6 @@ async function getLatestWeekHandler(req, res) {
     return res.json({ success: true, data: result.rows[0] || null });
 }
 
-// GET /hod/weeks/active (alias)
 async function getActiveWeekHandler(req, res) {
     return getLatestWeekHandler(req, res);
 }
@@ -131,15 +176,16 @@ async function getAvailabilityHandler(req, res) {
         return res.status(404).json({ success: false, message: 'No department assigned', code: 'NO_DEPT' });
 
     const { weekId } = req.query;
+    const weekFilter = weekId ? 'AND a.academic_week_id = $2' : '';
     const r = await pool.query(
-        `SELECT a.id, a.day_of_week, a.time_start, a.time_end,
+        `SELECT a.id, a.day_of_week, a.time_start::text, a.time_end::text,
                 t.id AS trainer_id, u.full_name AS trainer_name,
                 aw.label as week_label, aw.start_date, aw.end_date, aw.id as week_id
          FROM availability a
          JOIN trainers t ON a.trainer_id = t.id
-         JOIN users u ON t.user_id = u.id
+         JOIN users    u ON t.user_id    = u.id
          LEFT JOIN academic_weeks aw ON a.academic_week_id = aw.id
-         WHERE u.department = $1 ${weekId ? 'AND a.academic_week_id = $2' : ''}
+         WHERE u.department = $1 ${weekFilter}
          ORDER BY
              CASE a.day_of_week
                  WHEN 'Monday'    THEN 1
@@ -178,7 +224,7 @@ async function unlockAvailabilityHandler(req, res) {
 // GET /hod/availability/lock-status
 async function getLockStatus(req, res) {
     const { weekId } = req.query;
-    const [sql, params] = getAvailabilityLock(req.user.userId, weekId);
+    const [sql, params] = getAvailabilityLock(req.user.userId, weekId || null);
     const r = await pool.query(sql, params);
     return res.json({ success: true, data: { isLocked: r.rows.length ? r.rows[0].is_locked : false } });
 }
@@ -225,10 +271,18 @@ async function generateTimetable(req, res) {
             code: 'NO_CANDIDATES',
         });
 
+    // Delete existing timetable slots for this week (regeneration)
+    await pool.query(
+        `DELETE FROM timetable_slots WHERE academic_week_id = $1`, [weekId]
+    );
+
+    const weekRes = await pool.query(`SELECT * FROM academic_weeks WHERE id=$1`, [weekId]);
+    const week = weekRes.rows[0];
+
     const [ttSql, ttParams] = createTimetable(
         weekId,
         req.user.userId,
-        label || `${dept.dept_name} — Week ${new Date().toLocaleDateString()}`
+        label || `${dept.dept_name} — ${week ? week.label : 'Generated'}`
     );
     const ttRes = await pool.query(ttSql, ttParams);
     const timetableId = ttRes.rows[0].id;
@@ -307,12 +361,20 @@ async function publishTimetableHandler(req, res) {
     const r = await pool.query(sql, params);
     if (!r.rows.length)
         return res.status(404).json({ success: false, message: 'Timetable not found', code: 'NOT_FOUND' });
+
+    // Also publish the associated academic week
+    await pool.query(
+        `UPDATE academic_weeks SET status='published'
+         WHERE id = (SELECT academic_week_id FROM timetables WHERE id=$1)`, [id]
+    );
+
     return res.json({ success: true, data: r.rows[0] });
 }
 
 module.exports = {
     getDashboard,
     getProgramsHandler,
+    getAcademicYearsHandler,
     createAcademicWeekHandler,
     getAcademicWeeksHandler,
     getLatestWeekHandler,

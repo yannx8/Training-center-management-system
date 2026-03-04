@@ -1,7 +1,5 @@
 // FILE: /frontend/src/hooks/useFetch.js
-// FIX: file was named UseFetch.js (capital U) but every import uses useFetch (lowercase u)
-// On Linux (case-sensitive filesystem) this causes a fatal module resolution error.
-// RENAME the file from UseFetch.js to useFetch.js
+// NOTE: This file must be named "useFetch.js" (lowercase u) for imports to work on Linux.
 
 import { useState, useEffect, useCallback } from 'react';
 

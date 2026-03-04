@@ -1,4 +1,3 @@
-// FILE: /frontend/src/pages/admin/Dashboard.jsx
 import { useAuth } from '../../context/AuthContext';
 import { useFetch } from '../../hooks/useFetch';
 import { getDashboard } from '../../api/adminApi';

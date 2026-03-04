@@ -1,17 +1,31 @@
 // FILE: /frontend/src/pages/trainer/TrainerAvailability.jsx
 import { useState, useEffect } from 'react';
-import { getAvailability, submitAvailability, deleteAvailability, getActiveWeekForAvailability } from '../../api/trainerApi';
+import {
+    getAvailability,
+    submitAvailability,
+    deleteAvailability,
+    getActiveWeekForAvailability,
+} from '../../api/trainerApi';
 import '../../styles/Trainer.css';
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 const TIME_SLOTS = [
-    { start: '08:00', end: '10:00', label: '8h–10h' },
-    { start: '10:00', end: '12:00', label: '10h–12h' },
-    { start: '13:00', end: '15:00', label: '13h–15h' },
-    { start: '15:00', end: '17:00', label: '15h–17h' },
-    { start: '17:00', end: '19:00', label: '17h–19h' },
-    { start: '19:00', end: '21:00', label: '19h–21h' },
+    { start: '08:00:00', end: '10:00:00', label: '8h–10h' },
+    { start: '10:00:00', end: '12:00:00', label: '10h–12h' },
+    { start: '13:00:00', end: '15:00:00', label: '13h–15h' },
+    { start: '15:00:00', end: '17:00:00', label: '15h–17h' },
+    { start: '17:00:00', end: '19:00:00', label: '17h–19h' },
+    { start: '19:00:00', end: '21:00:00', label: '19h–21h' },
 ];
+
+function cellKey(day, timeStart) {
+    // Normalize time string to HH:MM:SS
+    const t = timeStart.length === 5 ? timeStart + ':00' : timeStart;
+    return `${day}|${t}`;
+}
+
+const formatDate = (d) =>
+    d ? new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
 
 export default function TrainerAvailability() {
     const [activeWeek, setActiveWeek] = useState(null);
@@ -22,7 +36,7 @@ export default function TrainerAvailability() {
     const [message, setMessage] = useState('');
     const [submitting, setSubmitting] = useState(false);
 
-    // Load active week (latest HOD week)
+    // Load latest HOD week
     useEffect(() => {
         getActiveWeekForAvailability()
             .then(res => {
@@ -32,23 +46,18 @@ export default function TrainerAvailability() {
             .catch(() => setWeekLoading(false));
     }, []);
 
-    // Load existing availability for active week
+    // Load existing availability for the active week
     useEffect(() => {
         if (!activeWeek) return;
         getAvailability({ weekId: activeWeek.id })
             .then(res => {
                 const avail = res.data.data || [];
                 setAvailability(avail);
-                // Pre-select existing slots
                 const existing = new Set(avail.map(a => cellKey(a.day_of_week, a.time_start)));
                 setSelectedCells(existing);
             })
             .catch(() => {});
     }, [activeWeek]);
-
-    function cellKey(day, timeStart) {
-        return `${day}|${timeStart}`;
-    }
 
     function handleCellToggle(day, slot) {
         if (!activeWeek) return;
@@ -63,7 +72,7 @@ export default function TrainerAvailability() {
 
     async function handleSubmit() {
         if (!activeWeek) {
-            setError('No active week available. Please wait for the HOD to register a week.');
+            setError('No active week available. Wait for the HOD to register a week.');
             return;
         }
         setSubmitting(true);
@@ -71,20 +80,20 @@ export default function TrainerAvailability() {
         setMessage('');
 
         try {
-            // Find which cells are newly selected (not yet in DB)
             const existingKeys = new Set(availability.map(a => cellKey(a.day_of_week, a.time_start)));
 
-            // Remove deselected slots
-            const deselectedAvail = availability.filter(a => !selectedCells.has(cellKey(a.day_of_week, a.time_start)));
-            for (const avail of deselectedAvail) {
+            // Remove deselected
+            const toDelete = availability.filter(a => !selectedCells.has(cellKey(a.day_of_week, a.time_start)));
+            for (const avail of toDelete) {
                 await deleteAvailability(avail.id);
             }
 
-            // Add newly selected slots
+            // Add newly selected
             for (const key of selectedCells) {
                 if (existingKeys.has(key)) continue;
                 const [day, timeStart] = key.split('|');
-                const slot = TIME_SLOTS.find(s => s.start === timeStart);
+                const slot = TIME_SLOTS.find(s => (s.start.length === 5 ? s.start + ':00' : s.start) === timeStart);
+                if (!slot) continue;
                 await submitAvailability({
                     dayOfWeek: day,
                     timeStart: slot.start,
@@ -98,7 +107,7 @@ export default function TrainerAvailability() {
             const avail = res.data.data || [];
             setAvailability(avail);
             setSelectedCells(new Set(avail.map(a => cellKey(a.day_of_week, a.time_start))));
-            setMessage('Availability saved successfully');
+            setMessage('Availability saved successfully!');
             setTimeout(() => setMessage(''), 4000);
         } catch (err) {
             setError(err.response?.data?.message || 'Failed to save availability');
@@ -107,92 +116,121 @@ export default function TrainerAvailability() {
         }
     }
 
-    const formatDate = (d) => d ? new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '';
-
-    if (weekLoading) return <div className="trainer-msg">Loading week information…</div>;
+    if (weekLoading) {
+        return (
+            <div>
+                <div className="trainer-page-head">
+                    <h1 className="trainer-title">Submit Availability</h1>
+                </div>
+                <div className="trainer-msg">Loading week info…</div>
+            </div>
+        );
+    }
 
     return (
         <div>
             <div className="trainer-page-head">
                 <div>
-                    <h1 className="trainer-title">My Availability</h1>
-                    <p className="trainer-sub">Click cells to toggle your available time slots</p>
+                    <h1 className="trainer-title">Submit Availability</h1>
+                    <p className="trainer-sub">Click cells to toggle your availability for the current week</p>
                 </div>
+                <button
+                    className="trainer-btn"
+                    onClick={handleSubmit}
+                    disabled={submitting || !activeWeek}
+                >
+                    {submitting ? 'Saving…' : 'Submit Availability'}
+                </button>
             </div>
 
-            {/* Week info banner */}
-            {activeWeek ? (
-                <div className="trainer-card" style={{ marginBottom: '1rem', padding: '0.9rem 1.25rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <div>
-                        <span style={{ fontWeight: 700, color: '#1a1a2e', fontSize: '0.9rem' }}>Week: {activeWeek.label}</span>
-                        <span style={{ marginLeft: '1rem', fontSize: '0.85rem', color: '#555' }}>
-                            From: <strong>{formatDate(activeWeek.start_date)}</strong> &nbsp;·&nbsp; To: <strong>{formatDate(activeWeek.end_date)}</strong>
-                        </span>
-                    </div>
-                    <span style={{
-                        fontSize: '0.75rem', fontWeight: 600, padding: '0.2rem 0.6rem',
-                        borderRadius: 999, background: '#fef9c3', color: '#92400e', border: '1px solid #fde68a'
-                    }}>
-                        {activeWeek.status}
-                    </span>
+            {error && (
+                <div className="trainer-notice" style={{ background: '#fef2f2', borderColor: '#fca5a5', color: '#991b1b' }}>
+                    {error}
                 </div>
-            ) : (
-                <div className="trainer-notice">
-                    No active week has been registered by the HOD yet. You cannot submit availability until a week is created.
+            )}
+            {message && (
+                <div className="trainer-notice" style={{ background: '#f0fdf4', borderColor: '#86efac', color: '#166534' }}>
+                    {message}
                 </div>
             )}
 
-            {message && <div className="trainer-ok" style={{ marginBottom: '0.75rem' }}>{message}</div>}
-            {error && <div className="trainer-err" style={{ marginBottom: '0.75rem', fontSize: '0.875rem' }}>{error}</div>}
-
-            {activeWeek && (
+            {!activeWeek ? (
                 <div className="trainer-card">
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.9rem' }}>
-                        <h3 className="trainer-card-title" style={{ margin: 0 }}>
-                            Select your availability — <span style={{ fontWeight: 400, color: '#555' }}>
-                                From: {formatDate(activeWeek.start_date)} &nbsp;To: {formatDate(activeWeek.end_date)}
-                            </span>
-                        </h3>
-                        <button className="trainer-btn" onClick={handleSubmit} disabled={submitting || !activeWeek}>
-                            {submitting ? 'Saving…' : 'Submit Availability'}
-                        </button>
+                    <p className="trainer-msg">
+                        No academic week registered yet. Please wait for the HOD to register a week before submitting availability.
+                    </p>
+                </div>
+            ) : (
+                <div className="trainer-card">
+                    {/* Week info — non-editable */}
+                    <div style={{
+                        background: '#f0f4ff',
+                        border: '1px solid #c7d7fa',
+                        borderRadius: 4,
+                        padding: '0.75rem 1rem',
+                        marginBottom: '1.25rem',
+                        display: 'flex',
+                        gap: '2rem',
+                        alignItems: 'center',
+                    }}>
+                        <div>
+                            <div style={{ fontSize: '0.72rem', fontWeight: 700, color: '#3b5be8', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 2 }}>
+                                Current Week (Auto-filled by HOD)
+                            </div>
+                            <div style={{ fontWeight: 700, color: '#1a1a2e', fontSize: '0.95rem' }}>{activeWeek.label}</div>
+                        </div>
+                        <div style={{ color: '#555', fontSize: '0.875rem' }}>
+                            From: <strong>{formatDate(activeWeek.start_date)}</strong> &nbsp; To: <strong>{formatDate(activeWeek.end_date)}</strong>
+                        </div>
                     </div>
 
-                    {/* Grid */}
-                    <div className="trainer-timetable-grid">
+                    <p style={{ fontSize: '0.82rem', color: '#666', marginBottom: '1rem' }}>
+                        Select the time slots when you are available. Selected cells appear in dark navy.
+                    </p>
+
+                    {/* Availability Grid */}
+                    <div className="trainer-avail-grid">
                         {/* Header row */}
-                        <div className="trainer-timetable-header" style={{ fontSize: '0.7rem' }}>Time</div>
-                        {DAYS.map(day => (
-                            <div key={day} className="trainer-timetable-header">{day}</div>
+                        <div className="trainer-avail-timecell trainer-avail-header" style={{ background: '#1a1a2e' }}>Time</div>
+                        {DAYS.map(d => (
+                            <div key={d} className="trainer-avail-header">{d}</div>
                         ))}
 
-                        {/* Slot rows */}
+                        {/* Time slot rows */}
                         {TIME_SLOTS.map(slot => (
                             <>
-                                <div key={`time-${slot.start}`} className="trainer-timetable-time">{slot.label}</div>
+                                <div key={`t-${slot.start}`} className="trainer-avail-timecell">
+                                    {slot.label}
+                                </div>
                                 {DAYS.map(day => {
                                     const key = cellKey(day, slot.start);
                                     const isSelected = selectedCells.has(key);
                                     return (
                                         <div
                                             key={key}
-                                            className={`trainer-timetable-cell trainer-avail-cell ${isSelected ? 'trainer-avail-selected' : 'trainer-avail-empty'}`}
+                                            className={`trainer-avail-cell${isSelected ? ' selected' : ''}`}
                                             onClick={() => handleCellToggle(day, slot)}
                                             title={`${day} ${slot.label}`}
-                                        >
-                                            {isSelected ? (
-                                                <span style={{ fontSize: '1rem', color: '#2e7d32' }}>✓</span>
-                                            ) : ''}
-                                        </div>
+                                        />
                                     );
                                 })}
                             </>
                         ))}
                     </div>
 
-                    <p style={{ fontSize: '0.78rem', color: '#888', marginTop: '0.75rem' }}>
-                        Click a cell to toggle. Green = available. Submit when done.
-                    </p>
+                    <div style={{ marginTop: '1rem', display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8rem', color: '#555' }}>
+                            <div style={{ width: 18, height: 18, background: '#1a1a2e', borderRadius: 3 }}></div>
+                            Available
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8rem', color: '#555' }}>
+                            <div style={{ width: 18, height: 18, background: '#fafafa', border: '1px solid #e5e5e5', borderRadius: 3 }}></div>
+                            Not available
+                        </div>
+                        <div style={{ marginLeft: 'auto', fontSize: '0.82rem', color: '#555' }}>
+                            {selectedCells.size} slot(s) selected
+                        </div>
+                    </div>
                 </div>
             )}
         </div>

@@ -10,17 +10,15 @@ const {
     submitGradeForCertification,
     getMarkComplaints,
     reviewMarkComplaint,
-    getMyTimetable,
     submitAvailability,
     getMyAvailability,
     deleteAvailability,
     getAvailabilityLock,
-    getAllTrainerWeeks
 } = require('../queries/trainers');
 const {
     getActiveAcademicWeek,
     getTrainerTimetable,
-    getAllTrainerWeeks: getAllWeeks
+    getAllTrainerWeeks,
 } = require('../queries/timetables');
 const { gradeToLetter } = require('../helpers/gpa');
 
@@ -98,62 +96,65 @@ async function getMarkComplaintsHandler(req, res) {
 async function reviewMarkComplaintHandler(req, res) {
     const { id } = req.params;
     const { response } = req.body;
-
     if (!response)
         return res.status(400).json({ success: false, message: 'response required', code: 'MISSING_FIELDS' });
 
     const [sql, params] = reviewMarkComplaint(id, response);
     const result = await pool.query(sql, params);
-
     if (!result.rows.length)
         return res.status(404).json({ success: false, message: 'Complaint not found', code: 'NOT_FOUND' });
-
     return res.json({ success: true, data: result.rows[0] });
 }
 
-// GET /trainer/availability/active-week - Get active week for availability
+// GET /trainer/availability/active-week — latest week registered by HOD for trainer's department
 async function getActiveWeekForAvailability(req, res) {
-    const dept = await pool.query(
-        `SELECT d.id FROM departments d 
-         JOIN users u ON d.hod_user_id = u.id 
-         WHERE u.department = (SELECT department FROM users WHERE id = $1)
+    // Resolve trainer's department then find its department_id
+    const deptRes = await pool.query(
+        `SELECT d.id FROM departments d
+         JOIN users u ON u.department = d.name
+         WHERE u.id = $1
          LIMIT 1`, [req.user.userId]
     );
 
-    if (!dept.rows.length)
+    if (!deptRes.rows.length)
         return res.json({ success: true, data: null });
 
-    const [sql, params] = getActiveAcademicWeek(dept.rows[0].id);
+    const [sql, params] = getActiveAcademicWeek(deptRes.rows[0].id);
     const result = await pool.query(sql, params);
-
     return res.json({ success: true, data: result.rows[0] || null });
 }
 
-// GET /trainer/availability - Updated with week support
+// GET /trainer/availability
 async function getAvailabilityHandler(req, res) {
     const { weekId } = req.query;
-    const [sql, params] = getMyAvailability(req.trainer.id, weekId);
+    const [sql, params] = getMyAvailability(req.trainer.id, weekId || null);
     const result = await pool.query(sql, params);
     return res.json({ success: true, data: result.rows });
 }
 
-// POST /trainer/availability - Updated with week
+// POST /trainer/availability
 async function submitAvailabilityHandler(req, res) {
     const { dayOfWeek, timeStart, timeEnd, weekId } = req.body;
 
-    if (!dayOfWeek || !timeStart || !timeEnd)
-        return res.status(400).json({ success: false, message: 'dayOfWeek, timeStart, timeEnd required', code: 'MISSING_FIELDS' });
+    if (!dayOfWeek || !timeStart || !timeEnd || !weekId)
+        return res.status(400).json({ success: false, message: 'dayOfWeek, timeStart, timeEnd, weekId required', code: 'MISSING_FIELDS' });
 
-    // Check lock
-    const [lockSql, lockParams] = getAvailabilityLock(req.user.userId, weekId);
-    const lockResult = await pool.query(lockSql, lockParams);
-    if (lockResult.rows.length && lockResult.rows[0].is_locked)
-        return res.status(403).json({ success: false, message: 'Availability submission is currently locked', code: 'AVAILABILITY_LOCKED' });
+    // Check HOD lock
+    const hodRes = await pool.query(
+        `SELECT d.hod_user_id FROM departments d
+         JOIN users u ON u.department = d.name
+         WHERE u.id = $1 LIMIT 1`, [req.user.userId]
+    );
+    if (hodRes.rows.length && hodRes.rows[0].hod_user_id) {
+        const [lockSql, lockParams] = getAvailabilityLock(hodRes.rows[0].hod_user_id, weekId);
+        const lockResult = await pool.query(lockSql, lockParams);
+        if (lockResult.rows.length && lockResult.rows[0].is_locked)
+            return res.status(403).json({ success: false, message: 'Availability submission is currently locked by HOD', code: 'AVAILABILITY_LOCKED' });
+    }
 
     const [sql, params] = submitAvailability(req.trainer.id, weekId, dayOfWeek, timeStart, timeEnd);
     const result = await pool.query(sql, params);
-
-    return res.status(201).json({ success: true, data: result.rows[0] });
+    return res.status(201).json({ success: true, data: result.rows[0] || { message: 'Slot already exists' } });
 }
 
 // DELETE /trainer/availability/:id
@@ -161,24 +162,22 @@ async function deleteAvailabilityHandler(req, res) {
     const { id } = req.params;
     const [sql, params] = deleteAvailability(id, req.trainer.id);
     const result = await pool.query(sql, params);
-
     if (!result.rows.length)
         return res.status(404).json({ success: false, message: 'Availability slot not found', code: 'NOT_FOUND' });
-
     return res.json({ success: true, data: { deleted: true } });
 }
 
-// GET /trainer/timetable/weeks - Get all weeks trainer has timetable for
+// GET /trainer/timetable/weeks
 async function getTrainerWeeksHandler(req, res) {
-    const [sql, params] = getAllWeeks(req.trainer.id);
+    const [sql, params] = getAllTrainerWeeks(req.trainer.id);
     const result = await pool.query(sql, params);
     return res.json({ success: true, data: result.rows });
 }
 
-// GET /trainer/timetable - Updated with week filter
+// GET /trainer/timetable
 async function getTimetableHandler(req, res) {
     const { weekId } = req.query;
-    const [sql, params] = getTrainerTimetable(req.trainer.id, weekId);
+    const [sql, params] = getTrainerTimetable(req.trainer.id, weekId || null);
     const result = await pool.query(sql, params);
     return res.json({ success: true, data: result.rows });
 }

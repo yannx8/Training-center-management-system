@@ -1,4 +1,3 @@
-// FILE: /frontend/src/components/StatCard.jsx
 import '../styles/StatCard.css';
 
 export default function StatCard({ title, value, icon, trend, trendLabel }) {

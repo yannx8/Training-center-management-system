@@ -1,4 +1,3 @@
-// FILE: /frontend/src/components/Modal.jsx
 import '../styles/Modal.css';
 
 export default function Modal({ title, onClose, children }) {

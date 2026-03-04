@@ -1,4 +1,3 @@
-// FILE: /frontend/src/components/Badge.jsx
 import '../styles/Badge.css';
 
 const roleColors = {

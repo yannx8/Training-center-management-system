@@ -1,4 +1,3 @@
-// FILE: /frontend/src/pages/trainer/TrainerComplaints.jsx
 import { useState } from 'react';
 import { useFetch } from '../../hooks/useFetch';
 import { getMarkComplaints, reviewMarkComplaint } from '../../api/trainerApi';

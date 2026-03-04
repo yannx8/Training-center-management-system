@@ -1,4 +1,3 @@
-// FILE: /frontend/src/pages/trainer/TrainerTimetable.jsx
 import { useState, useEffect } from 'react';
 import { getTimetable, getTrainerWeeks } from '../../api/trainerApi';
 import '../../styles/Trainer.css';
@@ -26,18 +25,23 @@ export default function TrainerTimetable() {
                 const w = res.data.data || [];
                 setWeeks(w);
                 if (w.length) setSelectedWeekId(String(w[0].id));
-                setWeeksLoading(false);
             })
-            .catch(() => setWeeksLoading(false));
+            .catch(() => {})
+            .finally(() => setWeeksLoading(false));
     }, []);
 
     useEffect(() => {
-        if (!selectedWeekId) { setTimetable([]); return; }
+        if (!selectedWeekId) {
+            setTimetable([]);
+            return;
+        }
+        let cancelled = false;
         setLoading(true);
         getTimetable({ weekId: selectedWeekId })
-            .then(res => { setTimetable(res.data.data || []); })
-            .catch(() => setTimetable([]))
-            .finally(() => setLoading(false));
+            .then(res => { if (!cancelled) setTimetable(res.data.data || []); })
+            .catch(() => { if (!cancelled) setTimetable([]); })
+            .finally(() => { if (!cancelled) setLoading(false); });
+        return () => { cancelled = true; };
     }, [selectedWeekId]);
 
     const currentWeek = weeks.find(w => String(w.id) === selectedWeekId);
@@ -46,7 +50,9 @@ export default function TrainerTimetable() {
         return timetable.find(s => s.day_of_week === day && s.time_start === slotStart);
     }
 
-    const formatDate = (d) => d ? new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
+    const formatDate = (d) => d
+        ? new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+        : '—';
 
     return (
         <div>
@@ -55,7 +61,8 @@ export default function TrainerTimetable() {
                     <h1 className="trainer-title">My Weekly Timetable</h1>
                     {currentWeek && (
                         <p className="trainer-sub">
-                            From: <strong>{formatDate(currentWeek.start_date)}</strong> &nbsp;To: <strong>{formatDate(currentWeek.end_date)}</strong>
+                            From: <strong>{formatDate(currentWeek.start_date)}</strong>
+                            &nbsp;To: <strong>{formatDate(currentWeek.end_date)}</strong>
                         </p>
                     )}
                 </div>
@@ -69,7 +76,6 @@ export default function TrainerTimetable() {
                 </div>
             ) : (
                 <div className="trainer-card">
-                    {/* Week selector */}
                     <div className="trainer-row" style={{ marginBottom: '1rem' }}>
                         <label style={{ fontSize: '0.875rem', fontWeight: 600, color: '#1a1a2e' }}>Select Week:</label>
                         <select
@@ -85,7 +91,6 @@ export default function TrainerTimetable() {
                         </select>
                     </div>
 
-                    {/* Week caption above grid */}
                     {currentWeek && (
                         <p style={{ fontSize: '0.82rem', color: '#555', marginBottom: '0.75rem', fontWeight: 500 }}>
                             {currentWeek.label} · From: {formatDate(currentWeek.start_date)} To: {formatDate(currentWeek.end_date)}
@@ -96,15 +101,13 @@ export default function TrainerTimetable() {
                         <div className="trainer-msg">Loading timetable…</div>
                     ) : (
                         <div className="trainer-timetable-grid">
-                            {/* Header */}
                             <div className="trainer-timetable-header" style={{ fontSize: '0.68rem' }}>Time</div>
                             {DAYS.map(day => (
                                 <div key={day} className="trainer-timetable-header">{day}</div>
                             ))}
-                            {/* Rows — all slots always shown */}
                             {TIME_SLOTS.map(slot => (
-                                <>
-                                    <div key={`t-${slot.start}`} className="trainer-timetable-time">{slot.label}</div>
+                                <React.Fragment key={slot.start}>
+                                    <div className="trainer-timetable-time">{slot.label}</div>
                                     {DAYS.map(day => {
                                         const session = sessionAt(day, slot.start);
                                         return (
@@ -123,7 +126,7 @@ export default function TrainerTimetable() {
                                             </div>
                                         );
                                     })}
-                                </>
+                                </React.Fragment>
                             ))}
                         </div>
                     )}

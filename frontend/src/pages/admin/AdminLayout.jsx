@@ -1,4 +1,3 @@
-// FILE: /frontend/src/pages/admin/AdminLayout.jsx
 import { Outlet } from 'react-router-dom';
 import Sidebar from '../../components/Sidebar';
 
@@ -15,7 +14,7 @@ const adminNav = [
 export default function AdminLayout() {
   return (
     <div style={{ display: 'flex', minHeight: '100vh', background: '#f0f2f5' }}>
-      <Sidebar title="Admin Portal" items={adminNav} />
+      <Sidebar title="Administrator panel" items={adminNav} />
       <main style={{ flex: 1, padding: '2rem', overflowY: 'auto' }}>
         <Outlet />
       </main>

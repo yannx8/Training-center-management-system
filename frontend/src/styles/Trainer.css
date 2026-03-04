@@ -1,7 +1,10 @@
 /* FILE: /frontend/src/styles/Trainer.css */
 
 
-/* ── Layout ── */
+/* Trainer pages use same dark navy (#1a1a2e) sidebar as HOD */
+
+
+/* ── Shell ── */
 
 .trainer-shell {
     display: flex;
@@ -10,7 +13,7 @@
 }
 
 
-/* ── Sidebar — dark navy matching HOD ── */
+/* ── Sidebar ── */
 
 .trainer-sidebar {
     width: 230px;
@@ -44,6 +47,7 @@
     font-size: 0.875rem;
     font-weight: 500;
     text-decoration: none;
+    transition: background 0.15s;
 }
 
 .trainer-link:hover {
@@ -52,9 +56,9 @@
 }
 
 .trainer-link-active {
-    color: #fff;
+    color: #fff !important;
     background: rgba(255, 255, 255, 0.1);
-    border-left: 3px solid #fff;
+    border-left: 3px solid #4f8ef7;
     padding-left: calc(1.5rem - 3px);
 }
 
@@ -103,7 +107,7 @@
 }
 
 
-/* ── Page header ── */
+/* ── Page head ── */
 
 .trainer-page-head {
     display: flex;
@@ -145,92 +149,42 @@
 }
 
 
-/* ── Timetable Grid ── */
+/* ── Stats row ── */
 
-.trainer-timetable-grid {
+.trainer-stats {
     display: grid;
-    grid-template-columns: 80px repeat(6, 1fr);
-    gap: 1px;
-    background: #ddd;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1.25rem;
+}
+
+.trainer-stat {
+    background: #fff;
     border: 1px solid #ddd;
-    overflow-x: auto;
-}
-
-.trainer-timetable-header {
-    background: #1a1a2e;
-    color: #fff;
-    padding: 0.75rem 0.5rem;
-    font-size: 0.75rem;
-    font-weight: 600;
-    text-align: center;
-}
-
-.trainer-timetable-time {
-    background: #1a1a2e;
-    color: #fff;
-    padding: 0.75rem 0.5rem;
-    font-size: 0.7rem;
-    font-weight: 600;
-    text-align: center;
-}
-
-.trainer-timetable-cell {
-    background: #fff;
-    padding: 0.5rem;
-    min-height: 60px;
-    font-size: 0.75rem;
-}
-
-.trainer-timetable-cell.free {
-    background: #f8f9fa;
-    color: #999;
-}
-
-.trainer-timetable-cell.scheduled {
-    background: #e3f2fd;
-    border-left: 3px solid #1a1a2e;
-}
-
-.trainer-timetable-cell.selected {
-    background: #c8e6c9;
-    border: 2px solid #2e7d32;
-    cursor: pointer;
-}
-
-.trainer-timetable-cell:hover {
-    background: #e8f5e9;
-}
-
-
-/* ── Form controls ── */
-
-.trainer-row {
-    display: flex;
-    gap: 0.6rem;
-    flex-wrap: wrap;
-    align-items: center;
-}
-
-.trainer-input,
-.trainer-select {
-    padding: 0.5rem 0.7rem;
-    border: 1px solid #ccc;
     border-radius: 4px;
-    font-size: 0.875rem;
-    background: #fff;
-    outline: none;
+    padding: 1rem;
+    text-align: center;
 }
 
-.trainer-input:focus,
-.trainer-select:focus {
-    border-color: #1a1a2e;
+.trainer-stat-value {
+    font-size: 1.6rem;
+    font-weight: 700;
+    color: #1a1a2e;
+}
+
+.trainer-stat-label {
+    font-size: 0.78rem;
+    color: #666;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin-top: 0.2rem;
 }
 
 
 /* ── Buttons ── */
 
 .trainer-btn {
-    padding: 0.5rem 1rem;
+    padding: 0.5rem 1.1rem;
     background: #1a1a2e;
     color: #fff;
     border: none;
@@ -238,11 +192,10 @@
     font-size: 0.875rem;
     font-weight: 600;
     cursor: pointer;
-    white-space: nowrap;
 }
 
-.trainer-btn:hover:not(:disabled) {
-    background: #2d2d50;
+.trainer-btn:hover {
+    background: #2d2d4e;
 }
 
 .trainer-btn:disabled {
@@ -250,42 +203,236 @@
     cursor: not-allowed;
 }
 
-.trainer-btn-outline {
-    background: #fff;
+.trainer-btn-sm {
+    padding: 0.3rem 0.75rem;
+    background: #f0f2f5;
     color: #1a1a2e;
-    border: 1px solid #1a1a2e;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    cursor: pointer;
 }
 
-.trainer-btn-outline:hover:not(:disabled) {
-    background: #1a1a2e;
-    color: #fff;
+.trainer-btn-sm:hover {
+    background: #e2e6ea;
 }
 
 
-/* ── Misc ── */
+/* ── Tables ── */
 
-.trainer-msg {
-    padding: 1.5rem;
-    color: #555;
+.trainer-table-wrap {
+    overflow-x: auto;
+}
+
+.trainer-table {
+    width: 100%;
+    border-collapse: collapse;
     font-size: 0.875rem;
 }
 
-.trainer-err {
-    color: #b91c1c;
+.trainer-table th {
+    text-align: left;
+    padding: 0.55rem 0.75rem;
+    font-size: 0.73rem;
+    font-weight: 700;
+    color: #555;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    border-bottom: 2px solid #e5e5e5;
+    background: #fafafa;
 }
 
-.trainer-ok {
-    margin-top: 0.5rem;
-    font-size: 0.85rem;
-    color: #166534;
+.trainer-table td {
+    padding: 0.6rem 0.75rem;
+    border-bottom: 1px solid #efefef;
+    color: #222;
 }
+
+.trainer-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.trainer-table tbody tr:hover td {
+    background: #fafafa;
+}
+
+
+/* ── Form controls ── */
+
+.trainer-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    align-items: center;
+}
+
+.trainer-input {
+    padding: 0.45rem 0.75rem;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 0.875rem;
+    background: #fff;
+    flex: 1;
+    min-width: 120px;
+}
+
+.trainer-input:focus {
+    outline: none;
+    border-color: #1a1a2e;
+}
+
+.trainer-select {
+    padding: 0.45rem 0.75rem;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 0.875rem;
+    background: #fff;
+    flex: 1;
+    min-width: 160px;
+}
+
+.trainer-select:focus {
+    outline: none;
+    border-color: #1a1a2e;
+}
+
+
+/* ── Notices ── */
 
 .trainer-notice {
-    background: #fef9c3;
-    border: 1px solid #fde68a;
-    color: #92400e;
-    padding: 0.6rem 1rem;
+    padding: 0.75rem 1rem;
     border-radius: 4px;
-    font-size: 0.85rem;
+    border: 1px solid;
+    font-size: 0.875rem;
     margin-bottom: 1rem;
+}
+
+.trainer-msg {
+    color: #888;
+    font-size: 0.9rem;
+    text-align: center;
+    padding: 1.5rem 0;
+}
+
+.trainer-err {
+    color: #dc2626;
+}
+
+
+/* ── Timetable Grid ── */
+
+.trainer-timetable-grid {
+    display: grid;
+    grid-template-columns: 80px repeat(6, 1fr);
+    border: 1px solid #e5e5e5;
+    border-radius: 4px;
+    overflow: hidden;
+    font-size: 0.78rem;
+}
+
+.trainer-timetable-header {
+    background: #1a1a2e;
+    color: #fff;
+    padding: 0.55rem 0.4rem;
+    text-align: center;
+    font-weight: 700;
+    font-size: 0.72rem;
+    letter-spacing: 0.03em;
+    border-right: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.trainer-timetable-time {
+    background: #f8f9fa;
+    color: #444;
+    padding: 0.55rem 0.4rem;
+    text-align: center;
+    font-weight: 600;
+    font-size: 0.7rem;
+    border-right: 1px solid #e5e5e5;
+    border-top: 1px solid #e5e5e5;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.trainer-timetable-cell {
+    padding: 0.4rem 0.5rem;
+    min-height: 58px;
+    border-right: 1px solid #e5e5e5;
+    border-top: 1px solid #e5e5e5;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.trainer-timetable-cell.scheduled {
+    background: #eff6ff;
+    border-left: 3px solid #4f8ef7;
+}
+
+.trainer-timetable-cell.free {
+    background: #fafafa;
+}
+
+
+/* ── Availability Grid ── */
+
+.trainer-avail-grid {
+    display: grid;
+    grid-template-columns: 80px repeat(6, 1fr);
+    border: 1px solid #e5e5e5;
+    border-radius: 4px;
+    overflow: hidden;
+    font-size: 0.78rem;
+    user-select: none;
+}
+
+.trainer-avail-header {
+    background: #1a1a2e;
+    color: #fff;
+    padding: 0.55rem 0.4rem;
+    text-align: center;
+    font-weight: 700;
+    font-size: 0.72rem;
+    border-right: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.trainer-avail-timecell {
+    background: #f8f9fa;
+    padding: 0.55rem 0.4rem;
+    text-align: center;
+    font-weight: 600;
+    font-size: 0.7rem;
+    border-right: 1px solid #e5e5e5;
+    border-top: 1px solid #e5e5e5;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #444;
+}
+
+.trainer-avail-cell {
+    min-height: 52px;
+    border-right: 1px solid #e5e5e5;
+    border-top: 1px solid #e5e5e5;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.12s;
+}
+
+.trainer-avail-cell:hover {
+    background: #e8f4fd;
+}
+
+.trainer-avail-cell.selected {
+    background: #1a1a2e;
+}
+
+.trainer-avail-cell.selected::after {
+    content: '✓';
+    color: #fff;
+    font-size: 1rem;
+    font-weight: 700;
 }

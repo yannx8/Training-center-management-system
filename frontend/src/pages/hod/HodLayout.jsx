@@ -1,4 +1,3 @@
-// FILE: /frontend/src/pages/hod/HodLayout.jsx
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import '../../styles/Hod.css';
@@ -21,7 +20,7 @@ export default function HodLayout() {
   return (
     <div className="hod-shell">
       <aside className="hod-sidebar">
-        <div className="hod-brand">VTC Manager</div>
+        <div className="hod-brand">Head of</div>
         <nav className="hod-nav">
           {NAV.map(n => (
             <NavLink
@@ -36,7 +35,7 @@ export default function HodLayout() {
         </nav>
         <div className="hod-footer">
           <div className="hod-footer-name">{user?.fullName}</div>
-          <div className="hod-footer-role">HOD</div>
+          <div className="hod-footer-role">Head of department</div>
           <button className="hod-footer-logout" onClick={handleLogout}>Logout</button>
         </div>
       </aside>

@@ -1,4 +1,3 @@
-// FILE: /frontend/src/pages/student/StudentDashboard.jsx
 import { useFetch } from '../../hooks/useFetch';
 import { getProfile } from '../../api/studentApi';
 import '../../styles/Dashboard.css';

@@ -1,7 +1,4 @@
-// FILE: /frontend/src/components/Header.jsx
 import { useAuth } from '../context/AuthContext';
-
-// FIX: was importing useAuth from '../App' which doesn't export it — crashes entire app
 
 function Header({ title, subtitle }) {
   const { user } = useAuth();

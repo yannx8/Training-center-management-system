@@ -1,4 +1,3 @@
-// FILE: /frontend/src/pages/trainer/TrainerDashboard.jsx
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import '../../styles/Dashboard.css';

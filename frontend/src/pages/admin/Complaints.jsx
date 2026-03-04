@@ -1,4 +1,3 @@
-// FILE: /frontend/src/pages/admin/Complaints.jsx
 import { useState } from 'react';
 import { useFetch } from '../../hooks/useFetch';
 import { getComplaints, updateComplaint } from '../../api/adminApi';

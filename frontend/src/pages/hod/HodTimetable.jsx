@@ -1,4 +1,3 @@
-// FILE: /frontend/src/pages/hod/HodTimetable.jsx
 import { useState, useEffect } from 'react';
 import { useFetch } from '../../hooks/useFetch';
 import {

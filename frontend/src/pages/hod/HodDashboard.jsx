@@ -1,4 +1,3 @@
-// FILE: /frontend/src/pages/hod/HodDashboard.jsx
 import { useState } from 'react';
 import { useFetch } from '../../hooks/useFetch';
 import { getDashboard } from '../../api/hodApi';

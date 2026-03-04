@@ -5,13 +5,21 @@ import '../../styles/Student.css';
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 const TIME_SLOTS = [
-    { start: '08:00', end: '10:00', label: '8h–10h' },
-    { start: '10:00', end: '12:00', label: '10h–12h' },
-    { start: '13:00', end: '15:00', label: '13h–15h' },
-    { start: '15:00', end: '17:00', label: '15h–17h' },
-    { start: '17:00', end: '19:00', label: '17h–19h' },
-    { start: '19:00', end: '21:00', label: '19h–21h' },
+    { start: '08:00:00', end: '10:00:00', label: '8h–10h' },
+    { start: '10:00:00', end: '12:00:00', label: '10h–12h' },
+    { start: '13:00:00', end: '15:00:00', label: '13h–15h' },
+    { start: '15:00:00', end: '17:00:00', label: '15h–17h' },
+    { start: '17:00:00', end: '19:00:00', label: '17h–19h' },
+    { start: '19:00:00', end: '21:00:00', label: '19h–21h' },
 ];
+
+const formatDate = (d) =>
+    d ? new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
+
+function normalizeTime(t) {
+    if (!t) return '';
+    return t.length === 5 ? t + ':00' : t;
+}
 
 export default function StudentTimetable() {
     const [weeks, setWeeks] = useState([]);
@@ -43,19 +51,19 @@ export default function StudentTimetable() {
     const currentWeek = weeks.find(w => String(w.id) === selectedWeekId);
 
     function sessionAt(day, slotStart) {
-        return timetable.find(s => s.day_of_week === day && s.time_start === slotStart);
+        return timetable.find(s =>
+            s.day_of_week === day && normalizeTime(s.time_start) === normalizeTime(slotStart)
+        );
     }
-
-    const formatDate = (d) => d ? new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
 
     return (
         <div>
             <div className="student-page-head">
                 <div>
-                    <h1 className="student-title">My Weekly Timetable</h1>
+                    <h1 className="student-title">My Timetable</h1>
                     {currentWeek && (
                         <p className="student-sub">
-                            From: <strong>{formatDate(currentWeek.start_date)}</strong> &nbsp;·&nbsp; To: <strong>{formatDate(currentWeek.end_date)}</strong>
+                            From: <strong>{formatDate(currentWeek.start_date)}</strong> &nbsp; To: <strong>{formatDate(currentWeek.end_date)}</strong>
                         </p>
                     )}
                 </div>
@@ -65,16 +73,18 @@ export default function StudentTimetable() {
                 <div className="student-msg">Loading weeks…</div>
             ) : !weeks.length ? (
                 <div className="student-card">
-                    <p className="student-msg">No published timetables available yet for your program.</p>
+                    <p className="student-msg">No published timetable available for you yet. Check back after your HOD publishes one.</p>
                 </div>
             ) : (
                 <div className="student-card">
+                    {/* Week selector */}
                     <div className="student-row" style={{ marginBottom: '1rem' }}>
-                        <label style={{ fontSize: '0.875rem', fontWeight: 600, color: '#2c3e50' }}>Select Week:</label>
+                        <label style={{ fontSize: '0.875rem', fontWeight: 600, color: '#0f4c3a' }}>Select Week:</label>
                         <select
                             className="student-select"
                             value={selectedWeekId}
                             onChange={e => setSelectedWeekId(e.target.value)}
+                            style={{ flex: 1, maxWidth: 400 }}
                         >
                             {weeks.map(w => (
                                 <option key={w.id} value={w.id}>
@@ -85,8 +95,8 @@ export default function StudentTimetable() {
                     </div>
 
                     {currentWeek && (
-                        <p style={{ fontSize: '0.82rem', color: '#7f8c8d', marginBottom: '0.75rem' }}>
-                            <strong style={{ color: '#2c3e50' }}>{currentWeek.label}</strong> · From: {formatDate(currentWeek.start_date)} To: {formatDate(currentWeek.end_date)}
+                        <p style={{ fontSize: '0.82rem', color: '#555', marginBottom: '0.75rem', fontWeight: 500 }}>
+                            {currentWeek.label} · From: {formatDate(currentWeek.start_date)} To: {formatDate(currentWeek.end_date)}
                         </p>
                     )}
 
@@ -95,11 +105,12 @@ export default function StudentTimetable() {
                     ) : (
                         <div className="student-timetable-grid">
                             {/* Header */}
-                            <div className="student-timetable-header" style={{ fontSize: '0.68rem' }}>Time</div>
+                            <div className="student-timetable-time student-timetable-header" style={{ background: '#0f4c3a' }}>Time</div>
                             {DAYS.map(day => (
                                 <div key={day} className="student-timetable-header">{day}</div>
                             ))}
-                            {/* Rows — all slots always shown */}
+
+                            {/* All rows always shown */}
                             {TIME_SLOTS.map(slot => (
                                 <>
                                     <div key={`t-${slot.start}`} className="student-timetable-time">{slot.label}</div>
@@ -108,16 +119,16 @@ export default function StudentTimetable() {
                                         return (
                                             <div
                                                 key={`${day}-${slot.start}`}
-                                                className={`student-timetable-cell ${session ? 'scheduled' : 'free'}`}
+                                                className={`student-timetable-cell ${session ? 'has-class' : 'free-slot'}`}
                                             >
                                                 {session ? (
                                                     <>
                                                         <div style={{ fontWeight: 600, fontSize: '0.75rem' }}>{session.course_name}</div>
-                                                        <div style={{ fontSize: '0.65rem', color: '#7f8c8d', marginTop: 2 }}>{session.room_name}</div>
-                                                        <div style={{ fontSize: '0.65rem', color: '#95a5a6' }}>{session.trainer_name}</div>
+                                                        <div style={{ fontSize: '0.65rem', color: '#555', marginTop: 2 }}>{session.trainer_name}</div>
+                                                        <div style={{ fontSize: '0.62rem', color: '#888' }}>{session.room_name}</div>
                                                     </>
                                                 ) : (
-                                                    <span style={{ color: '#bdc3c7', fontStyle: 'italic', fontSize: '0.72rem' }}>Free</span>
+                                                    <span style={{ color: '#bbb', fontStyle: 'italic', fontSize: '0.72rem' }}>Free</span>
                                                 )}
                                             </div>
                                         );
