@@ -1,132 +1,233 @@
-import React, { useState, useEffect } from 'react';
-import api from '../../api/axios';
+// FILE: /frontend/src/pages/secretary/RegisterStudent.jsx
+import { useState, useEffect } from 'react';
+import { secretaryApi } from '../../api/secretaryApi';
+import '../../styles/Secretary.css';
 
-const RegisterStudent = () => {
-    const [formData, setFormData] = useState({
-        student_name: '',
-        student_email: '',
-        student_password: '',
-        parent_name: '',
-        parent_email: '',
-        parent_password: '',
-        program_id: '',
-        academic_level_id: '',
-        session_id: '',
-        is_adult: false
-    });
-    const [programs, setPrograms] = useState([]);
-    const [levels, setLevels] = useState([]);
-    const [sessions, setSessions] = useState([]);
-    const [message, setMessage] = useState('');
+const BLANK_PARENT = { firstName: '', lastName: '', email: '', phone: '', relationship: 'Father' };
 
-    useEffect(() => {
-        const fetchData = async () => {
-            try {
-                const [progs, lvls, sess] = await Promise.all([
-                    api.get('/admin/programs'),
-                    api.get('/admin/academic_levels'),
-                    api.get('/admin/sessions')
-                ]);
-                setPrograms(progs.data);
-                setLevels(lvls.data);
-                setSessions(sess.data);
-            } catch (err) {
-                console.error(err);
-            }
-        };
-        fetchData();
-    }, []);
-
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        try {
-            await api.post('/secretary/register-student', formData);
-            setMessage('Student registered successfully!');
-            setFormData({
-                student_name: '',
-                student_email: '',
-                student_password: '',
-                parent_name: '',
-                parent_email: '',
-                parent_password: '',
-                program_id: '',
-                academic_level_id: '',
-                session_id: '',
-                is_adult: false
-            });
-        } catch (err) {
-            setMessage('Registration failed.');
-        }
-    };
-
-    return (
-        <div className="page-container">
-            <h1>Register New Student</h1>
-            {message && <div className="info-message">{message}</div>}
-            <form onSubmit={handleSubmit} className="registration-form">
-                <div className="form-section">
-                    <h3>Student Details</h3>
-                    <div className="form-group">
-                        <label>Full Name</label>
-                        <input type="text" value={formData.student_name} onChange={(e) => setFormData({...formData, student_name: e.target.value})} required />
-                    </div>
-                    <div className="form-group">
-                        <label>Email</label>
-                        <input type="email" value={formData.student_email} onChange={(e) => setFormData({...formData, student_email: e.target.value})} required />
-                    </div>
-                    <div className="form-group">
-                        <label>Password</label>
-                        <input type="password" value={formData.student_password} onChange={(e) => setFormData({...formData, student_password: e.target.value})} required />
-                    </div>
-                </div>
-
-                {!formData.is_adult && (
-                    <div className="form-section">
-                        <h3>Parent Details</h3>
-                        <div className="form-group">
-                            <label>Full Name</label>
-                            <input type="text" value={formData.parent_name} onChange={(e) => setFormData({...formData, parent_name: e.target.value})} required />
-                        </div>
-                        <div className="form-group">
-                            <label>Email</label>
-                            <input type="email" value={formData.parent_email} onChange={(e) => setFormData({...formData, parent_email: e.target.value})} required />
-                        </div>
-                        <div className="form-group">
-                            <label>Password</label>
-                            <input type="password" value={formData.parent_password} onChange={(e) => setFormData({...formData, parent_password: e.target.value})} required />
-                        </div>
-                    </div>
-                )}
-
-                <div className="form-section">
-                    <h3>Academic Details</h3>
-                    <div className="form-group">
-                        <label>Program</label>
-                        <select value={formData.program_id} onChange={(e) => setFormData({...formData, program_id: e.target.value})} required>
-                            <option value="">Select Program</option>
-                            {programs.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                        </select>
-                    </div>
-                    <div className="form-group">
-                        <label>Level</label>
-                        <select value={formData.academic_level_id} onChange={(e) => setFormData({...formData, academic_level_id: e.target.value})} required>
-                            <option value="">Select Level</option>
-                            {levels.map(l => <option key={l.id} value={l.id}>{l.level_name}</option>)}
-                        </select>
-                    </div>
-                    <div className="form-group">
-                        <label>Session</label>
-                        <select value={formData.session_id} onChange={(e) => setFormData({...formData, session_id: e.target.value})} required>
-                            <option value="">Select Session</option>
-                            {sessions.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                        </select>
-                    </div>
-                </div>
-
-                <button type="submit" className="btn-primary">Register Student</button>
-            </form>
-        </div>
-    );
+const BLANK_FORM = {
+    student: { firstName: '', lastName: '', email: '', phone: '', dateOfBirth: '' },
+    parents: [{ ...BLANK_PARENT }],
+    enrollmentType: 'program',
+    programId: '',
+    certificationId: '',
 };
 
-export default RegisterStudent;
+export default function RegisterStudent() {
+    const [form, setForm] = useState(BLANK_FORM);
+    const [programs, setPrograms] = useState([]);
+    const [certifications, setCertifications] = useState([]);
+    const [submitting, setSubmitting] = useState(false);
+    const [success, setSuccess] = useState('');
+    const [error, setError] = useState('');
+
+    useEffect(() => {
+        Promise.all([secretaryApi.getPrograms(), secretaryApi.getCertifications()])
+            .then(([pRes, cRes]) => {
+                setPrograms(pRes.data.data || []);
+                setCertifications(cRes.data.data || []);
+            })
+            .catch(() => {});
+    }, []);
+
+    function setStudent(field, val) {
+        setForm(f => ({ ...f, student: { ...f.student, [field]: val } }));
+    }
+
+    function setParent(idx, field, val) {
+        setForm(f => {
+            const parents = [...f.parents];
+            parents[idx] = { ...parents[idx], [field]: val };
+            return { ...f, parents };
+        });
+    }
+
+    function addParent() {
+        setForm(f => ({ ...f, parents: [...f.parents, { ...BLANK_PARENT, relationship: 'Mother' }] }));
+    }
+
+    function removeParent(idx) {
+        setForm(f => ({ ...f, parents: f.parents.filter((_, i) => i !== idx) }));
+    }
+
+    async function handleSubmit() {
+        setError(''); setSuccess('');
+        if (!form.student.firstName || !form.student.lastName || !form.student.dateOfBirth) {
+            setError('First name, last name and date of birth are required.'); return;
+        }
+        if (form.enrollmentType === 'program' && !form.programId) {
+            setError('Please select a program.'); return;
+        }
+        if (form.enrollmentType === 'certification' && !form.certificationId) {
+            setError('Please select a certification.'); return;
+        }
+
+        setSubmitting(true);
+        try {
+            // Note: matricule field is intentionally excluded — backend auto-generates it
+            const payload = {
+                student: {
+                    firstName: form.student.firstName,
+                    lastName: form.student.lastName,
+                    email: form.student.email || undefined,
+                    phone: form.student.phone || undefined,
+                    dateOfBirth: form.student.dateOfBirth,
+                },
+                parents: form.parents.filter(p => p.firstName && p.email),
+                enrollmentType: form.enrollmentType,
+                programId: form.enrollmentType === 'program' ? parseInt(form.programId) : undefined,
+                certificationId: form.enrollmentType === 'certification' ? parseInt(form.certificationId) : undefined,
+            };
+
+            const res = await secretaryApi.registerStudent(payload);
+            const mat = res.data?.data?.matricule || '';
+            setSuccess(`✅ Student registered successfully! Matricule: ${mat}`);
+            setForm(BLANK_FORM);
+        } catch (err) {
+            setError(err.response?.data?.message || 'Registration failed. Please try again.');
+        } finally {
+            setSubmitting(false);
+        }
+    }
+
+    return (
+        <div className="secretary-body">
+            <div className="sec-page-head">
+                <div>
+                    <h1 className="sec-title">Register New Student</h1>
+                    <p className="sec-sub">Fill in the form below — matricule is auto-generated</p>
+                </div>
+            </div>
+
+            {success && (
+                <div style={{ background: '#f0fdf4', border: '1px solid #86efac', color: '#166534', padding: '0.85rem 1.1rem', borderRadius: 6, marginBottom: '1.25rem', fontWeight: 600, fontSize: '0.9rem' }}>
+                    {success}
+                </div>
+            )}
+            {error && (
+                <div style={{ background: '#fef2f2', border: '1px solid #fca5a5', color: '#991b1b', padding: '0.85rem 1.1rem', borderRadius: 6, marginBottom: '1.25rem', fontSize: '0.9rem' }}>
+                    {error}
+                </div>
+            )}
+
+            {/* Student Info */}
+            <div className="sec-card">
+                <p className="sec-card-title">👤 Student Information</p>
+
+                {/* Matricule display-only notice */}
+                <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 6, padding: '0.7rem 1rem', marginBottom: '1rem', fontSize: '0.82rem', color: '#1e40af' }}>
+                    🔢 Matricule will be <strong>auto-generated</strong> by the system upon registration.
+                </div>
+
+                <div className="sec-form-grid">
+                    <div className="sec-field">
+                        <label className="sec-label">First Name *</label>
+                        <input className="sec-input" value={form.student.firstName} onChange={e => setStudent('firstName', e.target.value)} placeholder="First name" />
+                    </div>
+                    <div className="sec-field">
+                        <label className="sec-label">Last Name *</label>
+                        <input className="sec-input" value={form.student.lastName} onChange={e => setStudent('lastName', e.target.value)} placeholder="Last name" />
+                    </div>
+                    <div className="sec-field">
+                        <label className="sec-label">Date of Birth *</label>
+                        <input className="sec-input" type="date" value={form.student.dateOfBirth} onChange={e => setStudent('dateOfBirth', e.target.value)} />
+                    </div>
+                    <div className="sec-field">
+                        <label className="sec-label">Phone</label>
+                        <input className="sec-input" value={form.student.phone} onChange={e => setStudent('phone', e.target.value)} placeholder="Phone number" />
+                    </div>
+                    <div className="sec-field" style={{ gridColumn: '1 / -1' }}>
+                        <label className="sec-label">Email (optional — auto-generated if blank)</label>
+                        <input className="sec-input" type="email" value={form.student.email} onChange={e => setStudent('email', e.target.value)} placeholder="student@email.com" />
+                    </div>
+                </div>
+            </div>
+
+            {/* Enrollment */}
+            <div className="sec-card">
+                <p className="sec-card-title">📚 Enrollment</p>
+                <div className="sec-form-grid">
+                    <div className="sec-field">
+                        <label className="sec-label">Enrollment Type *</label>
+                        <select className="sec-select" value={form.enrollmentType} onChange={e => setForm(f => ({ ...f, enrollmentType: e.target.value, programId: '', certificationId: '' }))}>
+                            <option value="program">Academic Program</option>
+                            <option value="certification">Certification</option>
+                        </select>
+                    </div>
+                    {form.enrollmentType === 'program' ? (
+                        <div className="sec-field">
+                            <label className="sec-label">Program *</label>
+                            <select className="sec-select" value={form.programId} onChange={e => setForm(f => ({ ...f, programId: e.target.value }))}>
+                                <option value="">— Select program —</option>
+                                {programs.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                            </select>
+                        </div>
+                    ) : (
+                        <div className="sec-field">
+                            <label className="sec-label">Certification *</label>
+                            <select className="sec-select" value={form.certificationId} onChange={e => setForm(f => ({ ...f, certificationId: e.target.value }))}>
+                                <option value="">— Select certification —</option>
+                                {certifications.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                            </select>
+                        </div>
+                    )}
+                </div>
+            </div>
+
+            {/* Parents */}
+            <div className="sec-card">
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                    <p className="sec-card-title" style={{ margin: 0 }}>👨‍👩‍👧 Parent / Guardian</p>
+                    <button className="sec-btn-sm" onClick={addParent}>+ Add Parent</button>
+                </div>
+
+                {form.parents.map((parent, idx) => (
+                    <div key={idx} style={{ border: '1px solid #e5e5e5', borderRadius: 6, padding: '1rem', marginBottom: '0.75rem' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+                            <span style={{ fontSize: '0.82rem', fontWeight: 700, color: '#2c3e50' }}>Parent {idx + 1}</span>
+                            {form.parents.length > 1 && (
+                                <button className="sec-btn-sm sec-btn-danger" onClick={() => removeParent(idx)}>Remove</button>
+                            )}
+                        </div>
+                        <div className="sec-form-grid">
+                            <div className="sec-field">
+                                <label className="sec-label">First Name *</label>
+                                <input className="sec-input" value={parent.firstName} onChange={e => setParent(idx, 'firstName', e.target.value)} placeholder="First name" />
+                            </div>
+                            <div className="sec-field">
+                                <label className="sec-label">Last Name</label>
+                                <input className="sec-input" value={parent.lastName} onChange={e => setParent(idx, 'lastName', e.target.value)} placeholder="Last name" />
+                            </div>
+                            <div className="sec-field">
+                                <label className="sec-label">Email *</label>
+                                <input className="sec-input" type="email" value={parent.email} onChange={e => setParent(idx, 'email', e.target.value)} placeholder="parent@email.com" />
+                            </div>
+                            <div className="sec-field">
+                                <label className="sec-label">Phone</label>
+                                <input className="sec-input" value={parent.phone} onChange={e => setParent(idx, 'phone', e.target.value)} placeholder="Phone" />
+                            </div>
+                            <div className="sec-field">
+                                <label className="sec-label">Relationship</label>
+                                <select className="sec-select" value={parent.relationship} onChange={e => setParent(idx, 'relationship', e.target.value)}>
+                                    <option value="Father">Father</option>
+                                    <option value="Mother">Mother</option>
+                                    <option value="Guardian">Guardian</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                ))}
+            </div>
+
+            {/* Submit */}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
+                <button className="sec-btn-outline" onClick={() => { setForm(BLANK_FORM); setError(''); setSuccess(''); }}>
+                    Reset
+                </button>
+                <button className="sec-btn" onClick={handleSubmit} disabled={submitting} style={{ opacity: submitting ? 0.6 : 1 }}>
+                    {submitting ? 'Registering…' : 'Register Student'}
+                </button>
+            </div>
+        </div>
+    );
+}

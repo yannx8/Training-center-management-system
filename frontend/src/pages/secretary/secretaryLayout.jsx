@@ -4,29 +4,30 @@ import { useAuth } from '../../context/AuthContext';
 import '../../styles/Secretary.css';
 
 const NAV = [
-    { to: '/secretary', label: 'Student Management', end: true },
+    { to: '/secretary',          label: '📊 Dashboard',          end: true  },
+    { to: '/secretary/register', label: '➕ Register Student',   end: false },
+    { to: '/secretary/students', label: '🎓 All Students',       end: false },
 ];
 
 export default function SecretaryLayout() {
     const { user, logout } = useAuth();
     const navigate = useNavigate();
 
-    function handleLogout() {
-        logout();
-        navigate('/login');
-    }
+    function handleLogout() { logout(); navigate('/login'); }
 
     return (
         <div className="secretary-shell">
             <aside className="secretary-sidebar">
-                <div className="secretary-brand">VTC Manager</div>
+                <div className="secretary-brand">🏫 VTC Manager</div>
                 <nav className="secretary-nav">
                     {NAV.map(n => (
                         <NavLink
                             key={n.to}
                             to={n.to}
                             end={n.end}
-                            className={({ isActive }) => `secretary-link${isActive ? ' secretary-link-active' : ''}`}
+                            className={({ isActive }) =>
+                                `secretary-link${isActive ? ' secretary-link-active' : ''}`
+                            }
                         >
                             {n.label}
                         </NavLink>
