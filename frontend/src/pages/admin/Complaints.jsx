@@ -57,7 +57,7 @@ export default function Complaints() {
     { key: 'priority', label: 'Priority', render: r => <Badge label={r.priority} /> },
     { key: 'status', label: 'Status', render: r => <Badge label={r.status} /> },
     { key: 'actions', label: 'Actions', render: r => (
-      <button className="btn-icon" onClick={() => openEdit(r)}>✏️</button>
+      <button className="um-btn-edit" onClick={() => openEdit(r)}>Edit</button>
     )},
   ];
 

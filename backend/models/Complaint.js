@@ -1,4 +1,3 @@
-// models/Complaint.js
 class Complaint {
     constructor(db) {
         this.db = db;

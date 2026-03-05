@@ -1,4 +1,3 @@
-// FILE: /backend/controllers/authController.js
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const pool = require('../config/db');
@@ -8,7 +7,7 @@ const { findUserByEmail, getUserRoles, markPasswordChanged, findUserById } = req
 async function login(req, res) {
     const { email, password } = req.body;
     if (!email || !password)
-        return res.status(400).json({ success: false, message: 'Email and password required', code: 'MISSING_FIELDS' });
+        return res.status(400).json({ success: false, message: 'Email and password are  required', code: 'MISSING_FIELDS' });
 
     const [sql, params] = findUserByEmail(email);
     const result = await pool.query(sql, params);

@@ -1,4 +1,3 @@
-// models/Student.js
 class Student {
     constructor(db) {
         this.db = db;

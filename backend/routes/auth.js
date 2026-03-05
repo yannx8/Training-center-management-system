@@ -1,4 +1,4 @@
-// FILE: /backend/routes/auth.js
+//auth-routes
 const router = require('express').Router();
 const { login, selectRole, changePassword } = require('../controllers/authController');
 const { authenticate } = require('../middleware/auth');

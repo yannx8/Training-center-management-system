@@ -1,4 +1,3 @@
-// models/User.js
 const bcrypt = require('bcryptjs');
 
 class User {

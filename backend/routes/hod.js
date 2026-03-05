@@ -1,4 +1,3 @@
-// FILE: /backend/routes/hod.js
 const router = require('express').Router();
 const ctrl = require('../controllers/hodController');
 const { authenticate } = require('../middleware/auth');

@@ -1,4 +1,3 @@
-// FILE: /backend/routes/secretary.js
 const router = require('express').Router();
 const ctrl = require('../controllers/secretaryController');
 const { authenticate } = require('../middleware/auth');

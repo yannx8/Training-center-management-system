@@ -1,7 +1,3 @@
-// FILE: /backend/queries/users.js
-// Every function returns [sql, params] — the controller executes the query.
-// This pattern keeps SQL centralized and testable independently of HTTP.
-
 function findUserByEmail(email) {
     const sql = `SELECT * FROM users WHERE email = $1 LIMIT 1`;
     return [sql, [email]];

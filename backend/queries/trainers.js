@@ -1,5 +1,3 @@
-// FILE: /backend/queries/trainers.js
-
 function getTrainerByUserId(userId) {
     const sql = `SELECT * FROM trainers WHERE user_id=$1 LIMIT 1`;
     return [sql, [userId]];

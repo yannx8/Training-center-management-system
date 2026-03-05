@@ -1,4 +1,3 @@
-// FILE: /frontend/src/pages/secretary/RegisterStudent.jsx
 import { useState, useEffect } from 'react';
 import { secretaryApi } from '../../api/secretaryApi';
 import '../../styles/Secretary.css';
@@ -81,7 +80,7 @@ export default function RegisterStudent() {
 
             const res = await secretaryApi.registerStudent(payload);
             const mat = res.data?.data?.matricule || '';
-            setSuccess(`✅ Student registered successfully! Matricule: ${mat}`);
+            setSuccess(` Student registered successfully! Matricule: ${mat}`);
             setForm(BLANK_FORM);
         } catch (err) {
             setError(err.response?.data?.message || 'Registration failed. Please try again.');

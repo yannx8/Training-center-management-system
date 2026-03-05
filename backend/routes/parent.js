@@ -1,4 +1,3 @@
-// FILE: /backend/routes/parent.js
 const router = require('express').Router();
 const ctrl = require('../controllers/parentController');
 const { authenticate } = require('../middleware/auth');

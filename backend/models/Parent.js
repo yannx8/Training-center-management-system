@@ -1,4 +1,3 @@
-// models/Parent.js
 class Parent {
     constructor(db) {
         this.db = db;

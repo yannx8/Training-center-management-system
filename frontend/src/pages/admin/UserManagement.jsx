@@ -85,8 +85,8 @@ export default function UserManagement() {
     <div>
       <div className="page-header">
         <div>
-          <h1 className="page-title">User Management</h1>
-          <p className="page-subtitle">HOD, Trainer and Secretary accounts</p>
+          <h1 className="page-title">User accounts management</h1>
+          <p className="page-subtitle">Department heads, Trainer and Secretary accounts</p>
         </div>
         <button className="btn-primary" onClick={openCreate}>+ Add User</button>
       </div>

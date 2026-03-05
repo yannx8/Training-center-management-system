@@ -1,5 +1,3 @@
-// FILE: /backend/queries/complaints.js
-
 function createComplaint(parentId, studentId, subject, description, priority) {
     const sql = `
     INSERT INTO complaints (parent_id, student_id, subject, description, priority)

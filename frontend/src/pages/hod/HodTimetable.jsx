@@ -38,7 +38,7 @@ export default function HodTimetable() {
 
     // Timetable viewer
     const [selTT, setSelTT] = useState('');
-    const [selProg, setSelProg] = useState(null); // program object
+    const [selProg, setSelProg] = useState(null);
     const [slots, setSlots] = useState(null);
     const [loadingSlots, setLoadingSlots] = useState(false);
     const [publishMsg, setPublishMsg] = useState('');

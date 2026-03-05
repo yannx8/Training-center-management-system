@@ -1,4 +1,3 @@
-// FILE: /backend/routes/student.js
 const router = require('express').Router();
 const ctrl = require('../controllers/studentController');
 const { authenticate } = require('../middleware/auth');

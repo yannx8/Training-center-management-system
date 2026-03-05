@@ -1,4 +1,4 @@
-// FILE: /frontend/src/pages/secretary/SecretaryDashboard.jsx
+
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { secretaryApi } from '../../api/secretaryApi';

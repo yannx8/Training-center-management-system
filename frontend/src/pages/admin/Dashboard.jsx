@@ -29,18 +29,18 @@ export default function AdminDashboard() {
       </div>
 
       <h1 className="page-title">Dashboard Overview</h1>
-      <p className="page-subtitle">Welcome back! Here's what's happening with your academic system.</p>
+      <p className="page-subtitle">Welcome back! Here's what's happening with the academic system.</p>
 
       <div className="stats-grid">
-        <StatCard title="Total Users" value={stats.total_users} icon="👥" />
-        <StatCard title="Departments" value={stats.total_departments} icon="🏢" />
-        <StatCard title="Active Programs" value={stats.active_programs} icon="📚" />
-        <StatCard title="Available Rooms" value={stats.available_rooms} icon="🚪"  />
+        <StatCard title="Total Users" value={stats.total_users}  />
+        <StatCard title="Departments" value={stats.total_departments}  />
+        <StatCard title="Active Programs" value={stats.active_programs}  />
+        <StatCard title="Available Rooms" value={stats.available_rooms}   />
       </div>
 
       <div className="dashboard-grid">
         <div className="dash-card">
-          <h3 className="dash-card-title">⚠ Pending Complaints</h3>
+          <h3 className="dash-card-title"> Pending Complaints</h3>
           {pendingComplaints.length === 0
             ? <p className="empty-text">No pending complaints</p>
             : pendingComplaints.map(c => (

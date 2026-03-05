@@ -1,4 +1,3 @@
-// FILE: /backend/app.js
 const express = require('express');
 const cors = require('cors');
 const errorHandler = require('./middleware/errorHandler');
@@ -13,7 +12,7 @@ app.use(cors({
 
 app.use(express.json());
 
-// Health check — useful for verifying server is running
+// Health check  for verifying server is running
 app.get('/api/health', (req, res) => res.json({ status: 'ok' }));
 
 // Routes

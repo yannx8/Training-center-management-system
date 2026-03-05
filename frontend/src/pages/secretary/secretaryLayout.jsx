@@ -1,12 +1,11 @@
-// FILE: /frontend/src/pages/secretary/secretaryLayout.jsx
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import '../../styles/Secretary.css';
 
 const NAV = [
-    { to: '/secretary',          label: '📊 Dashboard',          end: true  },
-    { to: '/secretary/register', label: '➕ Register Student',   end: false },
-    { to: '/secretary/students', label: '🎓 All Students',       end: false },
+    { to: '/secretary',          label: ' Dashboard',          end: true  },
+    { to: '/secretary/register', label: ' Register Student',   end: false },
+    { to: '/secretary/students', label: ' All Students',       end: false },
 ];
 
 export default function SecretaryLayout() {
@@ -18,7 +17,7 @@ export default function SecretaryLayout() {
     return (
         <div className="secretary-shell">
             <aside className="secretary-sidebar">
-                <div className="secretary-brand">🏫 VTC Manager</div>
+                <div className="secretary-brand">Student Registration</div>
                 <nav className="secretary-nav">
                     {NAV.map(n => (
                         <NavLink
@@ -35,7 +34,7 @@ export default function SecretaryLayout() {
                 </nav>
                 <div className="secretary-footer">
                     <div className="secretary-footer-name">{user?.fullName}</div>
-                    <div className="secretary-footer-role">SECRETARY</div>
+                    <div className="secretary-footer-role">SECRETARY REGISTRAR</div>
                     <button className="secretary-footer-logout" onClick={handleLogout}>Logout</button>
                 </div>
             </aside>

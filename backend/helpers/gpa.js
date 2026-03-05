@@ -1,5 +1,4 @@
-// FILE: /backend/helpers/gpa.js
-// Pure functions for grade calculations — no DB calls.
+// Grades rating
 function gradeToLetter(numeric) {
     if (numeric >= 90) return 'A+';
     if (numeric >= 85) return 'A';

@@ -1,18 +1,17 @@
-// FILE: /frontend/src/pages/admin/AdminLayout.jsx
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 
 const NAV = [
-    { to: '/admin',                  label: '📊 Dashboard',       end: true  },
-    { to: '/admin/users',            label: '👤 Users',            end: false },
-    { to: '/admin/departments',      label: '🏢 Departments',      end: false },
-    { to: '/admin/programs',         label: '📚 Programs',         end: false },
-    { to: '/admin/academic-years',   label: '🗓 Academic Years',   end: false },
-    { to: '/admin/rooms',            label: '🚪 Rooms',            end: false },
-    { to: '/admin/complaints',       label: '💬 Complaints',       end: false },
+    { to: '/admin',                  label: 'Dashboard',       end: true  },
+    { to: '/admin/users',            label: ' Users',            end: false },
+    { to: '/admin/departments',      label: ' Departments',      end: false },
+    { to: '/admin/programs',         label: ' Programs',         end: false },
+    { to: '/admin/academic-years',   label: ' Academic Years',   end: false },
+    { to: '/admin/rooms',            label: ' Rooms',            end: false },
+    { to: '/admin/complaints',       label: ' Complaints',       end: false },
 ];
 
-const BRAND_COLOR = '#1a1a2e';  // dark navy — admin brand
+const BRAND_COLOR = '#1a1a2e';  
 
 export default function AdminLayout() {
     const { user, logout } = useAuth();
@@ -35,7 +34,7 @@ export default function AdminLayout() {
             }}>
                 {/* Brand */}
                 <div style={{ padding: '1.25rem 1.5rem', fontWeight: 700, fontSize: '1rem', color: '#fff', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
-                    🏫 VTC Manager
+                   Training center system
                 </div>
 
                 {/* Nav */}

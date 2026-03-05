@@ -1,4 +1,3 @@
-// models/Room.js
 class Room {
     constructor(db) {
         this.db = db;

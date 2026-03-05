@@ -1,5 +1,3 @@
-// FILE: /frontend/src/pages/secretary/AllStudents.jsx
-// New dedicated page for viewing all students across all programs
 import { useState, useEffect } from 'react';
 import { secretaryApi } from '../../api/secretaryApi';
 import '../../styles/Secretary.css';

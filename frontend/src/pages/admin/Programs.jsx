@@ -19,7 +19,7 @@ export default function Programs() {
     const [form, setForm] = useState({ name: '', code: '', departmentId: '', durationYears: 1, status: 'active' });
     const [error, setError] = useState('');
 
-    // ── Course viewer state ───────────────────────────────────────────────────
+    // Course viewer state 
     const [currentProgram, setCurrentProgram] = useState(null);
     const [courses, setCourses] = useState([]);
     const [coursesLoading, setCoursesLoading] = useState(false);
@@ -36,7 +36,7 @@ export default function Programs() {
             .finally(() => setCoursesLoading(false));
     }, [currentProgram]);
 
-    // ── Program form helpers ──────────────────────────────────────────────────
+    // Program form helpers 
     function openCreate() {
         setEditItem(null);
         setForm({ name: '', code: '', departmentId: '', durationYears: 1, status: 'active' });

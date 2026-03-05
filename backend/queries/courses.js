@@ -1,5 +1,3 @@
-// FILE: /backend/queries/courses.js
-
 function getAllCourses() {
     const sql = `
     SELECT c.id, c.name, c.code, c.credits, c.hours_per_week,

@@ -18,7 +18,7 @@ export default function ParentLayout() {
             <aside style={{
                 width: 230,
                 minWidth: 230,
-                background: '#7c3aed',  // purple — distinct from other roles
+                background: '#3e8bff',  
                 display: 'flex',
                 flexDirection: 'column',
                 minHeight: '100vh',
@@ -26,7 +26,7 @@ export default function ParentLayout() {
                 top: 0,
             }}>
                 <div style={{ padding: '1.25rem 1.5rem', fontWeight: 700, fontSize: '1rem', color: '#fff', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
-                    Parent Portal
+                    Parent Panel
                 </div>
                 <nav style={{ flex: 1, padding: '0.75rem 0' }}>
                     {NAV.map(n => (

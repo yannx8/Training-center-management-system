@@ -1,5 +1,3 @@
-// FILE: /backend/queries/students.js
-
 function createStudent(userId, matricule, dateOfBirth, programId) {
     const sql = `
         INSERT INTO students (user_id, matricule, date_of_birth, program_id)
