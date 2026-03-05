@@ -1,4 +1,3 @@
-// FILE: /frontend/src/api/parentApi.js
 import api from './axiosInstance';
 
 export const getMyStudents = () => api.get('/parent/students');

@@ -1,4 +1,3 @@
-// FILE: /frontend/src/api/hodApi.js
 import api from './axiosInstance';
 
 export const getDashboard = () => api.get('/hod/dashboard');

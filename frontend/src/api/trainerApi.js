@@ -1,4 +1,3 @@
-// FILE: /frontend/src/api/trainerApi.js
 import api from './axiosInstance';
 
 export const getCourses = () => api.get('/trainer/courses');

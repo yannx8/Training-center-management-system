@@ -1,4 +1,3 @@
-// FILE: /backend/routes/admin.js
 const router = require('express').Router();
 const ctrl = require('../controllers/adminController');
 const { authenticate } = require('../middleware/auth');
@@ -19,6 +18,10 @@ router.get('/programs', ...guard, ctrl.getProgramsHandler);
 router.post('/programs', ...guard, ctrl.createProgramHandler);
 router.put('/programs/:id', ...guard, ctrl.updateProgramHandler);
 router.delete('/programs/:id', ...guard, ctrl.deleteProgramHandler);
+
+
+router.get('/programs/:id/courses', ...guard, ctrl.getProgramCoursesHandler);
+
 router.get('/academic-years', ...guard, ctrl.getAcademicYearsHandler);
 router.post('/academic-years', ...guard, ctrl.createAcademicYearHandler);
 router.put('/academic-years/:id', ...guard, ctrl.updateAcademicYearHandler);

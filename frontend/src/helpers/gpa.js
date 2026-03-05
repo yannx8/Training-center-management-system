@@ -1,5 +1,3 @@
-// FILE: /frontend/src/helpers/gpa.js
-// Duplicated in frontend so trainer grade input can show live letter grade
 export function gradeToLetter(n) {
     if (n >= 90) return 'A+';
     if (n >= 85) return 'A';

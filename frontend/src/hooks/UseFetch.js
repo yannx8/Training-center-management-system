@@ -1,6 +1,3 @@
-// FILE: /frontend/src/hooks/useFetch.js
-// NOTE: This file must be named "useFetch.js" (lowercase u) for imports to work on Linux.
-
 import { useState, useEffect, useCallback } from 'react';
 
 export function useFetch(fetchFn, deps = []) {

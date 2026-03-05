@@ -24,7 +24,7 @@ export const deleteRoom = (id) => api.delete(`/admin/rooms/${id}`);
 export const getComplaints = () => api.get('/admin/complaints');
 export const updateComplaint = (id, data) => api.put(`/admin/complaints/${id}`, data);
 
-// FIX: Programs.jsx imports these but they were missing — causes a crash at build time
+
 export const getCourses = (programId) => api.get(`/admin/programs/${programId}/courses`);
 export const createCourse = (data) => api.post('/admin/courses', data);
 export const updateCourse = (id, data) => api.put(`/admin/courses/${id}`, data);

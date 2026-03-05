@@ -1,4 +1,3 @@
-// FILE: /backend/routes/trainer.js
 const router = require('express').Router();
 const ctrl = require('../controllers/trainerController');
 const { authenticate } = require('../middleware/auth');

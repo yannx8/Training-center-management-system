@@ -74,6 +74,33 @@ function deleteProgram(id) {
     return [`DELETE FROM programs WHERE id=$1 RETURNING id`, [id]];
 }
 
+// FIX: Returns all courses for a program across all its sessions/levels
+function getProgramCourses(programId) {
+    const sql = `
+        SELECT
+            c.id,
+            c.name,
+            c.code,
+            c.credits,
+            c.hours_per_week,
+            al.name  AS level_name,
+            sem.name AS semester_name,
+            STRING_AGG(DISTINCT u.full_name, ', ') AS trainer_name
+        FROM courses c
+        JOIN sessions     s   ON c.session_id       = s.id
+        JOIN programs     p   ON s.program_id        = p.id
+        LEFT JOIN academic_levels al  ON s.academic_level_id = al.id
+        LEFT JOIN semesters       sem ON s.semester_id       = sem.id
+        LEFT JOIN trainer_courses tc  ON tc.course_id        = c.id
+        LEFT JOIN trainers        tr  ON tc.trainer_id       = tr.id
+        LEFT JOIN users           u   ON tr.user_id          = u.id
+        WHERE p.id = $1
+        GROUP BY c.id, c.name, c.code, c.credits, c.hours_per_week, al.name, sem.name
+        ORDER BY al.name, sem.name, c.name
+    `;
+    return [sql, [programId]];
+}
+
 function getAllAcademicYears() {
     const sql = `
     SELECT ay.*, p.name AS program_name, c.name AS certification_name
@@ -148,6 +175,7 @@ module.exports = {
     createProgram,
     updateProgram,
     deleteProgram,
+    getProgramCourses,
     getAllAcademicYears,
     createAcademicYear,
     updateAcademicYear,

@@ -1,4 +1,3 @@
-// FILE: /backend/controllers/adminController.js
 const pool = require('../config/db');
 const bcrypt = require('bcryptjs');
 const {
@@ -10,7 +9,7 @@ const {
     checkEmailExists,
     getRoleByName,
     findUserById,
-    removeAllUserRoles, // FIX: was used but never imported -> ReferenceError crash
+    removeAllUserRoles,
 } = require('../queries/users');
 const {
     getDashboardStats,
@@ -22,6 +21,7 @@ const {
     createProgram,
     updateProgram,
     deleteProgram,
+    getProgramCourses,
     getAllAcademicYears,
     createAcademicYear,
     updateAcademicYear,
@@ -74,12 +74,9 @@ async function createUserHandler(req, res) {
     if (!roleResult.rows.length)
         return res.status(400).json({ success: false, message: 'Invalid role name', code: 'INVALID_ROLE' });
 
-    // HOD constraint: one HOD per department
     if (roleName === 'hod' && department) {
         const conflict = await pool.query(
-            `SELECT d.id FROM departments d
-             JOIN users u ON d.hod_user_id = u.id
-             WHERE d.name = $1 AND d.hod_user_id IS NOT NULL`, [department]
+            `SELECT d.id FROM departments d JOIN users u ON d.hod_user_id = u.id WHERE d.name = $1 AND d.hod_user_id IS NOT NULL`, [department]
         );
         if (conflict.rows.length)
             return res.status(409).json({ success: false, message: 'This department already has an HOD assigned', code: 'HOD_CONFLICT' });
@@ -96,12 +93,8 @@ async function createUserHandler(req, res) {
     if (roleName === 'trainer')
         await pool.query('INSERT INTO trainers (user_id) VALUES ($1) ON CONFLICT DO NOTHING', [newUser.rows[0].id]);
 
-    // If HOD, link them to the department record
-    if (roleName === 'hod' && department) {
-        await pool.query(
-            `UPDATE departments SET hod_user_id=$1, hod_name=$2 WHERE name=$3`, [newUser.rows[0].id, fullName, department]
-        );
-    }
+    if (roleName === 'hod' && department)
+        await pool.query(`UPDATE departments SET hod_user_id=$1, hod_name=$2 WHERE name=$3`, [newUser.rows[0].id, fullName, department]);
 
     return res.status(201).json({ success: true, data: {...newUser.rows[0], roleName } });
 }
@@ -118,22 +111,16 @@ async function updateUserHandler(req, res) {
         return res.status(404).json({ success: false, message: 'User not found', code: 'NOT_FOUND' });
 
     if (roles !== undefined) {
-        // HOD constraint check before reassigning roles
         if (roles.includes('hod') && department) {
             const conflict = await pool.query(
-                `SELECT d.id FROM departments d
-                 WHERE d.name=$1 AND d.hod_user_id IS NOT NULL AND d.hod_user_id != $2`, [department, id]
+                `SELECT d.id FROM departments d WHERE d.name=$1 AND d.hod_user_id IS NOT NULL AND d.hod_user_id != $2`, [department, id]
             );
             if (conflict.rows.length)
                 return res.status(409).json({ success: false, message: 'This department already has an HOD assigned', code: 'HOD_CONFLICT' });
         }
-
-        // Clear old HOD link if this user was previously an HOD
         await pool.query('UPDATE departments SET hod_user_id=NULL, hod_name=NULL WHERE hod_user_id=$1', [id]);
-
         const [removeSql, removeParams] = removeAllUserRoles(id);
         await pool.query(removeSql, removeParams);
-
         for (const roleName of roles) {
             const [roleSql, roleParams] = getRoleByName(roleName);
             const roleResult = await pool.query(roleSql, roleParams);
@@ -142,18 +129,14 @@ async function updateUserHandler(req, res) {
                 await pool.query(assignSql, assignParams);
             }
         }
-
-        // Re-link if new roles include HOD
         if (roles.includes('hod') && department)
             await pool.query('UPDATE departments SET hod_user_id=$1, hod_name=$2 WHERE name=$3', [id, fullName, department]);
     }
-
     return res.json({ success: true, data: result.rows[0] });
 }
 
 async function deleteUserHandler(req, res) {
     const { id } = req.params;
-    // Clear HOD link before deleting
     await pool.query('UPDATE departments SET hod_user_id=NULL, hod_name=NULL WHERE hod_user_id=$1', [id]);
     const [sql, params] = deleteUser(id);
     const result = await pool.query(sql, params);
@@ -172,16 +155,11 @@ async function createDepartmentHandler(req, res) {
     const { name, code, hodUserId, status } = req.body;
     if (!name || !code)
         return res.status(400).json({ success: false, message: 'name and code required', code: 'MISSING_FIELDS' });
-
-    // One-HOD-per-department: check no other department has the same HOD
     if (hodUserId) {
-        const conflict = await pool.query(
-            'SELECT id FROM departments WHERE hod_user_id=$1', [hodUserId]
-        );
+        const conflict = await pool.query('SELECT id FROM departments WHERE hod_user_id=$1', [hodUserId]);
         if (conflict.rows.length)
             return res.status(409).json({ success: false, message: 'This user is already HOD of another department', code: 'HOD_CONFLICT' });
     }
-
     let hodName = '';
     if (hodUserId) {
         const [userSql, userParams] = findUserById(hodUserId);
@@ -196,25 +174,30 @@ async function createDepartmentHandler(req, res) {
             }
         }
     }
-
-    const [sql, params] = createDepartment(name, code, hodName, hodUserId, status || 'active');
+    const [sql, params] = createDepartment(name, code, hodName, hodUserId || null, status || 'active');
     const result = await pool.query(sql, params);
+    if (hodUserId)
+        await pool.query('UPDATE departments SET hod_user_id=$1, hod_name=$2 WHERE id=$3', [hodUserId, hodName, result.rows[0].id]);
     return res.status(201).json({ success: true, data: result.rows[0] });
 }
 
 async function updateDepartmentHandler(req, res) {
     const { id } = req.params;
-    const { name, code, hodName, hodUserId, status } = req.body;
-
+    const { name, code, hodUserId, status } = req.body;
+    if (!name || !code)
+        return res.status(400).json({ success: false, message: 'name and code required', code: 'MISSING_FIELDS' });
     if (hodUserId) {
-        const conflict = await pool.query(
-            'SELECT id FROM departments WHERE hod_user_id=$1 AND id!=$2', [hodUserId, id]
-        );
+        const conflict = await pool.query('SELECT id FROM departments WHERE hod_user_id=$1 AND id!=$2', [hodUserId, id]);
         if (conflict.rows.length)
             return res.status(409).json({ success: false, message: 'This user is already HOD of another department', code: 'HOD_CONFLICT' });
     }
-
-    const [sql, params] = updateDepartment(id, name, code, hodName, hodUserId, status);
+    let hodName = '';
+    if (hodUserId) {
+        const [userSql, userParams] = findUserById(hodUserId);
+        const userResult = await pool.query(userSql, userParams);
+        if (userResult.rows.length) hodName = userResult.rows[0].full_name;
+    }
+    const [sql, params] = updateDepartment(id, name, code, hodName, hodUserId || null, status);
     const result = await pool.query(sql, params);
     if (!result.rows.length)
         return res.status(404).json({ success: false, message: 'Department not found', code: 'NOT_FOUND' });
@@ -232,6 +215,14 @@ async function deleteDepartmentHandler(req, res) {
 
 async function getProgramsHandler(req, res) {
     const [sql, params] = getAllPrograms();
+    const result = await pool.query(sql, params);
+    return res.json({ success: true, data: result.rows });
+}
+
+// FIX: NEW — returns all courses for a given program grouped by level/semester
+async function getProgramCoursesHandler(req, res) {
+    const { id } = req.params;
+    const [sql, params] = getProgramCourses(id);
     const result = await pool.query(sql, params);
     return res.json({ success: true, data: result.rows });
 }
@@ -352,6 +343,7 @@ module.exports = {
     updateDepartmentHandler,
     deleteDepartmentHandler,
     getProgramsHandler,
+    getProgramCoursesHandler,
     createProgramHandler,
     updateProgramHandler,
     deleteProgramHandler,

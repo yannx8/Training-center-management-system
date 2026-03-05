@@ -1,33 +1,32 @@
-// FILE: /backend/queries/timetables.js
-
-function createAcademicWeek(academicYearId, weekNumber, label, startDate, endDate, createdBy) {
+function createAcademicWeek(academicYearId, weekNumber, label, startDate, endDate, createdBy, departmentId) {
     const sql = `
-        INSERT INTO academic_weeks (academic_year_id, week_number, label, start_date, end_date, created_by, status)
-        VALUES ($1, $2, $3, $4, $5, $6, 'draft')
+        INSERT INTO academic_weeks
+            (academic_year_id, week_number, label, start_date, end_date, created_by, department_id, status)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, 'draft')
         RETURNING *
     `;
-    return [sql, [academicYearId, weekNumber, label, startDate, endDate, createdBy]];
+    return [sql, [academicYearId || null, weekNumber, label, startDate, endDate, createdBy, departmentId]];
 }
+
 
 function getAcademicWeeksByDepartment(departmentId) {
     const sql = `
-        SELECT aw.*, ay.name as year_name
+        SELECT aw.*, COALESCE(ay.name, '') AS year_name
         FROM academic_weeks aw
-        JOIN academic_years ay ON aw.academic_year_id = ay.id
-        JOIN programs p ON ay.program_id = p.id
-        WHERE p.department_id = $1
+        LEFT JOIN academic_years ay ON aw.academic_year_id = ay.id
+        WHERE aw.department_id = $1
         ORDER BY aw.start_date DESC
     `;
     return [sql, [departmentId]];
 }
 
+
 function getLatestAcademicWeek(departmentId) {
     const sql = `
-        SELECT aw.*, ay.name as year_name
+        SELECT aw.*, COALESCE(ay.name, '') AS year_name
         FROM academic_weeks aw
-        JOIN academic_years ay ON aw.academic_year_id = ay.id
-        JOIN programs p ON ay.program_id = p.id
-        WHERE p.department_id = $1
+        LEFT JOIN academic_years ay ON aw.academic_year_id = ay.id
+        WHERE aw.department_id = $1
         ORDER BY aw.created_at DESC
         LIMIT 1
     `;
@@ -39,9 +38,7 @@ function getActiveAcademicWeek(departmentId) {
 }
 
 function publishAcademicWeek(weekId) {
-    const sql = `
-        UPDATE academic_weeks SET status = 'published' WHERE id = $1 RETURNING *
-    `;
+    const sql = `UPDATE academic_weeks SET status = 'published' WHERE id = $1 RETURNING *`;
     return [sql, [weekId]];
 }
 
@@ -104,13 +101,13 @@ function getTimetableByProgram(timetableId, programId) {
             ts.day_of_week,
             ts.time_start,
             ts.time_end,
-            r.name  AS room_name,
-            r.code  AS room_code,
+            r.name      AS room_name,
+            r.code      AS room_code,
             u.full_name AS trainer_name,
-            c.name  AS course_name,
-            c.code  AS course_code,
-            p.name  AS program_name,
-            aw.label as week_label,
+            c.name      AS course_name,
+            c.code      AS course_code,
+            p.name      AS program_name,
+            aw.label    AS week_label,
             aw.start_date,
             aw.end_date
         FROM timetable_slots ts
@@ -121,18 +118,12 @@ function getTimetableByProgram(timetableId, programId) {
         LEFT JOIN sessions s  ON c.session_id  = s.id
         LEFT JOIN programs p  ON s.program_id  = p.id
         LEFT JOIN academic_weeks aw ON ts.academic_week_id = aw.id
-        WHERE ts.timetable_id = $1
-        AND p.id = $2
+        WHERE ts.timetable_id = $1 AND p.id = $2
         ORDER BY
             CASE ts.day_of_week
-                WHEN 'Monday'    THEN 1
-                WHEN 'Tuesday'   THEN 2
-                WHEN 'Wednesday' THEN 3
-                WHEN 'Thursday'  THEN 4
-                WHEN 'Friday'    THEN 5
-                WHEN 'Saturday'  THEN 6
-            END,
-            ts.time_start
+                WHEN 'Monday' THEN 1 WHEN 'Tuesday'   THEN 2 WHEN 'Wednesday' THEN 3
+                WHEN 'Thursday' THEN 4 WHEN 'Friday'  THEN 5 WHEN 'Saturday'  THEN 6
+            END, ts.time_start
     `;
     return [sql, [timetableId, programId]];
 }
@@ -142,12 +133,8 @@ function getTimetablesByDepartment(departmentId) {
         SELECT DISTINCT t.id, t.label, t.status, t.generated_at,
                aw.label as week_label, aw.start_date, aw.end_date, aw.id as week_id
         FROM timetables t
-        JOIN timetable_slots ts ON ts.timetable_id = t.id
-        JOIN courses c ON ts.course_id = c.id
-        JOIN sessions s ON c.session_id = s.id
-        JOIN programs p ON s.program_id = p.id
-        LEFT JOIN academic_weeks aw ON t.academic_week_id = aw.id
-        WHERE p.department_id = $1
+        JOIN academic_weeks aw ON t.academic_week_id = aw.id
+        WHERE aw.department_id = $1
         ORDER BY t.generated_at DESC
     `;
     return [sql, [departmentId]];
@@ -170,24 +157,19 @@ function getStudentTimetable(studentId, weekId) {
             aw.end_date,
             aw.id       AS week_id
         FROM students st
-        JOIN sessions      sess ON sess.program_id   = st.program_id
-        JOIN courses       c    ON c.session_id      = sess.id
-        JOIN timetable_slots ts ON ts.course_id      = c.id
-        JOIN academic_weeks aw ON ts.academic_week_id = aw.id AND aw.status = 'published'
-        LEFT JOIN rooms    r    ON ts.room_id        = r.id
-        LEFT JOIN trainers tr   ON ts.trainer_id     = tr.id
-        LEFT JOIN users    u    ON tr.user_id        = u.id
+        JOIN sessions        sess ON sess.program_id     = st.program_id
+        JOIN courses         c    ON c.session_id        = sess.id
+        JOIN timetable_slots ts   ON ts.course_id        = c.id
+        JOIN academic_weeks  aw   ON ts.academic_week_id = aw.id AND aw.status = 'published'
+        LEFT JOIN rooms      r    ON ts.room_id          = r.id
+        LEFT JOIN trainers   tr   ON ts.trainer_id       = tr.id
+        LEFT JOIN users      u    ON tr.user_id          = u.id
         WHERE st.id = $1 ${weekFilter}
         ORDER BY
             CASE ts.day_of_week
-                WHEN 'Monday'    THEN 1
-                WHEN 'Tuesday'   THEN 2
-                WHEN 'Wednesday' THEN 3
-                WHEN 'Thursday'  THEN 4
-                WHEN 'Friday'    THEN 5
-                WHEN 'Saturday'  THEN 6
-            END,
-            ts.time_start
+                WHEN 'Monday' THEN 1 WHEN 'Tuesday'   THEN 2 WHEN 'Wednesday' THEN 3
+                WHEN 'Thursday' THEN 4 WHEN 'Friday'  THEN 5 WHEN 'Saturday'  THEN 6
+            END, ts.time_start
     `;
     return [sql, params];
 }
@@ -206,19 +188,19 @@ function getTrainerTimetable(trainerId, weekId) {
             c.name AS course_name,
             c.code AS course_code,
             c.id   AS course_id,
-            aw.label AS week_label,
+            aw.label    AS week_label,
             aw.start_date,
             aw.end_date,
             aw.id AS week_id
         FROM timetable_slots ts
         JOIN academic_weeks aw ON ts.academic_week_id = aw.id AND aw.status = 'published'
-        LEFT JOIN rooms r   ON ts.room_id      = r.id
-        LEFT JOIN courses c ON ts.course_id    = c.id
+        LEFT JOIN rooms   r ON ts.room_id   = r.id
+        LEFT JOIN courses c ON ts.course_id = c.id
         WHERE ts.trainer_id = $1 ${weekFilter}
         ORDER BY
             CASE ts.day_of_week
-                WHEN 'Monday' THEN 1 WHEN 'Tuesday' THEN 2 WHEN 'Wednesday' THEN 3
-                WHEN 'Thursday' THEN 4 WHEN 'Friday' THEN 5 WHEN 'Saturday' THEN 6
+                WHEN 'Monday' THEN 1 WHEN 'Tuesday'   THEN 2 WHEN 'Wednesday' THEN 3
+                WHEN 'Thursday' THEN 4 WHEN 'Friday'  THEN 5 WHEN 'Saturday'  THEN 6
             END, ts.time_start
     `;
     return [sql, params];

@@ -1,4 +1,3 @@
-// FILE: /frontend/src/api/studentApi.js
 import api from './axiosInstance';
 
 export const getProfile = () => api.get('/student/profile');

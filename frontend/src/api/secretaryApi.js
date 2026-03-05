@@ -1,4 +1,3 @@
-// FILE: /frontend/src/api/secretaryApi.js
 import axiosInstance from './axiosInstance';
 
 export const secretaryApi = {

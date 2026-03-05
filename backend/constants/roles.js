@@ -1,4 +1,3 @@
-// FILE: /backend/constants/roles.js
 const USER_ROLES = {
     ADMIN: 'admin',
     SECRETARY: 'secretary',

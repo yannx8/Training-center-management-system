@@ -1,4 +1,3 @@
-// FILE: /frontend/src/api/authApi.js
 import api from './axiosInstance';
 
 export const loginApi = (email, password) =>

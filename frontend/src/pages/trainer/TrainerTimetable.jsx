@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Fragment } from 'react';
 import { getTimetable, getTrainerWeeks } from '../../api/trainerApi';
 import '../../styles/Trainer.css';
 
@@ -11,6 +11,9 @@ const TIME_SLOTS = [
     { start: '17:00', end: '19:00', label: '17h–19h' },
     { start: '19:00', end: '21:00', label: '19h–21h' },
 ];
+
+const formatDate = (d) =>
+    d ? new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
 
 export default function TrainerTimetable() {
     const [weeks, setWeeks] = useState([]);
@@ -31,10 +34,7 @@ export default function TrainerTimetable() {
     }, []);
 
     useEffect(() => {
-        if (!selectedWeekId) {
-            setTimetable([]);
-            return;
-        }
+        if (!selectedWeekId) { setTimetable([]); return; }
         let cancelled = false;
         setLoading(true);
         getTimetable({ weekId: selectedWeekId })
@@ -47,12 +47,12 @@ export default function TrainerTimetable() {
     const currentWeek = weeks.find(w => String(w.id) === selectedWeekId);
 
     function sessionAt(day, slotStart) {
-        return timetable.find(s => s.day_of_week === day && s.time_start === slotStart);
+        return timetable.find(s => {
+            // time_start from DB may be 'HH:MM:SS' or 'HH:MM' — normalise to HH:MM
+            const t = (s.time_start || '').substring(0, 5);
+            return s.day_of_week === day && t === slotStart;
+        });
     }
-
-    const formatDate = (d) => d
-        ? new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
-        : '—';
 
     return (
         <div>
@@ -72,12 +72,16 @@ export default function TrainerTimetable() {
                 <div className="trainer-msg">Loading weeks…</div>
             ) : !weeks.length ? (
                 <div className="trainer-card">
-                    <p className="trainer-msg">No published timetables available for you yet.</p>
+                    <p className="trainer-msg">
+                        No published timetables available yet. Wait for your HOD to generate and publish one.
+                    </p>
                 </div>
             ) : (
                 <div className="trainer-card">
                     <div className="trainer-row" style={{ marginBottom: '1rem' }}>
-                        <label style={{ fontSize: '0.875rem', fontWeight: 600, color: '#1a1a2e' }}>Select Week:</label>
+                        <label style={{ fontSize: '0.875rem', fontWeight: 600, color: '#1a1a2e' }}>
+                            Select Week:
+                        </label>
                         <select
                             className="trainer-select"
                             value={selectedWeekId}
@@ -85,28 +89,25 @@ export default function TrainerTimetable() {
                         >
                             {weeks.map(w => (
                                 <option key={w.id} value={w.id}>
-                                    {w.label} — From: {formatDate(w.start_date)} To: {formatDate(w.end_date)}
+                                    {w.label} — {formatDate(w.start_date)} → {formatDate(w.end_date)}
                                 </option>
                             ))}
                         </select>
                     </div>
 
-                    {currentWeek && (
-                        <p style={{ fontSize: '0.82rem', color: '#555', marginBottom: '0.75rem', fontWeight: 500 }}>
-                            {currentWeek.label} · From: {formatDate(currentWeek.start_date)} To: {formatDate(currentWeek.end_date)}
-                        </p>
-                    )}
-
                     {loading ? (
                         <div className="trainer-msg">Loading timetable…</div>
                     ) : (
                         <div className="trainer-timetable-grid">
+                            {/* Header row */}
                             <div className="trainer-timetable-header" style={{ fontSize: '0.68rem' }}>Time</div>
                             {DAYS.map(day => (
                                 <div key={day} className="trainer-timetable-header">{day}</div>
                             ))}
+
+                            {/* Time slot rows */}
                             {TIME_SLOTS.map(slot => (
-                                <React.Fragment key={slot.start}>
+                                <Fragment key={slot.start}>
                                     <div className="trainer-timetable-time">{slot.label}</div>
                                     {DAYS.map(day => {
                                         const session = sessionAt(day, slot.start);
@@ -117,16 +118,34 @@ export default function TrainerTimetable() {
                                             >
                                                 {session ? (
                                                     <>
-                                                        <div style={{ fontWeight: 600, fontSize: '0.75rem' }}>{session.course_name}</div>
-                                                        <div style={{ fontSize: '0.65rem', color: '#555', marginTop: 2 }}>{session.room_name}</div>
+                                                        <div style={{ fontWeight: 700, fontSize: '0.75rem', color: '#1a1a2e' }}>
+                                                            {session.course_name}
+                                                        </div>
+                                                        {session.room_name && (
+                                                            <div style={{
+                                                                fontSize: '0.65rem',
+                                                                color: '#3b5be8',
+                                                                marginTop: 2,
+                                                                fontWeight: 600,
+                                                            }}>
+                                                                📍 {session.room_name}
+                                                            </div>
+                                                        )}
+                                                        {session.course_code && (
+                                                            <div style={{ fontSize: '0.6rem', color: '#888', marginTop: 1 }}>
+                                                                {session.course_code}
+                                                            </div>
+                                                        )}
                                                     </>
                                                 ) : (
-                                                    <span style={{ color: '#bbb', fontStyle: 'italic', fontSize: '0.72rem' }}>Free</span>
+                                                    <span style={{ color: '#bbb', fontStyle: 'italic', fontSize: '0.72rem' }}>
+                                                        Free
+                                                    </span>
                                                 )}
                                             </div>
                                         );
                                     })}
-                                </React.Fragment>
+                                </Fragment>
                             ))}
                         </div>
                     )}
