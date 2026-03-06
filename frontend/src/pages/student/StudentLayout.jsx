@@ -1,4 +1,3 @@
-// FILE: /frontend/src/pages/student/StudentLayout.jsx
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import '../../styles/Student.css';
@@ -22,7 +21,7 @@ export default function StudentLayout() {
     return (
         <div className="student-shell">
             <aside className="student-sidebar">
-                <div className="student-brand">Student Portal</div>
+                <div className="student-brand">Student Panel</div>
                 <nav className="student-nav">
                     {NAV.map(n => (
                         <NavLink

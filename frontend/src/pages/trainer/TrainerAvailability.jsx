@@ -1,4 +1,3 @@
-// FILE: /frontend/src/pages/trainer/TrainerAvailability.jsx
 import { useState, useEffect } from 'react';
 import {
     getAvailability,
@@ -175,7 +174,7 @@ export default function TrainerAvailability() {
                     }}>
                         <div>
                             <div style={{ fontSize: '0.72rem', fontWeight: 700, color: '#3b5be8', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 2 }}>
-                                Current Week (Auto-filled by HOD)
+                                Current Week 
                             </div>
                             <div style={{ fontWeight: 700, color: '#1a1a2e', fontSize: '0.95rem' }}>{activeWeek.label}</div>
                         </div>

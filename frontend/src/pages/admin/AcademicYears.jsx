@@ -31,7 +31,7 @@ export default function AcademicYears() {
     { key: 'is_active', label: 'Status', render: r => <Badge label={r.is_active ? 'active' : 'inactive'} /> },
     { key: 'actions', label: 'Actions', render: r => (
       <div className="action-btns">
-        <button className="btn-icon" onClick={() => openEdit(r)}>✏️</button>
+        <button className="um-btn-edit" onClick={() => openEdit(r)}>Edit</button>
       </div>
     )},
   ];

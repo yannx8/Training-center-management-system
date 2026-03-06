@@ -34,7 +34,7 @@ export default function SecretaryLayout() {
                 </nav>
                 <div className="secretary-footer">
                     <div className="secretary-footer-name">{user?.fullName}</div>
-                    <div className="secretary-footer-role">SECRETARY REGISTRAR</div>
+                    <div className="secretary-footer-role">SECRETARY </div>
                     <button className="secretary-footer-logout" onClick={handleLogout}>Logout</button>
                 </div>
             </aside>

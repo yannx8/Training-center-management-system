@@ -1,4 +1,3 @@
-// FILE: /frontend/src/pages/student/StudentTimetable.jsx
 import { useState, useEffect } from 'react';
 import { getTimetable, getStudentWeeks } from '../../api/studentApi';
 import '../../styles/Student.css';
@@ -73,7 +72,7 @@ export default function StudentTimetable() {
                 <div className="student-msg">Loading weeks…</div>
             ) : !weeks.length ? (
                 <div className="student-card">
-                    <p className="student-msg">No published timetable available for you yet. Check back after your HOD publishes one.</p>
+                    <p className="student-msg">No published timetable available for you yet.</p>
                 </div>
             ) : (
                 <div className="student-card">

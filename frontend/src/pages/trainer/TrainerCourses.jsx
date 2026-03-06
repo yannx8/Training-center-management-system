@@ -10,8 +10,8 @@ export default function TrainerCourses() {
     const [students, setStudents] = useState([]);
     const [studentsLoading, setStudentsLoading] = useState(false);
     const [gradeInputs, setGradeInputs] = useState({});
-    const [savingId, setSavingId] = useState(null); // per-student save state
-    const [messages, setMessages] = useState({});   // per-student message
+    const [savingId, setSavingId] = useState(null); 
+    const [messages, setMessages] = useState({});   
     const [globalMsg, setGlobalMsg] = useState('');
     const [globalErr, setGlobalErr] = useState('');
 
@@ -94,7 +94,7 @@ export default function TrainerCourses() {
         }
     }
 
-    // ── Course list view ──────────────────────────────────────────────────────
+    // Course list view 
     if (!selectedCourse) {
         return (
             <div>
@@ -110,7 +110,7 @@ export default function TrainerCourses() {
                 ) : !courses?.length ? (
                     <div className="trainer-card">
                         <div style={{ textAlign: 'center', padding: '3rem 0', color: '#94a3b8' }}>
-                            <div style={{ fontSize: '3rem', marginBottom: '0.75rem' }}>📚</div>
+                            <div style={{ fontSize: '3rem', marginBottom: '0.75rem' }}></div>
                             <div style={{ fontWeight: 600 }}>No courses assigned to you yet</div>
                         </div>
                     </div>

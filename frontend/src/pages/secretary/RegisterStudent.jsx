@@ -63,7 +63,7 @@ export default function RegisterStudent() {
 
         setSubmitting(true);
         try {
-            // Note: matricule field is intentionally excluded — backend auto-generates it
+            // Note: matricule field is excluded (managed in backend)
             const payload = {
                 student: {
                     firstName: form.student.firstName,
@@ -94,7 +94,7 @@ export default function RegisterStudent() {
             <div className="sec-page-head">
                 <div>
                     <h1 className="sec-title">Register New Student</h1>
-                    <p className="sec-sub">Fill in the form below — matricule is auto-generated</p>
+                    <p className="sec-sub">Fill in the enrolment form below </p>
                 </div>
             </div>
 
@@ -111,13 +111,7 @@ export default function RegisterStudent() {
 
             {/* Student Info */}
             <div className="sec-card">
-                <p className="sec-card-title">👤 Student Information</p>
-
-                {/* Matricule display-only notice */}
-                <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 6, padding: '0.7rem 1rem', marginBottom: '1rem', fontSize: '0.82rem', color: '#1e40af' }}>
-                    🔢 Matricule will be <strong>auto-generated</strong> by the system upon registration.
-                </div>
-
+                <p className="sec-card-title"> Student Information</p>
                 <div className="sec-form-grid">
                     <div className="sec-field">
                         <label className="sec-label">First Name *</label>
@@ -136,7 +130,7 @@ export default function RegisterStudent() {
                         <input className="sec-input" value={form.student.phone} onChange={e => setStudent('phone', e.target.value)} placeholder="Phone number" />
                     </div>
                     <div className="sec-field" style={{ gridColumn: '1 / -1' }}>
-                        <label className="sec-label">Email (optional — auto-generated if blank)</label>
+                        <label className="sec-label">Email (optional) if blank</label>
                         <input className="sec-input" type="email" value={form.student.email} onChange={e => setStudent('email', e.target.value)} placeholder="student@email.com" />
                     </div>
                 </div>
@@ -144,7 +138,7 @@ export default function RegisterStudent() {
 
             {/* Enrollment */}
             <div className="sec-card">
-                <p className="sec-card-title">📚 Enrollment</p>
+                <p className="sec-card-title"> Enrollment</p>
                 <div className="sec-form-grid">
                     <div className="sec-field">
                         <label className="sec-label">Enrollment Type *</label>
@@ -157,7 +151,7 @@ export default function RegisterStudent() {
                         <div className="sec-field">
                             <label className="sec-label">Program *</label>
                             <select className="sec-select" value={form.programId} onChange={e => setForm(f => ({ ...f, programId: e.target.value }))}>
-                                <option value="">— Select program —</option>
+                                <option value="">--Select program--</option>
                                 {programs.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                             </select>
                         </div>
@@ -165,7 +159,7 @@ export default function RegisterStudent() {
                         <div className="sec-field">
                             <label className="sec-label">Certification *</label>
                             <select className="sec-select" value={form.certificationId} onChange={e => setForm(f => ({ ...f, certificationId: e.target.value }))}>
-                                <option value="">— Select certification —</option>
+                                <option value="">--Select certification --</option>
                                 {certifications.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                             </select>
                         </div>
@@ -176,7 +170,7 @@ export default function RegisterStudent() {
             {/* Parents */}
             <div className="sec-card">
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                    <p className="sec-card-title" style={{ margin: 0 }}>👨‍👩‍👧 Parent / Guardian</p>
+                    <p className="sec-card-title" style={{ margin: 0 }}>Parent / Tutor</p>
                     <button className="sec-btn-sm" onClick={addParent}>+ Add Parent</button>
                 </div>
 

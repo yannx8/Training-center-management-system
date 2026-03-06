@@ -1,4 +1,3 @@
-// FILE: /frontend/src/pages/parent/ParentDashboard.jsx
 import { useState, useEffect } from 'react';
 import { getMyStudents, getStudentGrades, getStudentTimetable } from '../../api/parentApi';
 
@@ -17,7 +16,7 @@ function normT(t) {
     return t.length === 5 ? t + ':00' : t;
 }
 
-const C = '#7c3aed';
+const C = '#3a96ed';
 
 export default function ParentDashboard() {
     const [students, setStudents] = useState([]);

@@ -1,8 +1,7 @@
-// FILE: /frontend/src/pages/parent/ParentComplaint.jsx
 import { useState, useEffect } from 'react';
 import { getMyStudents, submitComplaint } from '../../api/parentApi';
 
-const C = '#7c3aed';
+const C = '#3a8eed';
 
 export default function ParentComplaint() {
     const [students, setStudents] = useState([]);
@@ -32,7 +31,7 @@ export default function ParentComplaint() {
         setSubmitting(true);
         try {
             await submitComplaint({ ...form, studentId: parseInt(form.studentId) });
-            setMessage('✅ Complaint submitted successfully! The administration will review it shortly.');
+            setMessage(' Complaint submitted successfully! The administration will review it shortly.');
             setForm(f => ({ ...f, subject: '', description: '', priority: 'medium' }));
             setTimeout(() => setMessage(''), 8000);
         } catch (err) {

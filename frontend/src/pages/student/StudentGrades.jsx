@@ -1,4 +1,3 @@
-// FILE: /frontend/src/pages/student/StudentGrades.jsx
 import { useState, useEffect } from 'react';
 import { getGrades, getGradePeriods } from '../../api/studentApi';
 import '../../styles/Student.css';
@@ -49,7 +48,7 @@ export default function StudentGrades() {
             <div className="student-page-head">
                 <div>
                     <h1 className="student-title">My Grades</h1>
-                    <p className="student-sub">Select a school period to filter your grades</p>
+                    <p className="student-sub">Select a school period </p>
                 </div>
             </div>
 
@@ -99,7 +98,7 @@ export default function StudentGrades() {
                         <table className="student-table">
                             <thead>
                                 <tr>
-                                    <th>Course / Certification</th>
+                                    <th>Course </th>
                                     <th>School Period</th>
                                     <th>Trainer</th>
                                     <th>Grade</th>

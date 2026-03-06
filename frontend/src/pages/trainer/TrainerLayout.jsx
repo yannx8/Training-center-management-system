@@ -24,7 +24,7 @@ export default function TrainerLayout() {
     return (
         <div className="trainer-shell">
             <aside className="trainer-sidebar">
-                <div className="trainer-brand">VTC Manager</div>
+                <div className="trainer-brand">TRainer Dashboard</div>
                 <nav className="trainer-nav">
                     {NAV.map(n => (
                         <NavLink

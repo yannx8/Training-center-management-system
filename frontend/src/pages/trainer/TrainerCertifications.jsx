@@ -96,14 +96,14 @@ export default function TrainerCertifications() {
         }
     }
 
-    // ── Certification list view ───────────────────────────────────────────────
+    // Certification list view
     if (!selectedCert) {
         return (
             <div>
                 <div className="trainer-page-head">
                     <div>
                         <h1 className="trainer-title">Certifications</h1>
-                        <p className="trainer-sub">Select a certification to view enrolled students and enter grades</p>
+                        <p className="trainer-sub">Select a certification to  enter grades</p>
                     </div>
                 </div>
                 {loading ? (
@@ -111,7 +111,7 @@ export default function TrainerCertifications() {
                 ) : !certs?.length ? (
                     <div className="trainer-card">
                         <div style={{ textAlign: 'center', padding: '3rem 0', color: '#94a3b8' }}>
-                            <div style={{ fontSize: '3rem', marginBottom: '0.75rem' }}>🏆</div>
+                            <div style={{ fontSize: '3rem', marginBottom: '0.75rem' }}></div>
                             <div style={{ fontWeight: 600 }}>No certifications assigned to you yet</div>
                         </div>
                     </div>
@@ -152,7 +152,7 @@ export default function TrainerCertifications() {
         );
     }
 
-    // ── Student detail view ───────────────────────────────────────────────────
+    // Student detail view 
     return (
         <div>
             <div className="trainer-page-head">
@@ -185,7 +185,7 @@ export default function TrainerCertifications() {
                 ) : students.length === 0 ? (
                     <div style={{ textAlign: 'center', padding: '3rem 0', color: '#94a3b8' }}>
                         <div style={{ fontSize: '3rem', marginBottom: '0.75rem' }}>👤</div>
-                        <div style={{ fontWeight: 600 }}>No students enrolled in this certification</div>
+                        <div style={{ fontWeight: 600 }}>No students enrolled to this certification</div>
                     </div>
                 ) : (
                     <>

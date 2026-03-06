@@ -128,7 +128,7 @@ export default function TrainerTimetable() {
                                                                 marginTop: 2,
                                                                 fontWeight: 600,
                                                             }}>
-                                                                📍 {session.room_name}
+                                                                 {session.room_name}
                                                             </div>
                                                         )}
                                                         {session.course_code && (

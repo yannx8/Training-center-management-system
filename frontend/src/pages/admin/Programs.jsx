@@ -72,7 +72,7 @@ export default function Programs() {
         if (currentProgram?.id === id) setCurrentProgram(null);
     }
 
-    // ── Table columns ─────────────────────────────────────────────────────────
+    // Table columns 
     const programColumns = [
         { key: 'name', label: 'Program Name' },
         { key: 'code', label: 'Code' },
@@ -158,7 +158,7 @@ export default function Programs() {
                     {!coursesLoading && !coursesError && courses.length === 0 && (
                         <div className="table-card">
                             <div style={{ textAlign: 'center', padding: '2rem', color: '#94a3b8' }}>
-                                <div style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>📚</div>
+                                <div style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}></div>
                                 <div style={{ fontWeight: 600 }}>No courses found for this program</div>
                                 <div style={{ fontSize: '0.82rem', marginTop: 6 }}>
                                     Courses are created via sessions. Make sure academic years and sessions are set up first.

@@ -1,4 +1,3 @@
-// FILE: /frontend/src/pages/student/StudentComplaints.jsx
 import { useState, useEffect } from 'react';
 import {
     getAppealCourses,
@@ -15,7 +14,7 @@ export default function StudentComplaints() {
     const [courses, setCourses] = useState([]);
     const [coursesLoading, setCoursesLoading] = useState(true);
     const [selectedCourseId, setSelectedCourseId] = useState('');
-    const [courseDetails, setCourseDetails] = useState(null); // { trainer_name, school_period_label }
+    const [courseDetails, setCourseDetails] = useState(null);
     const [subject, setSubject] = useState('');
     const [description, setDescription] = useState('');
     const [submitError, setSubmitError] = useState('');
@@ -45,7 +44,7 @@ export default function StudentComplaints() {
         }
     }, [activeTab]);
 
-    // Auto-fill trainer + school period when course selected
+    
     useEffect(() => {
         if (!selectedCourseId) { setCourseDetails(null); return; }
         getCourseDetails(selectedCourseId)
@@ -114,7 +113,7 @@ export default function StudentComplaints() {
                 <div className="student-card">
                     <h3 className="student-card-title">Submit Grade Appeal</h3>
                     <p style={{ fontSize: '0.85rem', color: '#666', marginBottom: '1.25rem' }}>
-                        You can submit one appeal per course. Select the course — the trainer and school period will be filled automatically.
+                        You can submit only one appeal per course. Select the course the complaint is about.
                     </p>
 
                     {submitError && (
@@ -158,7 +157,7 @@ export default function StudentComplaints() {
                         {/* Auto-filled: Trainer name */}
                         <div>
                             <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: '#333', marginBottom: '0.4rem' }}>
-                                Trainer (auto-filled)
+                                Trainer in charge
                             </label>
                             <input
                                 className="student-input"
@@ -172,7 +171,7 @@ export default function StudentComplaints() {
                         {/* Auto-filled: School period */}
                         <div>
                             <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: '#333', marginBottom: '0.4rem' }}>
-                                School Period (auto-filled)
+                                School Period 
                             </label>
                             <input
                                 className="student-input"

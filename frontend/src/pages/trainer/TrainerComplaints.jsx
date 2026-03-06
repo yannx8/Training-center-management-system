@@ -7,7 +7,7 @@ import '../../styles/Trainer.css';
 
 export default function TrainerComplaints() {
     const { data, loading, refetch } = useFetch(getMarkComplaints);
-    const [selectedCourse, setSelectedCourse] = useState(null); // { id, name } | null
+    const [selectedCourse, setSelectedCourse] = useState(null); 
     const [editItem, setEditItem] = useState(null);
     const [response, setResponse] = useState('');
     const [submitting, setSubmitting] = useState(false);
@@ -27,7 +27,7 @@ export default function TrainerComplaints() {
         }
     }
 
-    // ── Build course groups from flat complaint list ───────────────────────
+    // Build course groups from flat complaint list 
     const courseGroups = (() => {
         if (!data?.length) return [];
         const map = {};
@@ -49,7 +49,7 @@ export default function TrainerComplaints() {
 
     const pendingTotal = (data || []).filter(c => c.status === 'pending').length;
 
-    // ── Course list view ──────────────────────────────────────────────────
+    // Course list view 
     if (!selectedCourse) {
         return (
             <div>
@@ -67,9 +67,9 @@ export default function TrainerComplaints() {
                 ) : !courseGroups.length ? (
                     <div className="trainer-card">
                         <div style={{ textAlign: 'center', padding: '3rem 0', color: '#94a3b8' }}>
-                            <div style={{ fontSize: '3rem', marginBottom: '0.75rem' }}>💬</div>
+                            <div style={{ fontSize: '3rem', marginBottom: '0.75rem' }}></div>
                             <div style={{ fontWeight: 600 }}>No complaints received yet</div>
-                            <div style={{ fontSize: '0.85rem', marginTop: 6 }}>When students raise mark complaints on your courses, they will appear here.</div>
+                            <div style={{ fontSize: '0.85rem', marginTop: 6 }}>Students mark complaints will appear here.</div>
                         </div>
                     </div>
                 ) : (
@@ -98,7 +98,7 @@ export default function TrainerComplaints() {
                                     >
                                         <div>
                                             <div style={{ fontWeight: 700, color: '#1a1a2e', fontSize: '0.95rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                                {group.isCert ? '🏆' : '📚'} {group.label}
+                                                {group.isCert ? '' : ''} {group.label}
                                             </div>
                                             <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: 4 }}>
                                                 {group.complaints.length} complaint{group.complaints.length !== 1 ? 's' : ''} total
