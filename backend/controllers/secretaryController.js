@@ -2,6 +2,7 @@
 const pool = require('../config/db');
 const bcrypt = require('bcryptjs');
 const { createUser, checkEmailExists, assignRoleToUser, getRoleByName } = require('../queries/users');
+const { getAnnouncementsForParent } = require('../queries/timetables');
 const {
     createStudent,
     createParent,
@@ -17,6 +18,14 @@ const {
 const { getAllPrograms } = require('../queries/admin');
 const { getAllCertifications } = require('../queries/certifications');
 const { generateMatricule } = require('../helpers/generateMatricule');
+// GET /parent/announcements
+async function getAnnouncementsHandler(req, res) {
+    const { getAnnouncementsForParent } = require('../queries/timetables');
+    const pool = require('../config/db');
+    const [sql, params] = getAnnouncementsForParent(req.user.userId);
+    const result = await pool.query(sql, params);
+    return res.json({ success: true, data: result.rows });
+}
 
 // Atomic transaction: createStudent + createParent(s) + linkParentToStudent(s) + enrollStudent
 // Why transaction: if parent creation fails, we must not leave a dangling student record
@@ -178,4 +187,4 @@ async function getCertificationsForSecretary(req, res) {
     return res.json({ success: true, data: result.rows });
 }
 
-module.exports = { registerStudent, getStudentsHandler, getParentsHandler, getProgramsForSecretary, getCertificationsForSecretary };
+module.exports = { registerStudent, getStudentsHandler, getParentsHandler, getProgramsForSecretary, getCertificationsForSecretary, getAnnouncementsHandler };

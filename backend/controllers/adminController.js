@@ -332,6 +332,109 @@ async function updateComplaintHandler(req, res) {
     return res.json({ success: true, data: result.rows[0] });
 }
 
+// ─── CERTIFICATIONS ──────────────────────────────────────────────────────────
+
+async function getCertificationsHandler(req, res) {
+    const { getAllCertifications } = require('../queries/admin');
+    const [sql, params] = getAllCertifications();
+    const result = await pool.query(sql, params);
+    return res.json({ success: true, data: result.rows });
+}
+
+async function createCertificationHandler(req, res) {
+    const { createCertification } = require('../queries/admin');
+    const { name, code, description, durationHours, status } = req.body;
+    if (!name || !code)
+        return res.status(400).json({ success: false, message: 'name and code required', code: 'MISSING_FIELDS' });
+    const [sql, params] = createCertification(name, code, description, durationHours, status);
+    const result = await pool.query(sql, params);
+    return res.status(201).json({ success: true, data: result.rows[0] });
+}
+
+async function updateCertificationHandler(req, res) {
+    const { updateCertification } = require('../queries/admin');
+    const { id } = req.params;
+    const { name, code, description, durationHours, status } = req.body;
+    const [sql, params] = updateCertification(id, name, code, description, durationHours, status);
+    const result = await pool.query(sql, params);
+    if (!result.rows.length)
+        return res.status(404).json({ success: false, message: 'Not found', code: 'NOT_FOUND' });
+    return res.json({ success: true, data: result.rows[0] });
+}
+
+async function deleteCertificationHandler(req, res) {
+    const { deleteCertification } = require('../queries/admin');
+    const [sql, params] = deleteCertification(req.params.id);
+    await pool.query(sql, params);
+    return res.json({ success: true, data: { deleted: true } });
+}
+
+// ─── PROGRAM COURSES & SESSIONS ───────────────────────────────────────────────
+
+async function getProgramCoursesHandler(req, res) {
+    const { getProgramCourses } = require('../queries/admin');
+    const [sql, params] = getProgramCourses(req.params.id);
+    const result = await pool.query(sql, params);
+    return res.json({ success: true, data: result.rows });
+}
+
+async function getProgramSessionsHandler(req, res) {
+    const { getProgramSessions } = require('../queries/admin');
+    const [sql, params] = getProgramSessions(req.params.id);
+    const result = await pool.query(sql, params);
+    return res.json({ success: true, data: result.rows });
+}
+
+async function createCourseHandler(req, res) {
+    const { createCourse } = require('../queries/admin');
+    const { name, code, credits, hoursPerWeek, sessionId } = req.body;
+    if (!name || !code || !sessionId)
+        return res.status(400).json({ success: false, message: 'name, code, sessionId required', code: 'MISSING_FIELDS' });
+    const [sql, params] = createCourse(name, code, credits, hoursPerWeek, sessionId);
+    const result = await pool.query(sql, params);
+    return res.status(201).json({ success: true, data: result.rows[0] });
+}
+
+async function updateCourseHandler(req, res) {
+    const { updateCourse } = require('../queries/admin');
+    const { id } = req.params;
+    const { name, code, credits, hoursPerWeek } = req.body;
+    const [sql, params] = updateCourse(id, name, code, credits, hoursPerWeek);
+    const result = await pool.query(sql, params);
+    if (!result.rows.length)
+        return res.status(404).json({ success: false, message: 'Course not found', code: 'NOT_FOUND' });
+    return res.json({ success: true, data: result.rows[0] });
+}
+
+async function deleteCourseHandler(req, res) {
+    const { deleteCourse } = require('../queries/admin');
+    const [sql, params] = deleteCourse(req.params.id);
+    await pool.query(sql, params);
+    return res.json({ success: true, data: { deleted: true } });
+}
+
+async function assignTrainerHandler(req, res) {
+    const { assignTrainerToCourse, removeTrainerFromCourse } = require('../queries/admin');
+    const { id: courseId } = req.params;
+    const { trainerId } = req.body;
+
+    // Remove any existing trainer assignment first
+    const [rmSql, rmParams] = removeTrainerFromCourse(courseId);
+    await pool.query(rmSql, rmParams);
+
+    if (trainerId) {
+        const [sql, params] = assignTrainerToCourse(courseId, trainerId);
+        await pool.query(sql, params);
+    }
+    return res.json({ success: true, data: { assigned: !!trainerId } });
+}
+
+async function getTrainersByDeptHandler(req, res) {
+    const { getTrainersByDepartment } = require('../queries/admin');
+    const [sql, params] = getTrainersByDepartment(req.params.id);
+    const result = await pool.query(sql, params);
+    return res.json({ success: true, data: result.rows });
+}
 module.exports = {
     getDashboard,
     getUsers,
@@ -356,4 +459,15 @@ module.exports = {
     deleteRoomHandler,
     getComplaintsHandler,
     updateComplaintHandler,
+    getCertificationsHandler,
+    createCertificationHandler,
+    updateCertificationHandler,
+    deleteCertificationHandler,
+    getProgramCoursesHandler,
+    getProgramSessionsHandler,
+    createCourseHandler,
+    updateCourseHandler,
+    deleteCourseHandler,
+    assignTrainerHandler,
+    getTrainersByDeptHandler,
 };

@@ -24,8 +24,17 @@ export const deleteRoom = (id) => api.delete(`/admin/rooms/${id}`);
 export const getComplaints = () => api.get('/admin/complaints');
 export const updateComplaint = (id, data) => api.put(`/admin/complaints/${id}`, data);
 
-
-export const getCourses = (programId) => api.get(`/admin/programs/${programId}/courses`);
+// Program courses (by semester)
+export const getProgramCourses = (programId) => api.get(`/admin/programs/${programId}/courses`);
+export const getProgramSessions = (programId) => api.get(`/admin/programs/${programId}/sessions`);
 export const createCourse = (data) => api.post('/admin/courses', data);
 export const updateCourse = (id, data) => api.put(`/admin/courses/${id}`, data);
 export const deleteCourse = (id) => api.delete(`/admin/courses/${id}`);
+export const assignTrainer = (courseId, data) => api.put(`/admin/courses/${courseId}/trainer`, data);
+export const getTrainersByDept = (deptId) => api.get(`/admin/departments/${deptId}/trainers`);
+
+// Certifications
+export const getCertifications = () => api.get('/admin/certifications');
+export const createCertification = (data) => api.post('/admin/certifications', data);
+export const updateCertification = (id, data) => api.put(`/admin/certifications/${id}`, data);
+export const deleteCertification = (id) => api.delete(`/admin/certifications/${id}`);
