@@ -1,416 +1,167 @@
-/* FILE: /frontend/src/styles/Student.css */
+/* frontend/src/styles/Student.css */
 
-
-/* Student panel — teal/emerald accent, lighter feel than HOD dark navy */
-
-.student-shell {
-    display: flex;
-    min-height: 100vh;
-    background: #f0f2f5;
-}
-
-.student-sidebar {
-    width: 230px;
-    min-width: 230px;
-    background: #0f4c3a;
-    /* deep emerald — distinct from HOD's navy */
-    display: flex;
-    flex-direction: column;
-    min-height: 100vh;
-    position: sticky;
-    top: 0;
-}
-
-.student-brand {
-    padding: 1.25rem 1.5rem;
-    font-size: 1rem;
-    font-weight: 700;
-    color: #fff;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-    letter-spacing: 0.01em;
-}
-
-.student-nav {
-    flex: 1;
-    padding: 0.75rem 0;
-}
-
-.student-link {
-    display: block;
-    padding: 0.7rem 1.5rem;
-    color: rgba(255, 255, 255, 0.65);
-    font-size: 0.875rem;
-    font-weight: 500;
-    text-decoration: none;
-    transition: background 0.15s;
-}
-
-.student-link:hover {
-    color: #fff;
-    background: rgba(255, 255, 255, 0.07);
-}
-
-.student-link-active {
-    color: #fff !important;
-    background: rgba(255, 255, 255, 0.12);
-    border-left: 3px solid #34d399;
-    /* emerald accent */
-    padding-left: calc(1.5rem - 3px);
-}
-
-.student-footer {
-    border-top: 1px solid rgba(255, 255, 255, 0.1);
-    padding: 1rem 1.5rem;
-}
-
-.student-footer-name {
-    font-size: 0.82rem;
-    font-weight: 600;
-    color: #fff;
-}
-
-.student-footer-role {
-    font-size: 0.75rem;
-    color: rgba(255, 255, 255, 0.45);
-    margin-bottom: 0.6rem;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-}
-
-.student-footer-logout {
-    width: 100%;
-    padding: 0.4rem;
-    background: transparent;
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    color: rgba(255, 255, 255, 0.6);
-    border-radius: 4px;
-    font-size: 0.8rem;
-    cursor: pointer;
-}
-
-.student-footer-logout:hover {
-    color: #fff;
-    border-color: rgba(255, 255, 255, 0.5);
-}
-
-
-/* ── Main ── */
-
-.student-main {
-    flex: 1;
-    padding: 2rem;
-    overflow-y: auto;
-}
-
-
-/* ── Page head ── */
+.student-page {}
 
 .student-page-head {
     display: flex;
-    justify-content: space-between;
     align-items: flex-start;
-    margin-bottom: 1.25rem;
+    justify-content: space-between;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
     gap: 1rem;
 }
 
 .student-title {
-    font-size: 1.4rem;
+    font-size: 1.35rem;
     font-weight: 700;
-    color: #0f4c3a;
-    margin: 0 0 0.2rem;
+    color: #1e3a5f;
+    margin: 0;
 }
 
 .student-sub {
     font-size: 0.85rem;
-    color: #555;
-    margin: 0;
+    color: #64748b;
+    margin: 0.2rem 0 0;
+    max-width: 520px;
+    line-height: 1.5;
 }
-
-
-/* ── Cards ── */
 
 .student-card {
     background: #fff;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    padding: 1.25rem;
-    margin-bottom: 1rem;
-}
-
-.student-card-title {
-    font-size: 0.9rem;
-    font-weight: 600;
-    color: #0f4c3a;
-    margin: 0 0 0.9rem;
-}
-
-
-/* ── Stats ── */
-
-.student-stats {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-    gap: 1rem;
+    border-radius: 10px;
+    border: 1px solid #e2e8f0;
+    padding: 1.5rem;
     margin-bottom: 1.25rem;
 }
 
-.student-stat {
-    background: #fff;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    padding: 1rem;
+.student-info-banner {
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
+    border-radius: 8px;
+    padding: 1rem 1.25rem;
+    margin-bottom: 1.25rem;
+}
+
+.student-loading {
+    padding: 2rem;
+    color: #94a3b8;
+    font-size: 0.9rem;
+}
+
+.student-msg {
+    color: #94a3b8;
+    font-size: 0.85rem;
+    padding: 1rem 0;
+}
+
+.student-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 3rem 0;
+    gap: 0.75rem;
+    color: #94a3b8;
+    font-size: 0.9rem;
+    font-weight: 500;
     text-align: center;
 }
 
-.student-stat-value {
-    font-size: 1.6rem;
-    font-weight: 700;
-    color: #0f4c3a;
+.student-notice {
+    border-radius: 6px;
+    padding: 0.65rem 1rem;
+    font-size: 0.85rem;
+    font-weight: 500;
+    margin-bottom: 1.25rem;
+    border: 1px solid;
 }
 
-.student-stat-label {
+.student-notice--ok {
+    background: #f0fdf4;
+    border-color: #86efac;
+    color: #166534;
+}
+
+.student-notice--err {
+    background: #fef2f2;
+    border-color: #fca5a5;
+    color: #991b1b;
+}
+
+.student-label {
+    display: block;
     font-size: 0.78rem;
-    color: #666;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    margin-top: 0.2rem;
+    color: #64748b;
+    font-weight: 500;
+    margin-bottom: 4px;
 }
 
+.student-input {
+    width: 100%;
+    padding: 0.45rem 0.75rem;
+    border: 1.5px solid #cbd5e1;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    color: #1e3a5f;
+    background: #fff;
+    box-sizing: border-box;
+    transition: border-color 0.15s;
+}
 
-/* ── Buttons ── */
+.student-input:focus {
+    outline: none;
+    border-color: #1d4ed8;
+}
 
-.student-btn {
-    padding: 0.5rem 1.1rem;
-    background: #0f4c3a;
+.student-btn-primary {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.45rem 1.1rem;
+    background: #1d4ed8;
     color: #fff;
     border: none;
-    border-radius: 4px;
-    font-size: 0.875rem;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.student-btn-primary:hover {
+    background: #1e40af;
+}
+
+.student-btn-active {
+    display: inline-flex;
+    align-items: flex-start;
+    gap: 0.4rem;
+    padding: 0.45rem 1rem;
+    background: #1d4ed8;
+    color: #fff;
+    border: 1.5px solid #1d4ed8;
+    border-radius: 6px;
+    font-size: 0.82rem;
     font-weight: 600;
     cursor: pointer;
 }
 
-.student-btn:hover {
-    background: #1a6b53;
+.student-btn-outline {
+    display: inline-flex;
+    align-items: flex-start;
+    gap: 0.4rem;
+    padding: 0.45rem 1rem;
+    background: transparent;
+    color: #334155;
+    border: 1.5px solid #cbd5e1;
+    border-radius: 6px;
+    font-size: 0.82rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
 }
 
-.student-btn:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-}
-
-
-/* ── Select/Input ── */
-
-.student-select,
-.student-input {
-    padding: 0.45rem 0.75rem;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    font-size: 0.875rem;
-    background: #fff;
-}
-
-.student-select:focus,
-.student-input:focus {
-    outline: none;
-    border-color: #0f4c3a;
-}
-
-
-/* ── Tables ── */
-
-.student-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 0.875rem;
-}
-
-.student-table th {
-    text-align: left;
-    padding: 0.55rem 0.75rem;
-    font-size: 0.73rem;
-    font-weight: 700;
-    color: #555;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    border-bottom: 2px solid #e5e5e5;
-    background: #fafafa;
-}
-
-.student-table td {
-    padding: 0.6rem 0.75rem;
-    border-bottom: 1px solid #efefef;
-    color: #222;
-}
-
-.student-table tbody tr:last-child td {
-    border-bottom: none;
-}
-
-.student-table tbody tr:hover td {
-    background: #f6faf8;
-}
-
-
-/* ── Notices ── */
-
-.student-notice {
-    padding: 0.75rem 1rem;
-    border-radius: 4px;
-    border: 1px solid;
-    font-size: 0.875rem;
-    margin-bottom: 1rem;
-}
-
-.student-msg {
-    color: #888;
-    font-size: 0.9rem;
-    text-align: center;
-    padding: 1.5rem 0;
-}
-
-.student-err {
-    color: #dc2626;
-}
-
-
-/* ── Timetable Grid ── */
-
-.student-timetable-grid {
-    display: grid;
-    grid-template-columns: 80px repeat(6, 1fr);
-    border: 1px solid #e5e5e5;
-    border-radius: 4px;
-    overflow: hidden;
-    font-size: 0.78rem;
-}
-
-.student-timetable-header {
-    background: #0f4c3a;
-    color: #fff;
-    padding: 0.55rem 0.4rem;
-    text-align: center;
-    font-weight: 700;
-    font-size: 0.72rem;
-    letter-spacing: 0.03em;
-    border-right: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.student-timetable-time {
-    background: #f8f9fa;
-    padding: 0.55rem 0.4rem;
-    text-align: center;
-    font-weight: 600;
-    font-size: 0.7rem;
-    border-right: 1px solid #e5e5e5;
-    border-top: 1px solid #e5e5e5;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: #444;
-}
-
-.student-timetable-cell {
-    padding: 0.4rem 0.5rem;
-    min-height: 58px;
-    border-right: 1px solid #e5e5e5;
-    border-top: 1px solid #e5e5e5;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-}
-
-.student-timetable-cell.has-class {
-    background: #ecfdf5;
-    border-left: 3px solid #34d399;
-}
-
-.student-timetable-cell.free-slot {
-    background: #fafafa;
-}
-
-
-/* ── Row for forms ── */
-
-.student-row {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.75rem;
-    align-items: center;
-}
-
-
-/* ── Textarea ── */
-
-.student-textarea {
-    width: 100%;
-    padding: 0.55rem 0.75rem;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    font-size: 0.875rem;
-    font-family: inherit;
-    resize: vertical;
-}
-
-.student-textarea:focus {
-    outline: none;
-    border-color: #0f4c3a;
-}
-
-
-/* ── Grade badge ── */
-
-.grade-pill {
-    display: inline-block;
-    padding: 0.18rem 0.55rem;
-    border-radius: 999px;
-    font-size: 0.78rem;
-    font-weight: 700;
-}
-
-.grade-pill.A {
-    background: #dcfce7;
-    color: #166534;
-}
-
-.grade-pill.B {
-    background: #dbeafe;
-    color: #1e40af;
-}
-
-.grade-pill.C {
-    background: #fef9c3;
-    color: #92400e;
-}
-
-.grade-pill.D {
-    background: #ffedd5;
-    color: #9a3412;
-}
-
-.grade-pill.F {
-    background: #fee2e2;
-    color: #991b1b;
-}
-
-
-/* ── Status badges ── */
-
-.status-badge {
-    display: inline-block;
-    padding: 0.18rem 0.55rem;
-    border-radius: 999px;
-    font-size: 0.75rem;
-    font-weight: 600;
-}
-
-.status-pending {
-    background: #fef9c3;
-    color: #92400e;
-}
-
-.status-reviewed {
-    background: #dcfce7;
-    color: #166534;
+.student-btn-outline:hover {
+    border-color: #1d4ed8;
+    color: #1d4ed8;
+    background: #eff6ff;
 }

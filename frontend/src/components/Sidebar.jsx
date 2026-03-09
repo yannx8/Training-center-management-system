@@ -1,5 +1,7 @@
+// frontend/src/components/Sidebar.jsx
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { Icon } from './Icons';
 import '../styles/Sidebar.css';
 
 export default function Sidebar({ title, items }) {
@@ -23,9 +25,12 @@ export default function Sidebar({ title, items }) {
           <NavLink
             key={item.to}
             to={item.to}
+            end={item.end}
             className={({ isActive }) => `sidebar-link${isActive ? ' active' : ''}`}
           >
-            <span className="sidebar-icon">{item.icon}</span>
+            <span className="sidebar-icon">
+              <Icon name={item.icon} size={17} />
+            </span>
             {item.label}
           </NavLink>
         ))}
@@ -38,7 +43,10 @@ export default function Sidebar({ title, items }) {
             <div className="sidebar-role">{user?.roleName}</div>
           </div>
         </div>
-        <button className="sidebar-logout" onClick={handleLogout}>Logout</button>
+        <button className="sidebar-logout" onClick={handleLogout}>
+          <Icon name="logout" size={15} />
+          <span>Logout</span>
+        </button>
       </div>
     </aside>
   );

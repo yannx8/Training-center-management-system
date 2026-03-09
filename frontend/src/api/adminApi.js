@@ -30,6 +30,7 @@ export const getProgramSessions = (programId) => api.get(`/admin/programs/${prog
 export const createCourse = (data) => api.post('/admin/courses', data);
 export const updateCourse = (id, data) => api.put(`/admin/courses/${id}`, data);
 export const deleteCourse = (id) => api.delete(`/admin/courses/${id}`);
+export const getCourses = (id) => api.get(`/admin/courses/${id}`);
 export const assignTrainer = (courseId, data) => api.put(`/admin/courses/${courseId}/trainer`, data);
 export const getTrainersByDept = (deptId) => api.get(`/admin/departments/${deptId}/trainers`);
 

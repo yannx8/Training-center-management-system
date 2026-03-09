@@ -1,11 +1,11 @@
-// FILE: /frontend/src/pages/student/StudentCertAvailability.jsx
+// frontend/src/pages/student/StudentCertAvailability.jsx
 import { useState, useEffect } from 'react';
 import {
-    getCertAvailabilityWeeks,
-    getCertAvailability,
-    submitCertAvailability,
-    deleteCertAvailability,
+    getCertAvailabilityWeeks, getCertAvailability,
+    submitCertAvailability, deleteCertAvailability,
 } from '../../api/studentApi';
+import { Icon } from '../../components/Icons';
+import '../../styles/Student.css';
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
@@ -41,6 +41,10 @@ export default function StudentCertAvailability() {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        if (form.timeStart >= form.timeEnd) {
+            flash('End time must be after start time', true);
+            return;
+        }
         try {
             await submitCertAvailability({
                 academicWeekId: selectedCertWeek.week_id,
@@ -48,7 +52,7 @@ export default function StudentCertAvailability() {
                 timeStart: form.timeStart,
                 timeEnd: form.timeEnd,
             });
-            flash('Availability submitted');
+            flash('Availability submitted successfully');
             getCertAvailability({ weekId: selectedCertWeek.week_id })
                 .then(r => setAvailability(r.data.data || []));
         } catch (err) {
@@ -61,132 +65,162 @@ export default function StudentCertAvailability() {
             await deleteCertAvailability(id);
             setAvailability(prev => prev.filter(s => s.id !== id));
         } catch (err) {
-            flash(err.response?.data?.message || 'Failed to delete', true);
+            flash(err.response?.data?.message || 'Failed to remove', true);
         }
     };
 
-    if (loading) return <div className="p-6 text-gray-500">Loading…</div>;
-
-    if (certWeeks.length === 0) {
-        return (
-            <div className="p-6 max-w-2xl mx-auto text-center py-16">
-                <div className="text-5xl mb-4">📋</div>
-                <h2 className="text-xl font-semibold text-gray-700 mb-2">No availability to submit</h2>
-                <p className="text-gray-500">
-                    You'll see a week here once your certification trainer publishes a scheduling week.
-                </p>
-            </div>
-        );
-    }
+    if (loading) return <div className="student-loading">Loading...</div>;
 
     return (
-        <div className="p-6 max-w-3xl mx-auto">
-            <h1 className="text-2xl font-bold mb-1">Certification Availability</h1>
-            <p className="text-gray-500 text-sm mb-6">
-                Submit your available time slots for the latest scheduling week. Your trainer will use these to generate the timetable.
-            </p>
+        <div className="student-page">
+            <div className="student-page-head">
+                <div>
+                    <h1 className="student-title">Certification Availability</h1>
+                    <p className="student-sub">
+                        Submit your available time slots for the latest published scheduling week.
+                        Your trainer will use these to generate the session timetable.
+                    </p>
+                </div>
+            </div>
 
             {msg && (
-                <div className={`mb-4 px-4 py-3 rounded text-sm font-medium ${msg.isErr ? 'bg-red-50 text-red-700 border border-red-200' : 'bg-green-50 text-green-700 border border-green-200'}`}>
+                <div className={`student-notice ${msg.isErr ? 'student-notice--err' : 'student-notice--ok'}`}>
                     {msg.text}
                 </div>
             )}
 
-            {certWeeks.length > 1 && (
-                <div className="mb-6">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Your Certifications</label>
-                    <div className="flex flex-wrap gap-2">
-                        {certWeeks.map(cw => (
-                            <button
-                                key={cw.certification_id}
-                                onClick={() => setSelectedCertWeek(cw)}
-                                className={`px-4 py-2 rounded-lg text-sm font-medium border transition ${
-                                    selectedCertWeek?.certification_id === cw.certification_id
-                                        ? 'bg-indigo-600 text-white border-indigo-600'
-                                        : 'bg-white text-gray-700 border-gray-300 hover:border-indigo-400'
-                                }`}
-                            >
-                                {cw.certification_name}
-                            </button>
-                        ))}
+            {certWeeks.length === 0 ? (
+                <div className="student-card">
+                    <div className="student-empty">
+                        <Icon name="availability" size={40} color="#94a3b8" />
+                        <p style={{ fontWeight: 600, color: '#475569', margin: '0.5rem 0 0.25rem' }}>
+                            No availability window open
+                        </p>
+                        <p style={{ fontSize: '0.85rem', color: '#94a3b8', margin: 0 }}>
+                            A week will appear here once your certification trainer publishes a scheduling week.
+                        </p>
                     </div>
                 </div>
-            )}
-
-            {selectedCertWeek && (
+            ) : (
                 <>
-                    <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-4 mb-6">
-                        <p className="text-sm font-semibold text-indigo-800">{selectedCertWeek.certification_name}</p>
-                        <p className="text-sm text-indigo-700 mt-0.5">
-                            <span className="font-medium">{selectedCertWeek.week_label}</span>
-                            {' — '}
-                            {new Date(selectedCertWeek.start_date).toLocaleDateString()} to{' '}
-                            {new Date(selectedCertWeek.end_date).toLocaleDateString()}
-                        </p>
-                        <p className="text-xs text-indigo-500 mt-1">Latest published week</p>
-                    </div>
-
-                    <form onSubmit={handleSubmit} className="bg-white border rounded-xl p-4 mb-6">
-                        <h3 className="font-medium text-gray-800 mb-3">Add Available Slot</h3>
-                        <div className="grid grid-cols-3 gap-3">
-                            <div>
-                                <label className="text-xs text-gray-600 mb-1 block">Day</label>
-                                <select value={form.dayOfWeek}
-                                    onChange={e => setForm(f => ({ ...f, dayOfWeek: e.target.value }))}
-                                    className="w-full border rounded-lg px-3 py-2 text-sm">
-                                    {DAYS.map(d => <option key={d}>{d}</option>)}
-                                </select>
-                            </div>
-                            <div>
-                                <label className="text-xs text-gray-600 mb-1 block">From</label>
-                                <input type="time" value={form.timeStart}
-                                    onChange={e => setForm(f => ({ ...f, timeStart: e.target.value }))}
-                                    className="w-full border rounded-lg px-3 py-2 text-sm" required />
-                            </div>
-                            <div>
-                                <label className="text-xs text-gray-600 mb-1 block">To</label>
-                                <input type="time" value={form.timeEnd}
-                                    onChange={e => setForm(f => ({ ...f, timeEnd: e.target.value }))}
-                                    className="w-full border rounded-lg px-3 py-2 text-sm" required />
+                    {/* Cert selector (if enrolled in multiple) */}
+                    {certWeeks.length > 1 && (
+                        <div className="student-card" style={{ marginBottom: '1.25rem' }}>
+                            <p style={{ fontSize: '0.82rem', fontWeight: 600, color: '#64748b', marginBottom: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                Your Certifications
+                            </p>
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                                {certWeeks.map(cw => (
+                                    <button
+                                        key={cw.certification_id}
+                                        onClick={() => setSelectedCertWeek(cw)}
+                                        className={selectedCertWeek?.certification_id === cw.certification_id ? 'student-btn-active' : 'student-btn-outline'}
+                                    >
+                                        {cw.certification_name}
+                                    </button>
+                                ))}
                             </div>
                         </div>
-                        <button type="submit"
-                            className="mt-3 px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm hover:bg-indigo-700">
-                            Add Slot
-                        </button>
-                    </form>
+                    )}
 
-                    <div>
-                        <h3 className="font-medium text-gray-800 mb-3">
-                            Submitted Slots <span className="text-sm font-normal text-gray-500">({availability.length})</span>
-                        </h3>
-                        {availability.length === 0 ? (
-                            <p className="text-gray-500 text-sm">No slots yet.</p>
-                        ) : (
-                            <div className="space-y-2">
-                                {DAYS.map(day => {
-                                    const daySlots = availability.filter(s => s.day_of_week === day);
-                                    if (!daySlots.length) return null;
-                                    return (
-                                        <div key={day} className="border rounded-xl overflow-hidden">
-                                            <div className="bg-gray-50 px-4 py-2 text-sm font-medium text-gray-700 border-b">{day}</div>
-                                            <div className="divide-y">
-                                                {daySlots.map(s => (
-                                                    <div key={s.id} className="px-4 py-2 flex items-center justify-between">
-                                                        <span className="text-sm">{s.time_start?.slice(0,5)} – {s.time_end?.slice(0,5)}</span>
-                                                        <button onClick={() => handleDelete(s.id)}
-                                                            className="text-red-500 hover:text-red-700 text-xs px-2 py-1 rounded hover:bg-red-50">
-                                                            Remove
-                                                        </button>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    );
-                                })}
+                    {selectedCertWeek && (
+                        <>
+                            {/* Week info banner */}
+                            <div className="student-info-banner">
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                                    <Icon name="calendar" size={16} color="#1e40af" />
+                                    <span style={{ fontWeight: 700, color: '#1e40af', fontSize: '0.9rem' }}>
+                                        {selectedCertWeek.certification_name}
+                                    </span>
+                                </div>
+                                <p style={{ margin: 0, color: '#1d4ed8', fontSize: '0.85rem' }}>
+                                    <strong>{selectedCertWeek.week_label}</strong>
+                                    {' — '}
+                                    {new Date(selectedCertWeek.start_date).toLocaleDateString()} to{' '}
+                                    {new Date(selectedCertWeek.end_date).toLocaleDateString()}
+                                </p>
+                                <p style={{ margin: '4px 0 0', color: '#3b82f6', fontSize: '0.78rem' }}>
+                                    Latest published week — this is the only week open for availability submission
+                                </p>
                             </div>
-                        )}
-                    </div>
+
+                            {/* Submission form */}
+                            <div className="student-card" style={{ marginBottom: '1.25rem' }}>
+                                <h3 style={{ fontWeight: 700, fontSize: '0.9rem', color: '#1a1a2e', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: 8 }}>
+                                    <Icon name="availability" size={16} color="#3b5be8" />
+                                    Add Available Time Slot
+                                </h3>
+                                <form onSubmit={handleSubmit}>
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.75rem', marginBottom: '0.75rem' }}>
+                                        <div>
+                                            <label className="student-label">Day</label>
+                                            <select value={form.dayOfWeek}
+                                                onChange={e => setForm(f => ({ ...f, dayOfWeek: e.target.value }))}
+                                                className="student-input">
+                                                {DAYS.map(d => <option key={d}>{d}</option>)}
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label className="student-label">From</label>
+                                            <input type="time" value={form.timeStart}
+                                                onChange={e => setForm(f => ({ ...f, timeStart: e.target.value }))}
+                                                className="student-input" required />
+                                        </div>
+                                        <div>
+                                            <label className="student-label">To</label>
+                                            <input type="time" value={form.timeEnd}
+                                                onChange={e => setForm(f => ({ ...f, timeEnd: e.target.value }))}
+                                                className="student-input" required />
+                                        </div>
+                                    </div>
+                                    <button type="submit" className="student-btn-primary">
+                                        Add Slot
+                                    </button>
+                                </form>
+                            </div>
+
+                            {/* Submitted slots */}
+                            <div className="student-card">
+                                <h3 style={{ fontWeight: 700, fontSize: '0.9rem', color: '#1a1a2e', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: 8 }}>
+                                    <Icon name="schedule" size={16} color="#3b5be8" />
+                                    Submitted Slots
+                                    <span style={{ fontWeight: 400, fontSize: '0.82rem', color: '#94a3b8' }}>({availability.length})</span>
+                                </h3>
+                                {availability.length === 0 ? (
+                                    <p style={{ color: '#94a3b8', fontSize: '0.85rem', margin: 0 }}>No slots submitted yet for this week.</p>
+                                ) : (
+                                    <div style={{ display: 'grid', gap: '0.5rem' }}>
+                                        {DAYS.map(day => {
+                                            const daySlots = availability.filter(s => s.day_of_week === day);
+                                            if (!daySlots.length) return null;
+                                            return (
+                                                <div key={day} style={{ border: '1px solid #e2e8f0', borderRadius: 8, overflow: 'hidden' }}>
+                                                    <div style={{ background: '#f8fafc', padding: '0.5rem 1rem', fontWeight: 600, fontSize: '0.82rem', color: '#475569', borderBottom: '1px solid #e2e8f0' }}>
+                                                        {day}
+                                                    </div>
+                                                    <div>
+                                                        {daySlots.map(s => (
+                                                            <div key={s.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.6rem 1rem', borderBottom: '1px solid #f1f5f9' }}>
+                                                                <span style={{ fontSize: '0.88rem', color: '#334155' }}>
+                                                                    {s.time_start?.slice(0, 5)} – {s.time_end?.slice(0, 5)}
+                                                                </span>
+                                                                <button
+                                                                    onClick={() => handleDelete(s.id)}
+                                                                    style={{ background: 'none', border: '1px solid #fca5a5', color: '#dc2626', borderRadius: 5, padding: '3px 10px', cursor: 'pointer', fontSize: '0.75rem' }}
+                                                                >
+                                                                    Remove
+                                                                </button>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                            </div>
+                        </>
+                    )}
                 </>
             )}
         </div>

@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import {
-    getAppealCourses,
     getCourseDetails,
     submitMarkComplaint,
     getMarkComplaintsHistory,

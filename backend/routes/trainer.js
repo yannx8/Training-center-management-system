@@ -1,55 +1,71 @@
-// FILE: /backend/routes/trainer.js
-const express = require('express');
-const router = express.Router();
-const { authenticate, authorize } = require('../middleware/auth');
-const ctrl = require('../controllers/trainerController');
+// backend/routes/trainer.js
+const router = require('express').Router();
+const { authenticate } = require('../middleware/auth');
+const { requireRole } = require('../middleware/roleCheck');
+const {
+    getTrainer,
+    getCoursesHandler,
+    getCertificationsHandler,
+    getCourseStudentsHandler,
+    getCertificationStudentsHandler,
+    submitGradesHandler,
+    getMarkComplaintsHandler,
+    reviewMarkComplaintHandler,
+    getActiveWeekForAvailability,
+    getPublishedWeeksForTrainer,
+    submitAvailabilityHandler,
+    getAvailabilityHandler,
+    deleteAvailabilityHandler,
+    getCertWeeksHandler,
+    createCertWeekHandler,
+    publishCertWeekHandler,
+    getLatestPublishedCertWeekHandler,
+    generateCertTimetable,
+    getCertTimetablesHandler,
+    getCertTimetableSlotsHandler,
+    getTimetableHandler,
+    getTrainerWeeksHandler,
+    getAnnouncementsHandler,
+} = require('../controllers/trainerController');
 
-// All routes require trainer authentication
-router.use(authenticate, authorize('trainer'), ctrl.getTrainer);
+const auth = [authenticate, requireRole('trainer'), getTrainer];
 
-// ── Courses & Certifications ──────────────────────────────────────────────────
-router.get('/courses', ctrl.getCoursesHandler);
-router.get('/certifications', ctrl.getCertificationsHandler);
-router.get('/courses/:courseId/students', ctrl.getCourseStudentsHandler);
-router.get('/certifications/:certId/students', ctrl.getCertificationStudentsHandler);
+// Courses & certifications
+router.get('/courses', ...auth, getCoursesHandler);
+router.get('/certifications', ...auth, getCertificationsHandler);
+router.get('/courses/:courseId/students', ...auth, getCourseStudentsHandler);
+router.get('/certifications/:certId/students', ...auth, getCertificationStudentsHandler);
 
-// ── Grades ────────────────────────────────────────────────────────────────────
-router.post('/grades', ctrl.submitGradesHandler);
+// Grades
+router.post('/grades', ...auth, submitGradesHandler);
 
-// ── Mark Complaints ───────────────────────────────────────────────────────────
-router.get('/complaints', ctrl.getMarkComplaintsHandler);
-router.put('/complaints/:id/review', ctrl.reviewMarkComplaintHandler);
+// Complaints
+router.get('/complaints', ...auth, getMarkComplaintsHandler);
+router.put('/complaints/:id/review', ...auth, reviewMarkComplaintHandler);
 
-// ── Trainer Availability (for HOD-published academic weeks) ───────────────────
-router.get('/availability/published-weeks', ctrl.getPublishedWeeksForTrainer);
-router.get('/availability/active-week', ctrl.getActiveWeekForAvailability);
-router.get('/availability', ctrl.getAvailabilityHandler);
-router.post('/availability', ctrl.submitAvailabilityHandler);
-router.delete('/availability/:id', ctrl.deleteAvailabilityHandler);
+// Trainer availability (for HOD-published academic weeks)
+router.get('/availability/active-week', ...auth, getActiveWeekForAvailability);
+router.get('/availability/published-weeks', ...auth, getPublishedWeeksForTrainer);
+router.get('/availability', ...auth, getAvailabilityHandler);
+router.post('/availability', ...auth, submitAvailabilityHandler);
+router.delete('/availability/:id', ...auth, deleteAvailabilityHandler);
 
-// ── Cert Week Management (trainer creates/publishes for their cert) ────────────
-// List all weeks for a certification
-router.get('/cert-weeks/:certId', ctrl.getCertWeeksHandler);
-// Get latest published cert week (for submitting availability)
-router.get('/cert-weeks/:certId/latest-published', ctrl.getLatestPublishedCertWeekHandler);
-// Create a new cert week
-router.post('/cert-weeks', ctrl.createCertWeekHandler);
-// Publish a cert week so students can submit availability
-router.put('/cert-weeks/:weekId/publish', ctrl.publishCertWeekHandler);
+// Certification week management (trainer creates + publishes)
+router.get('/cert-weeks/:certId', ...auth, getCertWeeksHandler);
+router.get('/cert-weeks/:certId/latest-published', ...auth, getLatestPublishedCertWeekHandler);
+router.post('/cert-weeks', ...auth, createCertWeekHandler);
+router.put('/cert-weeks/:weekId/publish', ...auth, publishCertWeekHandler);
 
-// ── Cert Timetable (trainer generates + views read-only) ──────────────────────
-// Generate cert timetable for a cert+week
-router.post('/cert-timetable/generate', ctrl.generateCertTimetable);
-// List all generated cert timetables (summary)
-router.get('/cert-timetables', ctrl.getCertTimetablesHandler);
-// Detail slots for a cert+week
-router.get('/cert-timetable/:certId/:weekId', ctrl.getCertTimetableSlotsHandler);
+// Certification timetable (trainer generates + views read-only)
+router.post('/cert-timetable/generate', ...auth, generateCertTimetable);
+router.get('/cert-timetables', ...auth, getCertTimetablesHandler);
+router.get('/cert-timetable/:certId/:weekId', ...auth, getCertTimetableSlotsHandler);
 
-// ── Combined Timetable (academic + cert, read-only) ────────────────────────────
-router.get('/timetable/weeks', ctrl.getTrainerWeeksHandler);
-router.get('/timetable', ctrl.getTimetableHandler);
+// Combined timetable (read-only)
+router.get('/timetable', ...auth, getTimetableHandler);
+router.get('/timetable/weeks', ...auth, getTrainerWeeksHandler);
 
-// ── Announcements ─────────────────────────────────────────────────────────────
-router.get('/announcements', ctrl.getAnnouncementsHandler);
+// Announcements
+router.get('/announcements', ...auth, getAnnouncementsHandler);
 
 module.exports = router;

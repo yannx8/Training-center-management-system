@@ -1,6 +1,9 @@
-// FILE: /frontend/src/pages/student/StudentCertTimetable.jsx
+// frontend/src/pages/student/StudentCertTimetable.jsx
+// Dedicated page showing ALL scheduled certification sessions (history from first to last)
 import { useState, useEffect } from 'react';
 import { getCertTimetable, getCertTimetableWeeks } from '../../api/studentApi';
+import { Icon } from '../../components/Icons';
+import '../../styles/Student.css';
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
@@ -9,109 +12,161 @@ export default function StudentCertTimetable() {
     const [selectedWeek, setSelectedWeek] = useState(null);
     const [slots, setSlots] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [slotsLoading, setSlotsLoading] = useState(false);
 
     useEffect(() => {
-        getCertTimetableWeeks().then(r => {
-            const w = r.data.data || [];
-            setWeeks(w);
-            if (w.length > 0) setSelectedWeek(w[0]);
-        }).finally(() => setLoading(false));
+        getCertTimetableWeeks()
+            .then(r => {
+                const w = r.data.data || [];
+                setWeeks(w);
+                if (w.length > 0) setSelectedWeek(w[0]);
+            })
+            .finally(() => setLoading(false));
     }, []);
 
     useEffect(() => {
         if (selectedWeek) {
+            setSlotsLoading(true);
             getCertTimetable({ weekId: selectedWeek.id })
-                .then(r => setSlots(r.data.data || []));
+                .then(r => setSlots(r.data.data || []))
+                .finally(() => setSlotsLoading(false));
         }
     }, [selectedWeek]);
 
-    if (loading) return <div className="p-6 text-gray-500">Loading…</div>;
-
-    if (weeks.length === 0) {
-        return (
-            <div className="p-6 max-w-2xl mx-auto text-center py-16">
-                <div className="text-5xl mb-4">📅</div>
-                <h2 className="text-xl font-semibold text-gray-700 mb-2">No certification timetable yet</h2>
-                <p className="text-gray-500">Your certification trainer will generate a timetable after collecting availability.</p>
-            </div>
-        );
-    }
-
-    // Group slots by cert then day
-    const byCert = {};
-    for (const s of slots) {
-        if (!byCert[s.certification_id]) {
-            byCert[s.certification_id] = { name: s.certification_name, byDay: {} };
-        }
-        if (!byCert[s.certification_id].byDay[s.day_of_week]) {
-            byCert[s.certification_id].byDay[s.day_of_week] = [];
-        }
-        byCert[s.certification_id].byDay[s.day_of_week].push(s);
-    }
+    if (loading) return <div className="student-loading">Loading...</div>;
 
     return (
-        <div className="p-6 max-w-4xl mx-auto">
-            <h1 className="text-2xl font-bold mb-1">Certification Timetable</h1>
-            <p className="text-gray-500 text-sm mb-6">Your scheduled sessions for each certification.</p>
-
-            {/* Week selector */}
-            <div className="flex flex-wrap gap-2 mb-6">
-                {weeks.map(w => (
-                    <button key={w.id} onClick={() => setSelectedWeek(w)}
-                        className={`px-4 py-2 rounded-lg text-sm font-medium border transition ${
-                            selectedWeek?.id === w.id
-                                ? 'bg-indigo-600 text-white border-indigo-600'
-                                : 'bg-white text-gray-700 border-gray-300 hover:border-indigo-400'
-                        }`}>
-                        {w.label}
-                        <span className="block text-xs opacity-70">
-                            {new Date(w.start_date).toLocaleDateString()}
-                        </span>
-                    </button>
-                ))}
+        <div className="student-page">
+            <div className="student-page-head">
+                <div>
+                    <h1 className="student-title">Certification Sessions</h1>
+                    <p className="student-sub">
+                        All scheduled certification class sessions — from the first week to the latest.
+                    </p>
+                </div>
             </div>
 
-            {Object.values(byCert).length === 0 ? (
-                <p className="text-gray-500">No sessions for this week.</p>
+            {weeks.length === 0 ? (
+                <div className="student-card">
+                    <div className="student-empty">
+                        <Icon name="timetable" size={40} color="#94a3b8" />
+                        <p style={{ fontWeight: 600, color: '#475569', margin: '0.5rem 0 0.25rem' }}>
+                            No sessions scheduled yet
+                        </p>
+                        <p style={{ fontSize: '0.85rem', color: '#94a3b8', margin: 0 }}>
+                            Scheduled sessions will appear here once your trainer generates the timetable.
+                        </p>
+                    </div>
+                </div>
             ) : (
-                Object.entries(byCert).map(([certId, cert]) => (
-                    <div key={certId} className="mb-8">
-                        <h2 className="font-semibold text-gray-800 mb-3 text-lg">{cert.name}</h2>
-                        <div className="overflow-x-auto rounded-xl border">
-                            <table className="min-w-full text-sm">
-                                <thead className="bg-gray-50 border-b">
-                                    <tr>
-                                        {DAYS.map(d => (
-                                            <th key={d} className="px-3 py-3 text-xs font-semibold text-gray-600 text-left">{d}</th>
-                                        ))}
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr className="align-top">
-                                        {DAYS.map(d => (
-                                            <td key={d} className="px-3 py-3 border-r last:border-r-0">
-                                                {(cert.byDay[d] || []).length === 0 ? (
-                                                    <span className="text-gray-300 text-xs">—</span>
-                                                ) : (
-                                                    cert.byDay[d].map(s => (
-                                                        <div key={s.id} className="mb-2 bg-indigo-50 rounded-lg p-2 text-xs">
-                                                            <p className="font-semibold text-indigo-800">
-                                                                {s.time_start?.slice(0,5)} – {s.time_end?.slice(0,5)}
-                                                            </p>
-                                                            {s.room_name && <p className="text-indigo-600">{s.room_name}</p>}
-                                                            <p className="text-gray-500">{s.trainer_name}</p>
-                                                        </div>
-                                                    ))
-                                                )}
-                                            </td>
-                                        ))}
-                                    </tr>
-                                </tbody>
-                            </table>
+                <>
+                    {/* Week navigation */}
+                    <div className="student-card" style={{ marginBottom: '1.25rem' }}>
+                        <p style={{ fontSize: '0.82rem', fontWeight: 600, color: '#64748b', marginBottom: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                            Scheduled Weeks ({weeks.length} total)
+                        </p>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                            {weeks.map(w => (
+                                <button
+                                    key={w.id}
+                                    onClick={() => setSelectedWeek(w)}
+                                    className={selectedWeek?.id === w.id ? 'student-btn-active' : 'student-btn-outline'}
+                                    style={{ fontSize: '0.82rem' }}
+                                >
+                                    <div style={{ textAlign: 'left' }}>
+                                        <div style={{ fontWeight: 600 }}>{w.week_label || w.label}</div>
+                                        {w.certification_name && (
+                                            <div style={{ fontSize: '0.72rem', opacity: 0.75 }}>{w.certification_name}</div>
+                                        )}
+                                    </div>
+                                </button>
+                            ))}
                         </div>
                     </div>
-                ))
+
+                    {/* Selected week sessions */}
+                    {selectedWeek && (
+                        <div className="student-card">
+                            <div style={{ marginBottom: '1rem' }}>
+                                <h2 style={{ fontWeight: 700, fontSize: '0.95rem', color: '#1a1a2e', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 8 }}>
+                                    <Icon name="schedule" size={16} color="#3b5be8" />
+                                    {selectedWeek.week_label || selectedWeek.label}
+                                </h2>
+                                <p style={{ fontSize: '0.8rem', color: '#64748b', margin: 0 }}>
+                                    {new Date(selectedWeek.start_date).toLocaleDateString()} – {new Date(selectedWeek.end_date).toLocaleDateString()}
+                                    {selectedWeek.certification_name && ` · ${selectedWeek.certification_name}`}
+                                </p>
+                            </div>
+
+                            {slotsLoading ? (
+                                <div className="student-msg">Loading sessions...</div>
+                            ) : slots.length === 0 ? (
+                                <div className="student-empty">
+                                    <Icon name="schedule" size={32} color="#cbd5e1" />
+                                    <p>No sessions scheduled for this week.</p>
+                                </div>
+                            ) : (
+                                <>
+                                    {/* Grid view */}
+                                    <div className="timetable-grid-wrap">
+                                        <table className="timetable-grid">
+                                            <thead>
+                                                <tr>
+                                                    <th>Time</th>
+                                                    {DAYS.map(d => <th key={d}>{d}</th>)}
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {getTimeSlots(slots).map(time => (
+                                                    <tr key={time}>
+                                                        <td className="timetable-time">{time}</td>
+                                                        {DAYS.map(day => {
+                                                            const s = slots.find(sl =>
+                                                                sl.day_of_week === day &&
+                                                                sl.time_start?.slice(0, 5) === time
+                                                            );
+                                                            return (
+                                                                <td key={day} className={s ? 'timetable-cell timetable-cell--cert' : 'timetable-cell'}>
+                                                                    {s && (
+                                                                        <div>
+                                                                            <div style={{ fontWeight: 600, fontSize: '0.8rem', color: '#1e3a5f' }}>
+                                                                                {s.certification_name}
+                                                                            </div>
+                                                                            <div style={{ fontSize: '0.72rem', color: '#475569', marginTop: 2 }}>
+                                                                                {s.time_start?.slice(0, 5)} – {s.time_end?.slice(0, 5)}
+                                                                            </div>
+                                                                            {s.room_name && (
+                                                                                <div style={{ fontSize: '0.72rem', color: '#64748b' }}>{s.room_name}</div>
+                                                                            )}
+                                                                            {s.trainer_name && (
+                                                                                <div style={{ fontSize: '0.72rem', color: '#64748b' }}>{s.trainer_name}</div>
+                                                                            )}
+                                                                        </div>
+                                                                    )}
+                                                                </td>
+                                                            );
+                                                        })}
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+
+                                    {/* Summary */}
+                                    <div style={{ marginTop: '1rem', fontSize: '0.82rem', color: '#64748b' }}>
+                                        {slots.length} session{slots.length !== 1 ? 's' : ''} in this week
+                                    </div>
+                                </>
+                            )}
+                        </div>
+                    )}
+                </>
             )}
         </div>
     );
+}
+
+function getTimeSlots(slots) {
+    const times = [...new Set(slots.map(s => s.time_start?.slice(0, 5)))];
+    return times.sort();
 }
