@@ -1,206 +1,189 @@
+// FILE: /backend/controllers/adminController.js
+// Admin controller for user management, departments, programs, courses, certifications, rooms
+
 const pool = require('../config/db');
 const bcrypt = require('bcryptjs');
 const {
     getAllUsers,
+    getUsersByRole,
     createUser,
+    checkEmailExists,
     assignRoleToUser,
+    removeRoleFromUser,
+    getRoleByName,
+    getAllRoles,
     updateUser,
     deleteUser,
-    checkEmailExists,
-    getRoleByName,
-    findUserById,
-    removeAllUserRoles,
-} = require('../queries/users');
-const {
-    getDashboardStats,
     getAllDepartments,
     createDepartment,
     updateDepartment,
     deleteDepartment,
     getAllPrograms,
+    getProgramsByDepartment,
     createProgram,
     updateProgram,
     deleteProgram,
-    getProgramCourses,
-    getAllAcademicYears,
-    createAcademicYear,
-    updateAcademicYear,
+    getLevelsByProgram,
+    createAcademicLevel,
+    getAllSemesters,
+    getAllCourses,
+    getCoursesByProgram,
+    getCourseById,
+    createCourse,
+    updateCourse,
+    deleteCourse,
+    getAllCertifications,
+    getCertificationsByDepartment,
+    getCertificationById,
+    createCertification,
+    updateCertification,
+    deleteCertification,
     getAllRooms,
     createRoom,
     updateRoom,
     deleteRoom,
-    getDepartmentOverview,
+    getAllAcademicYears,
+    createAcademicYear,
+    updateAcademicYear,
+    deleteAcademicYear,
+    getDashboardStats,
 } = require('../queries/admin');
-const { getAllComplaints, updateComplaintStatus } = require('../queries/complaints');
+
+// ============================================================
+// DASHBOARD
+// ============================================================
 
 async function getDashboard(req, res) {
-    const [statsSql, statsParams] = getDashboardStats();
-    const statsResult = await pool.query(statsSql, statsParams);
-    const [deptSql, deptParams] = getDepartmentOverview();
-    const deptResult = await pool.query(deptSql, deptParams);
-    const [cSql, cParams] = getAllComplaints();
-    const cResult = await pool.query(cSql, cParams);
-    const pending = cResult.rows.filter(c => c.status === 'pending');
-    const high = cResult.rows.filter(c => c.priority === 'high' && c.status === 'pending');
-    return res.json({
-        success: true,
-        data: {
-            stats: statsResult.rows[0],
-            departmentOverview: deptResult.rows,
-            pendingComplaints: pending.slice(0, 5),
-            highPriorityIssues: high.slice(0, 5),
-        },
-    });
+    const [sql] = getDashboardStats();
+    const result = await pool.query(sql);
+    return res.json({ success: true, data: result.rows[0] });
 }
 
+// ============================================================
+// USERS
+// ============================================================
+
 async function getUsers(req, res) {
-    const [sql, params] = getAllUsers();
-    const result = await pool.query(sql, params);
+    const { role } = req.query;
+    let result;
+    if (role) {
+        const [sql, params] = getUsersByRole(role);
+        result = await pool.query(sql, params);
+    } else {
+        const [sql] = getAllUsers();
+        result = await pool.query(sql);
+    }
     return res.json({ success: true, data: result.rows });
 }
 
 async function createUserHandler(req, res) {
-    const { fullName, email, roleName, department, phone, status } = req.body;
-    if (!fullName || !email || !roleName || !phone)
-        return res.status(400).json({ success: false, message: 'fullName, email, roleName, phone required', code: 'MISSING_FIELDS' });
-
+    const { fullName, email, phone, department, roles, password } = req.body;
+    
+    if (!fullName || !email || !roles || !roles.length) {
+        return res.status(400).json({ success: false, message: 'fullName, email, and roles required' });
+    }
+    
+    // Check email exists
     const [checkSql, checkParams] = checkEmailExists(email);
     const existing = await pool.query(checkSql, checkParams);
-    if (existing.rows.length)
-        return res.status(409).json({ success: false, message: 'Email already in use', code: 'EMAIL_EXISTS' });
-
-    const [roleSql, roleParams] = getRoleByName(roleName);
-    const roleResult = await pool.query(roleSql, roleParams);
-    if (!roleResult.rows.length)
-        return res.status(400).json({ success: false, message: 'Invalid role name', code: 'INVALID_ROLE' });
-
-    if (roleName === 'hod' && department) {
-        const conflict = await pool.query(
-            `SELECT d.id FROM departments d JOIN users u ON d.hod_user_id = u.id WHERE d.name = $1 AND d.hod_user_id IS NOT NULL`, [department]
-        );
-        if (conflict.rows.length)
-            return res.status(409).json({ success: false, message: 'This department already has an HOD assigned', code: 'HOD_CONFLICT' });
+    if (existing.rows.length) {
+        return res.status(409).json({ success: false, message: 'Email already exists' });
     }
-
-    let hash;
-    try { hash = await bcrypt.hash(phone, parseInt(process.env.SALT_ROUNDS) || 12); } catch { return res.status(500).json({ success: false, message: 'Password hashing failed', code: 'HASH_ERROR' }); }
-
-    const [createSql, createParams] = createUser(fullName, email, hash, phone, department || null, status || 'active');
-    const newUser = await pool.query(createSql, createParams);
-    const [assignSql, assignParams] = assignRoleToUser(newUser.rows[0].id, roleResult.rows[0].id);
-    await pool.query(assignSql, assignParams);
-
-    if (roleName === 'trainer')
-        await pool.query('INSERT INTO trainers (user_id) VALUES ($1) ON CONFLICT DO NOTHING', [newUser.rows[0].id]);
-
-    if (roleName === 'hod' && department)
-        await pool.query(`UPDATE departments SET hod_user_id=$1, hod_name=$2 WHERE name=$3`, [newUser.rows[0].id, fullName, department]);
-
-    return res.status(201).json({ success: true, data: {...newUser.rows[0], roleName } });
+    
+    // Default password is phone number
+    const defaultPassword = password || phone || 'password123';
+    const hash = await bcrypt.hash(defaultPassword, parseInt(process.env.SALT_ROUNDS) || 12);
+    
+    // Create user
+    const [userSql, userParams] = createUser(fullName, email, hash, phone, department, 'active');
+    const userResult = await pool.query(userSql, userParams);
+    const newUser = userResult.rows[0];
+    
+    // Assign roles
+    for (const roleName of roles) {
+        const [roleSql, roleParams] = getRoleByName(roleName);
+        const roleResult = await pool.query(roleSql, roleParams);
+        if (roleResult.rows.length) {
+            const [assignSql, assignParams] = assignRoleToUser(newUser.id, roleResult.rows[0].id);
+            await pool.query(assignSql, assignParams);
+        }
+    }
+    
+    return res.status(201).json({ success: true, data: newUser });
 }
 
 async function updateUserHandler(req, res) {
     const { id } = req.params;
-    const { fullName, email, phone, department, status, roles } = req.body;
-    if (!fullName || !email)
-        return res.status(400).json({ success: false, message: 'fullName and email required', code: 'MISSING_FIELDS' });
-
-    const [sql, params] = updateUser(id, fullName, email, phone, department, status);
-    const result = await pool.query(sql, params);
-    if (!result.rows.length)
-        return res.status(404).json({ success: false, message: 'User not found', code: 'NOT_FOUND' });
-
-    if (roles !== undefined) {
-        if (roles.includes('hod') && department) {
-            const conflict = await pool.query(
-                `SELECT d.id FROM departments d WHERE d.name=$1 AND d.hod_user_id IS NOT NULL AND d.hod_user_id != $2`, [department, id]
-            );
-            if (conflict.rows.length)
-                return res.status(409).json({ success: false, message: 'This department already has an HOD assigned', code: 'HOD_CONFLICT' });
-        }
-        await pool.query('UPDATE departments SET hod_user_id=NULL, hod_name=NULL WHERE hod_user_id=$1', [id]);
-        const [removeSql, removeParams] = removeAllUserRoles(id);
-        await pool.query(removeSql, removeParams);
-        for (const roleName of roles) {
-            const [roleSql, roleParams] = getRoleByName(roleName);
-            const roleResult = await pool.query(roleSql, roleParams);
-            if (roleResult.rows.length) {
-                const [assignSql, assignParams] = assignRoleToUser(id, roleResult.rows[0].id);
-                await pool.query(assignSql, assignParams);
-            }
-        }
-        if (roles.includes('hod') && department)
-            await pool.query('UPDATE departments SET hod_user_id=$1, hod_name=$2 WHERE name=$3', [id, fullName, department]);
+    const updateData = req.body;
+    
+    // If password provided, hash it
+    if (updateData.password) {
+        updateData.password_hash = await bcrypt.hash(updateData.password, parseInt(process.env.SALT_ROUNDS) || 12);
+        delete updateData.password;
     }
+    
+    const [sql, params] = updateUser(id, updateData);
+    const result = await pool.query(sql, params);
+    
+    if (!result.rows.length) {
+        return res.status(404).json({ success: false, message: 'User not found' });
+    }
+    
     return res.json({ success: true, data: result.rows[0] });
 }
 
 async function deleteUserHandler(req, res) {
     const { id } = req.params;
-    await pool.query('UPDATE departments SET hod_user_id=NULL, hod_name=NULL WHERE hod_user_id=$1', [id]);
     const [sql, params] = deleteUser(id);
     const result = await pool.query(sql, params);
-    if (!result.rows.length)
-        return res.status(404).json({ success: false, message: 'User not found', code: 'NOT_FOUND' });
+    
+    if (!result.rows.length) {
+        return res.status(404).json({ success: false, message: 'User not found' });
+    }
+    
     return res.json({ success: true, data: { deleted: true } });
 }
 
-async function getDepartmentsHandler(req, res) {
-    const [sql, params] = getAllDepartments();
-    const result = await pool.query(sql, params);
+async function getRoles(req, res) {
+    const [sql] = getAllRoles();
+    const result = await pool.query(sql);
+    return res.json({ success: true, data: result.rows });
+}
+
+// ============================================================
+// DEPARTMENTS
+// ============================================================
+
+async function getDepartments(req, res) {
+    const [sql] = getAllDepartments();
+    const result = await pool.query(sql);
     return res.json({ success: true, data: result.rows });
 }
 
 async function createDepartmentHandler(req, res) {
-    const { name, code, hodUserId, status } = req.body;
-    if (!name || !code)
-        return res.status(400).json({ success: false, message: 'name and code required', code: 'MISSING_FIELDS' });
-    if (hodUserId) {
-        const conflict = await pool.query('SELECT id FROM departments WHERE hod_user_id=$1', [hodUserId]);
-        if (conflict.rows.length)
-            return res.status(409).json({ success: false, message: 'This user is already HOD of another department', code: 'HOD_CONFLICT' });
+    const { name, code, hodUserId } = req.body;
+    
+    if (!name || !code) {
+        return res.status(400).json({ success: false, message: 'name and code required' });
     }
-    let hodName = '';
-    if (hodUserId) {
-        const [userSql, userParams] = findUserById(hodUserId);
-        const userResult = await pool.query(userSql, userParams);
-        if (userResult.rows.length) {
-            hodName = userResult.rows[0].full_name;
-            const [roleSql, roleParams] = getRoleByName('hod');
-            const roleResult = await pool.query(roleSql, roleParams);
-            if (roleResult.rows.length) {
-                const [assignSql, assignParams] = assignRoleToUser(hodUserId, roleResult.rows[0].id);
-                await pool.query(assignSql, assignParams);
-            }
-        }
-    }
-    const [sql, params] = createDepartment(name, code, hodName, hodUserId || null, status || 'active');
+    
+    const [sql, params] = createDepartment(name, code, hodUserId);
     const result = await pool.query(sql, params);
-    if (hodUserId)
-        await pool.query('UPDATE departments SET hod_user_id=$1, hod_name=$2 WHERE id=$3', [hodUserId, hodName, result.rows[0].id]);
+    
     return res.status(201).json({ success: true, data: result.rows[0] });
 }
 
 async function updateDepartmentHandler(req, res) {
     const { id } = req.params;
-    const { name, code, hodUserId, status } = req.body;
-    if (!name || !code)
-        return res.status(400).json({ success: false, message: 'name and code required', code: 'MISSING_FIELDS' });
-    if (hodUserId) {
-        const conflict = await pool.query('SELECT id FROM departments WHERE hod_user_id=$1 AND id!=$2', [hodUserId, id]);
-        if (conflict.rows.length)
-            return res.status(409).json({ success: false, message: 'This user is already HOD of another department', code: 'HOD_CONFLICT' });
-    }
-    let hodName = '';
-    if (hodUserId) {
-        const [userSql, userParams] = findUserById(hodUserId);
-        const userResult = await pool.query(userSql, userParams);
-        if (userResult.rows.length) hodName = userResult.rows[0].full_name;
-    }
-    const [sql, params] = updateDepartment(id, name, code, hodName, hodUserId || null, status);
+    const updateData = req.body;
+    
+    const [sql, params] = updateDepartment(id, updateData);
     const result = await pool.query(sql, params);
-    if (!result.rows.length)
-        return res.status(404).json({ success: false, message: 'Department not found', code: 'NOT_FOUND' });
+    
+    if (!result.rows.length) {
+        return res.status(404).json({ success: false, message: 'Department not found' });
+    }
+    
     return res.json({ success: true, data: result.rows[0] });
 }
 
@@ -208,41 +191,65 @@ async function deleteDepartmentHandler(req, res) {
     const { id } = req.params;
     const [sql, params] = deleteDepartment(id);
     const result = await pool.query(sql, params);
-    if (!result.rows.length)
-        return res.status(404).json({ success: false, message: 'Department not found', code: 'NOT_FOUND' });
+    
+    if (!result.rows.length) {
+        return res.status(404).json({ success: false, message: 'Department not found' });
+    }
+    
     return res.json({ success: true, data: { deleted: true } });
 }
 
-async function getProgramsHandler(req, res) {
-    const [sql, params] = getAllPrograms();
-    const result = await pool.query(sql, params);
-    return res.json({ success: true, data: result.rows });
-}
+// ============================================================
+// PROGRAMS
+// ============================================================
 
-// FIX: NEW — returns all courses for a given program grouped by level/semester
-async function getProgramCoursesHandler(req, res) {
-    const { id } = req.params;
-    const [sql, params] = getProgramCourses(id);
-    const result = await pool.query(sql, params);
+async function getPrograms(req, res) {
+    const { departmentId } = req.query;
+    let result;
+    
+    if (departmentId) {
+        const [sql, params] = getProgramsByDepartment(departmentId);
+        result = await pool.query(sql, params);
+    } else {
+        const [sql] = getAllPrograms();
+        result = await pool.query(sql);
+    }
+    
     return res.json({ success: true, data: result.rows });
 }
 
 async function createProgramHandler(req, res) {
-    const { name, code, departmentId, durationYears, status } = req.body;
-    if (!name || !code)
-        return res.status(400).json({ success: false, message: 'name and code required', code: 'MISSING_FIELDS' });
-    const [sql, params] = createProgram(name, code, departmentId, durationYears || 3, status || 'active');
+    const { name, code, departmentId, durationYears } = req.body;
+    
+    if (!name || !code || !departmentId) {
+        return res.status(400).json({ success: false, message: 'name, code, and departmentId required' });
+    }
+    
+    const [sql, params] = createProgram(name, code, departmentId, durationYears || 3);
     const result = await pool.query(sql, params);
-    return res.status(201).json({ success: true, data: result.rows[0] });
+    
+    // Create academic levels for the program
+    const newProgram = result.rows[0];
+    const duration = durationYears || 3;
+    for (let i = 1; i <= duration; i++) {
+        const [levelSql, levelParams] = createAcademicLevel(`Year ${i}`, newProgram.id, i);
+        await pool.query(levelSql, levelParams);
+    }
+    
+    return res.status(201).json({ success: true, data: newProgram });
 }
 
 async function updateProgramHandler(req, res) {
     const { id } = req.params;
-    const { name, code, departmentId, durationYears, status } = req.body;
-    const [sql, params] = updateProgram(id, name, code, departmentId, durationYears, status);
+    const updateData = req.body;
+    
+    const [sql, params] = updateProgram(id, updateData);
     const result = await pool.query(sql, params);
-    if (!result.rows.length)
-        return res.status(404).json({ success: false, message: 'Program not found', code: 'NOT_FOUND' });
+    
+    if (!result.rows.length) {
+        return res.status(404).json({ success: false, message: 'Program not found' });
+    }
+    
     return res.json({ success: true, data: result.rows[0] });
 }
 
@@ -250,58 +257,188 @@ async function deleteProgramHandler(req, res) {
     const { id } = req.params;
     const [sql, params] = deleteProgram(id);
     const result = await pool.query(sql, params);
-    if (!result.rows.length)
-        return res.status(404).json({ success: false, message: 'Program not found', code: 'NOT_FOUND' });
+    
+    if (!result.rows.length) {
+        return res.status(404).json({ success: false, message: 'Program not found' });
+    }
+    
     return res.json({ success: true, data: { deleted: true } });
 }
 
-async function getAcademicYearsHandler(req, res) {
-    const [sql, params] = getAllAcademicYears();
-    const result = await pool.query(sql, params);
+// ============================================================
+// COURSES
+// ============================================================
+
+async function getCourses(req, res) {
+    const { programId, sessionId } = req.query;
+    let result;
+    
+    if (programId) {
+        const [sql, params] = getCoursesByProgram(programId);
+        result = await pool.query(sql, params);
+    } else {
+        const [sql] = getAllCourses();
+        result = await pool.query(sql);
+    }
+    
     return res.json({ success: true, data: result.rows });
 }
 
-async function createAcademicYearHandler(req, res) {
-    const { name, startDate, endDate, isActive, programId, certificationId } = req.body;
-    if (!name || !startDate || !endDate)
-        return res.status(400).json({ success: false, message: 'name, startDate, endDate required', code: 'MISSING_FIELDS' });
-    const [sql, params] = createAcademicYear(name, startDate, endDate, isActive || false, programId, certificationId);
-    const result = await pool.query(sql, params);
-    return res.status(201).json({ success: true, data: result.rows[0] });
-}
-
-async function updateAcademicYearHandler(req, res) {
+async function getCourseHandler(req, res) {
     const { id } = req.params;
-    const { name, startDate, endDate, isActive } = req.body;
-    const [sql, params] = updateAcademicYear(id, name, startDate, endDate, isActive);
+    const [sql, params] = getCourseById(id);
     const result = await pool.query(sql, params);
-    if (!result.rows.length)
-        return res.status(404).json({ success: false, message: 'Academic year not found', code: 'NOT_FOUND' });
+    
+    if (!result.rows.length) {
+        return res.status(404).json({ success: false, message: 'Course not found' });
+    }
+    
     return res.json({ success: true, data: result.rows[0] });
 }
 
-async function getRoomsHandler(req, res) {
-    const [sql, params] = getAllRooms();
+async function createCourseHandler(req, res) {
+    const { name, code, sessionId, credits, hoursPerWeek } = req.body;
+    
+    if (!name || !code || !sessionId) {
+        return res.status(400).json({ success: false, message: 'name, code, and sessionId required' });
+    }
+    
+    const [sql, params] = createCourse(name, code, sessionId, credits || 3, hoursPerWeek || 2);
     const result = await pool.query(sql, params);
+    
+    return res.status(201).json({ success: true, data: result.rows[0] });
+}
+
+async function updateCourseHandler(req, res) {
+    const { id } = req.params;
+    const updateData = req.body;
+    
+    const [sql, params] = updateCourse(id, updateData);
+    const result = await pool.query(sql, params);
+    
+    if (!result.rows.length) {
+        return res.status(404).json({ success: false, message: 'Course not found' });
+    }
+    
+    return res.json({ success: true, data: result.rows[0] });
+}
+
+async function deleteCourseHandler(req, res) {
+    const { id } = req.params;
+    const [sql, params] = deleteCourse(id);
+    const result = await pool.query(sql, params);
+    
+    if (!result.rows.length) {
+        return res.status(404).json({ success: false, message: 'Course not found' });
+    }
+    
+    return res.json({ success: true, data: { deleted: true } });
+}
+
+// ============================================================
+// CERTIFICATIONS
+// ============================================================
+
+async function getCertifications(req, res) {
+    const { departmentId } = req.query;
+    let result;
+    
+    if (departmentId) {
+        const [sql, params] = getCertificationsByDepartment(departmentId);
+        result = await pool.query(sql, params);
+    } else {
+        const [sql] = getAllCertifications();
+        result = await pool.query(sql);
+    }
+    
+    return res.json({ success: true, data: result.rows });
+}
+
+async function getCertificationHandler(req, res) {
+    const { id } = req.params;
+    const [sql, params] = getCertificationById(id);
+    const result = await pool.query(sql, params);
+    
+    if (!result.rows.length) {
+        return res.status(404).json({ success: false, message: 'Certification not found' });
+    }
+    
+    return res.json({ success: true, data: result.rows[0] });
+}
+
+async function createCertificationHandler(req, res) {
+    const { name, code, description, durationHours, departmentId } = req.body;
+    
+    if (!name || !code) {
+        return res.status(400).json({ success: false, message: 'name and code required' });
+    }
+    
+    const [sql, params] = createCertification(name, code, description, durationHours || 40, departmentId);
+    const result = await pool.query(sql, params);
+    
+    return res.status(201).json({ success: true, data: result.rows[0] });
+}
+
+async function updateCertificationHandler(req, res) {
+    const { id } = req.params;
+    const updateData = req.body;
+    
+    const [sql, params] = updateCertification(id, updateData);
+    const result = await pool.query(sql, params);
+    
+    if (!result.rows.length) {
+        return res.status(404).json({ success: false, message: 'Certification not found' });
+    }
+    
+    return res.json({ success: true, data: result.rows[0] });
+}
+
+async function deleteCertificationHandler(req, res) {
+    const { id } = req.params;
+    const [sql, params] = deleteCertification(id);
+    const result = await pool.query(sql, params);
+    
+    if (!result.rows.length) {
+        return res.status(404).json({ success: false, message: 'Certification not found' });
+    }
+    
+    return res.json({ success: true, data: { deleted: true } });
+}
+
+// ============================================================
+// ROOMS
+// ============================================================
+
+async function getRooms(req, res) {
+    const [sql] = getAllRooms();
+    const result = await pool.query(sql);
     return res.json({ success: true, data: result.rows });
 }
 
 async function createRoomHandler(req, res) {
-    const { name, code, building, capacity, roomType, status } = req.body;
-    if (!name || !code)
-        return res.status(400).json({ success: false, message: 'name and code required', code: 'MISSING_FIELDS' });
-    const [sql, params] = createRoom(name, code, building, capacity || 30, roomType || 'Classroom', status || 'available');
+    const { name, code, building, capacity, roomType } = req.body;
+    
+    if (!name || !code) {
+        return res.status(400).json({ success: false, message: 'name and code required' });
+    }
+    
+    const [sql, params] = createRoom(name, code, building, capacity || 30, roomType || 'Classroom');
     const result = await pool.query(sql, params);
+    
     return res.status(201).json({ success: true, data: result.rows[0] });
 }
 
 async function updateRoomHandler(req, res) {
     const { id } = req.params;
-    const { name, code, building, capacity, roomType, status } = req.body;
-    const [sql, params] = updateRoom(id, name, code, building, capacity, roomType, status);
+    const updateData = req.body;
+    
+    const [sql, params] = updateRoom(id, updateData);
     const result = await pool.query(sql, params);
-    if (!result.rows.length)
-        return res.status(404).json({ success: false, message: 'Room not found', code: 'NOT_FOUND' });
+    
+    if (!result.rows.length) {
+        return res.status(404).json({ success: false, message: 'Room not found' });
+    }
+    
     return res.json({ success: true, data: result.rows[0] });
 }
 
@@ -309,165 +446,109 @@ async function deleteRoomHandler(req, res) {
     const { id } = req.params;
     const [sql, params] = deleteRoom(id);
     const result = await pool.query(sql, params);
-    if (!result.rows.length)
-        return res.status(404).json({ success: false, message: 'Room not found', code: 'NOT_FOUND' });
-    return res.json({ success: true, data: { deleted: true } });
-}
-
-async function getComplaintsHandler(req, res) {
-    const [sql, params] = getAllComplaints();
-    const result = await pool.query(sql, params);
-    return res.json({ success: true, data: result.rows });
-}
-
-async function updateComplaintHandler(req, res) {
-    const { id } = req.params;
-    const { status, adminResponse } = req.body;
-    if (!status)
-        return res.status(400).json({ success: false, message: 'status required', code: 'MISSING_FIELDS' });
-    const [sql, params] = updateComplaintStatus(id, status, adminResponse);
-    const result = await pool.query(sql, params);
-    if (!result.rows.length)
-        return res.status(404).json({ success: false, message: 'Complaint not found', code: 'NOT_FOUND' });
-    return res.json({ success: true, data: result.rows[0] });
-}
-
-// ─── CERTIFICATIONS ──────────────────────────────────────────────────────────
-
-async function getCertificationsHandler(req, res) {
-    const { getAllCertifications } = require('../queries/admin');
-    const [sql, params] = getAllCertifications();
-    const result = await pool.query(sql, params);
-    return res.json({ success: true, data: result.rows });
-}
-
-async function createCertificationHandler(req, res) {
-    const { createCertification } = require('../queries/admin');
-    const { name, code, description, durationHours, status } = req.body;
-    if (!name || !code)
-        return res.status(400).json({ success: false, message: 'name and code required', code: 'MISSING_FIELDS' });
-    const [sql, params] = createCertification(name, code, description, durationHours, status);
-    const result = await pool.query(sql, params);
-    return res.status(201).json({ success: true, data: result.rows[0] });
-}
-
-async function updateCertificationHandler(req, res) {
-    const { updateCertification } = require('../queries/admin');
-    const { id } = req.params;
-    const { name, code, description, durationHours, status } = req.body;
-    const [sql, params] = updateCertification(id, name, code, description, durationHours, status);
-    const result = await pool.query(sql, params);
-    if (!result.rows.length)
-        return res.status(404).json({ success: false, message: 'Not found', code: 'NOT_FOUND' });
-    return res.json({ success: true, data: result.rows[0] });
-}
-
-async function deleteCertificationHandler(req, res) {
-    const { deleteCertification } = require('../queries/admin');
-    const [sql, params] = deleteCertification(req.params.id);
-    await pool.query(sql, params);
-    return res.json({ success: true, data: { deleted: true } });
-}
-
-// ─── PROGRAM COURSES & SESSIONS ───────────────────────────────────────────────
-
-async function getProgramCoursesHandler(req, res) {
-    const { getProgramCourses } = require('../queries/admin');
-    const [sql, params] = getProgramCourses(req.params.id);
-    const result = await pool.query(sql, params);
-    return res.json({ success: true, data: result.rows });
-}
-
-async function getProgramSessionsHandler(req, res) {
-    const { getProgramSessions } = require('../queries/admin');
-    const [sql, params] = getProgramSessions(req.params.id);
-    const result = await pool.query(sql, params);
-    return res.json({ success: true, data: result.rows });
-}
-
-async function createCourseHandler(req, res) {
-    const { createCourse } = require('../queries/admin');
-    const { name, code, credits, hoursPerWeek, sessionId } = req.body;
-    if (!name || !code || !sessionId)
-        return res.status(400).json({ success: false, message: 'name, code, sessionId required', code: 'MISSING_FIELDS' });
-    const [sql, params] = createCourse(name, code, credits, hoursPerWeek, sessionId);
-    const result = await pool.query(sql, params);
-    return res.status(201).json({ success: true, data: result.rows[0] });
-}
-
-async function updateCourseHandler(req, res) {
-    const { updateCourse } = require('../queries/admin');
-    const { id } = req.params;
-    const { name, code, credits, hoursPerWeek } = req.body;
-    const [sql, params] = updateCourse(id, name, code, credits, hoursPerWeek);
-    const result = await pool.query(sql, params);
-    if (!result.rows.length)
-        return res.status(404).json({ success: false, message: 'Course not found', code: 'NOT_FOUND' });
-    return res.json({ success: true, data: result.rows[0] });
-}
-
-async function deleteCourseHandler(req, res) {
-    const { deleteCourse } = require('../queries/admin');
-    const [sql, params] = deleteCourse(req.params.id);
-    await pool.query(sql, params);
-    return res.json({ success: true, data: { deleted: true } });
-}
-
-async function assignTrainerHandler(req, res) {
-    const { assignTrainerToCourse, removeTrainerFromCourse } = require('../queries/admin');
-    const { id: courseId } = req.params;
-    const { trainerId } = req.body;
-
-    // Remove any existing trainer assignment first
-    const [rmSql, rmParams] = removeTrainerFromCourse(courseId);
-    await pool.query(rmSql, rmParams);
-
-    if (trainerId) {
-        const [sql, params] = assignTrainerToCourse(courseId, trainerId);
-        await pool.query(sql, params);
+    
+    if (!result.rows.length) {
+        return res.status(404).json({ success: false, message: 'Room not found' });
     }
-    return res.json({ success: true, data: { assigned: !!trainerId } });
+    
+    return res.json({ success: true, data: { deleted: true } });
 }
 
-async function getTrainersByDeptHandler(req, res) {
-    const { getTrainersByDepartment } = require('../queries/admin');
-    const [sql, params] = getTrainersByDepartment(req.params.id);
-    const result = await pool.query(sql, params);
+// ============================================================
+// ACADEMIC YEARS
+// ============================================================
+
+async function getAcademicYears(req, res) {
+    const [sql] = getAllAcademicYears();
+    const result = await pool.query(sql);
     return res.json({ success: true, data: result.rows });
 }
+
+async function createAcademicYearHandler(req, res) {
+    const { name, startDate, endDate, isActive } = req.body;
+    
+    if (!name || !startDate || !endDate) {
+        return res.status(400).json({ success: false, message: 'name, startDate, and endDate required' });
+    }
+    
+    const [sql, params] = createAcademicYear(name, startDate, endDate, isActive || false);
+    const result = await pool.query(sql, params);
+    
+    return res.status(201).json({ success: true, data: result.rows[0] });
+}
+
+async function updateAcademicYearHandler(req, res) {
+    const { id } = req.params;
+    const updateData = req.body;
+    
+    const [sql, params] = updateAcademicYear(id, updateData);
+    const result = await pool.query(sql, params);
+    
+    if (!result.rows.length) {
+        return res.status(404).json({ success: false, message: 'Academic year not found' });
+    }
+    
+    return res.json({ success: true, data: result.rows[0] });
+}
+
+async function deleteAcademicYearHandler(req, res) {
+    const { id } = req.params;
+    const [sql, params] = deleteAcademicYear(id);
+    const result = await pool.query(sql, params);
+    
+    if (!result.rows.length) {
+        return res.status(404).json({ success: false, message: 'Academic year not found' });
+    }
+    
+    return res.json({ success: true, data: { deleted: true } });
+}
+
 module.exports = {
+    // Dashboard
     getDashboard,
+    
+    // Users
     getUsers,
     createUserHandler,
     updateUserHandler,
     deleteUserHandler,
-    getDepartmentsHandler,
+    getRoles,
+    
+    // Departments
+    getDepartments,
     createDepartmentHandler,
     updateDepartmentHandler,
     deleteDepartmentHandler,
-    getProgramsHandler,
-    getProgramCoursesHandler,
+    
+    // Programs
+    getPrograms,
     createProgramHandler,
     updateProgramHandler,
     deleteProgramHandler,
-    getAcademicYearsHandler,
-    createAcademicYearHandler,
-    updateAcademicYearHandler,
-    getRoomsHandler,
-    createRoomHandler,
-    updateRoomHandler,
-    deleteRoomHandler,
-    getComplaintsHandler,
-    updateComplaintHandler,
-    getCertificationsHandler,
-    createCertificationHandler,
-    updateCertificationHandler,
-    deleteCertificationHandler,
-    getProgramCoursesHandler,
-    getProgramSessionsHandler,
+    
+    // Courses
+    getCourses,
+    getCourseHandler,
     createCourseHandler,
     updateCourseHandler,
     deleteCourseHandler,
-    assignTrainerHandler,
-    getTrainersByDeptHandler,
+    
+    // Certifications
+    getCertifications,
+    getCertificationHandler,
+    createCertificationHandler,
+    updateCertificationHandler,
+    deleteCertificationHandler,
+    
+    // Rooms
+    getRooms,
+    createRoomHandler,
+    updateRoomHandler,
+    deleteRoomHandler,
+    
+    // Academic Years
+    getAcademicYears,
+    createAcademicYearHandler,
+    updateAcademicYearHandler,
+    deleteAcademicYearHandler,
 };

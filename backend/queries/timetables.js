@@ -1,623 +1,578 @@
-// backend/queries/timetables.js
+// FILE: /backend/queries/timetables.js
+// Queries for timetables, academic weeks, availability, and announcements
 
-// ─── ACADEMIC WEEKS (HOD-managed, week_type = 'academic') ────────────────────
+// ============================================================
+// ACADEMIC WEEKS
+// ============================================================
 
 function createAcademicWeek(academicYearId, weekNumber, label, startDate, endDate, createdBy, departmentId) {
-    return [
-        `INSERT INTO academic_weeks
-            (academic_year_id, week_number, label, start_date, end_date,
-             created_by, department_id, week_type, status)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,'academic','draft')
-         RETURNING *`, [academicYearId || null, weekNumber, label, startDate, endDate, createdBy, departmentId]
-    ];
+    const sql = `
+        INSERT INTO academic_weeks 
+        (academic_year_id, week_number, label, start_date, end_date, created_by, department_id, week_type, status)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, 'academic', 'draft')
+        RETURNING *
+    `;
+    return [sql, [academicYearId, weekNumber, label, startDate, endDate, createdBy, departmentId]];
 }
 
 function getAcademicWeeksByDepartment(departmentId) {
-    return [
-        `SELECT aw.*, COALESCE(ay.name,'') AS year_name
-         FROM academic_weeks aw
-         LEFT JOIN academic_years ay ON aw.academic_year_id = ay.id
-         WHERE aw.department_id = $1 AND aw.week_type = 'academic'
-         ORDER BY aw.start_date DESC`, [departmentId]
-    ];
+    const sql = `
+        SELECT aw.*, ay.name as year_name, u.full_name as created_by_name
+        FROM academic_weeks aw
+        LEFT JOIN academic_years ay ON aw.academic_year_id = ay.id
+        LEFT JOIN users u ON aw.created_by = u.id
+        WHERE aw.department_id = $1 AND aw.week_type = 'academic'
+        ORDER BY aw.start_date DESC
+    `;
+    return [sql, [departmentId]];
 }
 
 function getPublishedWeeksByDepartment(departmentId) {
-    return [
-        `SELECT aw.*, COALESCE(ay.name,'') AS year_name
-         FROM academic_weeks aw
-         LEFT JOIN academic_years ay ON aw.academic_year_id = ay.id
-         WHERE aw.department_id = $1
-           AND aw.week_type = 'academic'
-           AND aw.status = 'published'
-         ORDER BY aw.start_date DESC`, [departmentId]
-    ];
+    const sql = `
+        SELECT aw.*, ay.name as year_name
+        FROM academic_weeks aw
+        LEFT JOIN academic_years ay ON aw.academic_year_id = ay.id
+        WHERE aw.department_id = $1 
+        AND aw.week_type = 'academic'
+        AND aw.status = 'published'
+        ORDER BY aw.start_date DESC
+    `;
+    return [sql, [departmentId]];
+}
+
+function getLatestAcademicWeek(departmentId) {
+    const sql = `
+        SELECT aw.*, ay.name as year_name
+        FROM academic_weeks aw
+        LEFT JOIN academic_years ay ON aw.academic_year_id = ay.id
+        WHERE aw.department_id = $1 AND aw.week_type = 'academic'
+        ORDER BY aw.created_at DESC
+        LIMIT 1
+    `;
+    return [sql, [departmentId]];
 }
 
 function getLatestPublishedWeek(departmentId) {
-    return [
-        `SELECT aw.*, COALESCE(ay.name,'') AS year_name
-         FROM academic_weeks aw
-         LEFT JOIN academic_years ay ON aw.academic_year_id = ay.id
-         WHERE aw.department_id = $1
-           AND aw.week_type = 'academic'
-           AND aw.status = 'published'
-         ORDER BY aw.created_at DESC
-         LIMIT 1`, [departmentId]
-    ];
+    const sql = `
+        SELECT aw.*, ay.name as year_name
+        FROM academic_weeks aw
+        LEFT JOIN academic_years ay ON aw.academic_year_id = ay.id
+        WHERE aw.department_id = $1 
+        AND aw.week_type = 'academic'
+        AND aw.status = 'published'
+        ORDER BY aw.start_date DESC
+        LIMIT 1
+    `;
+    return [sql, [departmentId]];
+}
+
+function getActiveAcademicWeek(departmentId) {
+    return getLatestPublishedWeek(departmentId);
 }
 
 function publishAcademicWeek(weekId) {
-    return [`UPDATE academic_weeks SET status='published' WHERE id=$1 RETURNING *`, [weekId]];
+    const sql = `
+        UPDATE academic_weeks 
+        SET status = 'published', updated_at = CURRENT_TIMESTAMP
+        WHERE id = $1 AND week_type = 'academic'
+        RETURNING *
+    `;
+    return [sql, [weekId]];
 }
 
-// ─── CERTIFICATION WEEKS (Trainer-managed, week_type = 'certification') ───────
+// ============================================================
+// CERTIFICATION WEEKS
+// ============================================================
 
 function createCertWeek(certificationId, weekNumber, label, startDate, endDate, createdBy) {
-    return [
-        `INSERT INTO academic_weeks
-            (week_number, label, start_date, end_date,
-             created_by, certification_id, week_type, status)
-         VALUES ($1,$2,$3,$4,$5,$6,'certification','draft')
-         RETURNING *`, [weekNumber, label, startDate, endDate, createdBy, certificationId]
-    ];
+    const sql = `
+        INSERT INTO academic_weeks 
+        (certification_id, week_number, label, start_date, end_date, created_by, week_type, status)
+        VALUES ($1, $2, $3, $4, $5, $6, 'certification', 'draft')
+        RETURNING *
+    `;
+    return [sql, [certificationId, weekNumber, label, startDate, endDate, createdBy]];
 }
 
 function getCertWeeksByCert(certificationId) {
-    return [
-        `SELECT aw.*, cert.name AS certification_name, cert.code AS certification_code
-         FROM academic_weeks aw
-         JOIN certifications cert ON aw.certification_id = cert.id
-         WHERE aw.certification_id = $1 AND aw.week_type = 'certification'
-         ORDER BY aw.created_at DESC`, [certificationId]
-    ];
+    const sql = `
+        SELECT aw.*, u.full_name as created_by_name
+        FROM academic_weeks aw
+        LEFT JOIN users u ON aw.created_by = u.id
+        WHERE aw.certification_id = $1 AND aw.week_type = 'certification'
+        ORDER BY aw.start_date DESC
+    `;
+    return [sql, [certificationId]];
 }
 
-// All cert weeks ever created for a cert — for the student's history page
-function getAllCertWeeksForStudent(studentId) {
-    return [
-        `SELECT DISTINCT aw.id AS week_id, aw.label AS week_label,
-                aw.start_date, aw.end_date, aw.status,
-                cert.id AS certification_id, cert.name AS certification_name
-         FROM enrollments e
-         JOIN certifications cert ON e.certification_id = cert.id
-         JOIN academic_weeks aw ON aw.certification_id = cert.id AND aw.week_type = 'certification'
-         WHERE e.student_id = $1
-         ORDER BY cert.id, aw.start_date ASC`, [studentId]
-    ];
-}
-
-// Latest published cert week per cert — what students and trainer see for availability
 function getLatestPublishedCertWeek(certificationId) {
-    return [
-        `SELECT aw.*, cert.name AS certification_name, cert.code AS certification_code
-         FROM academic_weeks aw
-         JOIN certifications cert ON aw.certification_id = cert.id
-         WHERE aw.certification_id = $1
-           AND aw.week_type = 'certification'
-           AND aw.status = 'published'
-         ORDER BY aw.created_at DESC
-         LIMIT 1`, [certificationId]
-    ];
-}
-
-// For each cert a student is enrolled in, return the latest published cert week
-function getLatestPublishedCertWeeksForStudent(studentId) {
-    return [
-        `SELECT DISTINCT ON (cert.id)
-                aw.id AS week_id, aw.label AS week_label,
-                aw.start_date, aw.end_date,
-                cert.id AS certification_id, cert.name AS certification_name
-         FROM enrollments e
-         JOIN certifications cert ON e.certification_id = cert.id
-         JOIN academic_weeks aw
-             ON aw.certification_id = cert.id
-            AND aw.week_type = 'certification'
-            AND aw.status = 'published'
-         WHERE e.student_id = $1
-         ORDER BY cert.id, aw.created_at DESC`, [studentId]
-    ];
+    const sql = `
+        SELECT * FROM academic_weeks
+        WHERE certification_id = $1 
+        AND week_type = 'certification'
+        AND status = 'published'
+        ORDER BY start_date DESC
+        LIMIT 1
+    `;
+    return [sql, [certificationId]];
 }
 
 function publishCertWeek(weekId) {
-    return [`UPDATE academic_weeks SET status='published' WHERE id=$1 RETURNING *`, [weekId]];
+    const sql = `
+        UPDATE academic_weeks 
+        SET status = 'published', updated_at = CURRENT_TIMESTAMP
+        WHERE id = $1 AND week_type = 'certification'
+        RETURNING *
+    `;
+    return [sql, [weekId]];
 }
 
-// ─── ACADEMIC TIMETABLE (HOD generates, read-only) ────────────────────────────
+// ============================================================
+// AVAILABILITY
+// ============================================================
 
-function createTimetable(academicWeekId, generatedBy, label) {
-    return [
-        `INSERT INTO timetables (academic_week_id, generated_by, label, status, generated_at)
-         VALUES ($1,$2,$3,'published',NOW()) RETURNING *`, [academicWeekId, generatedBy, label]
-    ];
+function getAvailabilityForWeek(weekId) {
+    const sql = `
+        SELECT a.*, u.full_name as trainer_name
+        FROM availability a
+        JOIN trainers t ON a.trainer_id = t.id
+        JOIN users u ON t.user_id = u.id
+        WHERE a.academic_week_id = $1
+        ORDER BY a.day_of_week, a.time_start
+    `;
+    return [sql, [weekId]];
 }
 
-function getTimetablesByDepartment(departmentId) {
-    return [
-        `SELECT t.id, t.label, t.status, t.generated_at,
-                aw.label AS week_label, aw.start_date, aw.end_date, aw.id AS week_id
-         FROM timetables t
-         JOIN academic_weeks aw ON t.academic_week_id = aw.id
-         WHERE aw.department_id = $1 AND aw.week_type = 'academic'
-         ORDER BY t.generated_at DESC`, [departmentId]
-    ];
+function getStudentAvailabilityForWeek(weekId) {
+    const sql = `
+        SELECT sa.*, u.full_name as student_name, s.matricule
+        FROM student_availability sa
+        JOIN students s ON sa.student_id = s.id
+        JOIN users u ON s.user_id = u.id
+        WHERE sa.academic_week_id = $1
+        ORDER BY sa.day_of_week, sa.time_start
+    `;
+    return [sql, [weekId]];
+}
+
+function deleteExistingSlots(weekId, type = 'all') {
+    if (type === 'academic') {
+        const sql = `DELETE FROM timetable_slots WHERE academic_week_id = $1 AND course_id IS NOT NULL`;
+        return [sql, [weekId]];
+    } else if (type === 'certification') {
+        const sql = `DELETE FROM timetable_slots WHERE academic_week_id = $1 AND certification_id IS NOT NULL`;
+        return [sql, [weekId]];
+    }
+    const sql = `DELETE FROM timetable_slots WHERE academic_week_id = $1`;
+    return [sql, [weekId]];
 }
 
 function checkTrainerConflict(trainerId, dayOfWeek, timeStart, timeEnd, weekId) {
-    return [
-        `SELECT id FROM timetable_slots
-         WHERE trainer_id=$1 AND day_of_week=$2 AND academic_week_id=$5
-           AND time_start < $4::time AND time_end > $3::time
-         UNION ALL
-         SELECT id FROM cert_timetable_slots
-         WHERE trainer_id=$1 AND day_of_week=$2 AND academic_week_id=$5
-           AND time_start < $4::time AND time_end > $3::time`, [trainerId, dayOfWeek, timeStart, timeEnd, weekId]
-    ];
+    const sql = `
+        SELECT * FROM timetable_slots
+        WHERE trainer_id = $1 
+        AND day_of_week = $2
+        AND academic_week_id = $5
+        AND (
+            (time_start <= $3::time AND time_end > $3::time) OR
+            (time_start < $4::time AND time_end >= $4::time) OR
+            (time_start >= $3::time AND time_end <= $4::time)
+        )
+        LIMIT 1
+    `;
+    return [sql, [trainerId, dayOfWeek, timeStart, timeEnd, weekId]];
 }
 
 function checkRoomConflict(roomId, dayOfWeek, timeStart, timeEnd, weekId) {
-    return [
-        `SELECT id FROM timetable_slots
-         WHERE room_id=$1 AND day_of_week=$2 AND academic_week_id=$5
-           AND time_start < $4::time AND time_end > $3::time
-         UNION ALL
-         SELECT id FROM cert_timetable_slots
-         WHERE room_id=$1 AND day_of_week=$2 AND academic_week_id=$5
-           AND time_start < $4::time AND time_end > $3::time`, [roomId, dayOfWeek, timeStart, timeEnd, weekId]
-    ];
+    const sql = `
+        SELECT * FROM timetable_slots
+        WHERE room_id = $1 
+        AND day_of_week = $2
+        AND academic_week_id = $5
+        AND (
+            (time_start <= $3::time AND time_end > $3::time) OR
+            (time_start < $4::time AND time_end >= $4::time) OR
+            (time_start >= $3::time AND time_end <= $4::time)
+        )
+        LIMIT 1
+    `;
+    return [sql, [roomId, dayOfWeek, timeStart, timeEnd, weekId]];
 }
 
-function createTimetableSlot(timetableId, dayOfWeek, timeStart, timeEnd, roomId, trainerId, courseId, academicWeekId) {
-    return [
-        `INSERT INTO timetable_slots
-            (timetable_id, day_of_week, time_start, time_end, room_id, trainer_id, course_id, academic_week_id)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *`, [timetableId, dayOfWeek, timeStart, timeEnd, roomId, trainerId, courseId, academicWeekId]
-    ];
+function checkStudentConflict(studentId, dayOfWeek, timeStart, timeEnd, weekId) {
+    const sql = `
+        SELECT ts.* FROM timetable_slots ts
+        JOIN enrollments e ON (
+            (ts.program_id IS NOT NULL AND e.program_id = ts.program_id) OR
+            (ts.certification_id IS NOT NULL AND e.certification_id = ts.certification_id)
+        )
+        WHERE e.student_id = $1
+        AND ts.day_of_week = $2
+        AND ts.academic_week_id = $5
+        AND (
+            (ts.time_start <= $3::time AND ts.time_end > $3::time) OR
+            (ts.time_start < $4::time AND ts.time_end >= $4::time) OR
+            (ts.time_start >= $3::time AND ts.time_end <= $4::time)
+        )
+        LIMIT 1
+    `;
+    return [sql, [studentId, dayOfWeek, timeStart, timeEnd, weekId]];
 }
 
-function getTimetableSlotsByWeek(weekId) {
-    return [
-        `SELECT ts.id, ts.day_of_week, ts.time_start, ts.time_end,
-                r.name AS room_name, r.code AS room_code,
-                u.full_name AS trainer_name,
-                c.name AS course_name, c.code AS course_code,
-                p.name AS program_name, al.name AS level_name
-         FROM timetable_slots ts
-         LEFT JOIN rooms r ON ts.room_id = r.id
-         LEFT JOIN trainers tr ON ts.trainer_id = tr.id
-         LEFT JOIN users u ON tr.user_id = u.id
-         LEFT JOIN courses c ON ts.course_id = c.id
-         LEFT JOIN sessions s ON c.session_id = s.id
-         LEFT JOIN programs p ON s.program_id = p.id
-         LEFT JOIN academic_levels al ON s.academic_level_id = al.id
-         WHERE ts.academic_week_id = $1
-         ORDER BY
-             CASE ts.day_of_week
-                 WHEN 'Monday' THEN 1 WHEN 'Tuesday' THEN 2 WHEN 'Wednesday' THEN 3
-                 WHEN 'Thursday' THEN 4 WHEN 'Friday' THEN 5 WHEN 'Saturday' THEN 6
-             END, ts.time_start`, [weekId]
-    ];
+// ============================================================
+// TIMETABLES
+// ============================================================
+
+function createTimetable(weekId, generatedBy, label, type = 'academic') {
+    const sql = `
+        INSERT INTO timetables (academic_week_id, generated_by, label, timetable_type, status)
+        VALUES ($1, $2, $3, $4, 'draft')
+        RETURNING *
+    `;
+    return [sql, [weekId, generatedBy, label, type]];
 }
 
-// ─── STUDENT ACADEMIC TIMETABLE ───────────────────────────────────────────────
-
-function getStudentTimetable(studentId, weekId) {
-    const weekFilter = weekId ? 'AND ts.academic_week_id = $2' : '';
-    return [
-        `SELECT ts.day_of_week, ts.time_start, ts.time_end,
-                r.name AS room_name, u.full_name AS trainer_name,
-                c.name AS course_name, c.id AS course_id,
-                aw.label AS week_label, aw.start_date, aw.end_date, aw.id AS week_id,
-                'academic' AS slot_type
-         FROM students st
-         JOIN sessions sess ON sess.program_id = st.program_id
-         JOIN courses c ON c.session_id = sess.id
-         JOIN timetable_slots ts ON ts.course_id = c.id
-         JOIN academic_weeks aw ON ts.academic_week_id = aw.id AND aw.status = 'published'
-         LEFT JOIN rooms r ON ts.room_id = r.id
-         LEFT JOIN trainers tr ON ts.trainer_id = tr.id
-         LEFT JOIN users u ON tr.user_id = u.id
-         WHERE st.id = $1 ${weekFilter}
-         ORDER BY
-             CASE ts.day_of_week
-                 WHEN 'Monday' THEN 1 WHEN 'Tuesday' THEN 2 WHEN 'Wednesday' THEN 3
-                 WHEN 'Thursday' THEN 4 WHEN 'Friday' THEN 5 WHEN 'Saturday' THEN 6
-             END, ts.time_start`,
-        weekId ? [studentId, weekId] : [studentId]
-    ];
+function createTimetableSlot(timetableId, dayOfWeek, timeStart, timeEnd, roomId, trainerId, courseId, weekId, programId = null) {
+    const sql = `
+        INSERT INTO timetable_slots 
+        (timetable_id, day_of_week, time_start, time_end, room_id, trainer_id, course_id, academic_week_id, program_id)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+        RETURNING *
+    `;
+    return [sql, [timetableId, dayOfWeek, timeStart, timeEnd, roomId, trainerId, courseId, weekId, programId]];
 }
 
-function getAllStudentWeeks(studentId) {
-    return [
-        `SELECT DISTINCT aw.id, aw.label, aw.start_date, aw.end_date, aw.status
-         FROM academic_weeks aw
-         JOIN timetable_slots ts ON ts.academic_week_id = aw.id
-         JOIN courses c ON ts.course_id = c.id
-         JOIN sessions s ON c.session_id = s.id
-         JOIN students st ON s.program_id = st.program_id
-         WHERE st.id = $1 AND aw.status = 'published'
-         ORDER BY aw.start_date DESC`, [studentId]
-    ];
+function createCertTimetableSlot(certificationId, trainerId, weekId, dayOfWeek, timeStart, timeEnd, roomId) {
+    const sql = `
+        INSERT INTO timetable_slots 
+        (certification_id, trainer_id, academic_week_id, day_of_week, time_start, time_end, room_id)
+        VALUES ($1, $2, $3, $4, $5, $6, $7)
+        RETURNING *
+    `;
+    return [sql, [certificationId, trainerId, weekId, dayOfWeek, timeStart, timeEnd, roomId]];
 }
 
-// ─── CERTIFICATION TIMETABLE (Trainer generates + views, read-only) ───────────
-
-function createCertTimetableSlot(certificationId, trainerId, academicWeekId, dayOfWeek, timeStart, timeEnd, roomId) {
-    return [
-        `INSERT INTO cert_timetable_slots
-            (certification_id, trainer_id, academic_week_id, day_of_week, time_start, time_end, room_id)
-         VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *`, [certificationId, trainerId, academicWeekId, dayOfWeek, timeStart, timeEnd, roomId || null]
-    ];
+function getAllTimetables() {
+    const sql = `
+        SELECT t.*, aw.label as week_label, aw.start_date, aw.end_date, u.full_name as generated_by_name
+        FROM timetables t
+        JOIN academic_weeks aw ON t.academic_week_id = aw.id
+        LEFT JOIN users u ON t.generated_by = u.id
+        ORDER BY t.generated_at DESC
+    `;
+    return [sql, []];
 }
 
-function deleteCertSlotsForWeek(certificationId, academicWeekId) {
-    return [
-        `DELETE FROM cert_timetable_slots WHERE certification_id=$1 AND academic_week_id=$2`, [certificationId, academicWeekId]
-    ];
+function getTimetablesByDepartment(departmentId) {
+    const sql = `
+        SELECT t.*, aw.label as week_label, aw.start_date, aw.end_date, aw.week_number,
+               u.full_name as generated_by_name
+        FROM timetables t
+        JOIN academic_weeks aw ON t.academic_week_id = aw.id
+        LEFT JOIN users u ON t.generated_by = u.id
+        WHERE aw.department_id = $1
+        ORDER BY t.generated_at DESC
+    `;
+    return [sql, [departmentId]];
 }
 
-// All generated cert timetables for a trainer — summary list
-function getCertTimetablesByTrainer(trainerId) {
-    return [
-        `SELECT DISTINCT
-                aw.id AS week_id, aw.label AS week_label,
-                aw.start_date, aw.end_date,
-                cert.id AS certification_id,
-                cert.name AS certification_name,
-                cert.code AS certification_code,
-                COUNT(cts.id) AS slot_count
-         FROM cert_timetable_slots cts
-         JOIN academic_weeks aw ON cts.academic_week_id = aw.id
-         JOIN certifications cert ON cts.certification_id = cert.id
-         WHERE cts.trainer_id = $1
-         GROUP BY aw.id, aw.label, aw.start_date, aw.end_date,
-                  cert.id, cert.name, cert.code
-         ORDER BY aw.start_date DESC`, [trainerId]
-    ];
+function getTimetableByProgram(timetableId, programId) {
+    const sql = `
+        SELECT ts.*, c.name as course_name, c.code as course_code,
+               u.full_name as trainer_name, r.name as room_name, r.code as room_code
+        FROM timetable_slots ts
+        LEFT JOIN courses c ON ts.course_id = c.id
+        LEFT JOIN trainers t ON ts.trainer_id = t.id
+        LEFT JOIN users u ON t.user_id = u.id
+        LEFT JOIN rooms r ON ts.room_id = r.id
+        WHERE ts.timetable_id = $1 AND ts.program_id = $2
+        ORDER BY ts.day_of_week, ts.time_start
+    `;
+    return [sql, [timetableId, programId]];
 }
 
-// Grid slots for a specific cert+week (read-only detail view)
-function getCertTimetableSlots(certificationId, weekId) {
-    return [
-        `SELECT cts.id, cts.day_of_week, cts.time_start, cts.time_end,
-                r.name AS room_name, r.code AS room_code,
-                u.full_name AS trainer_name,
-                cert.name AS certification_name,
-                aw.label AS week_label, aw.start_date, aw.end_date
-         FROM cert_timetable_slots cts
-         JOIN certifications cert ON cts.certification_id = cert.id
-         JOIN academic_weeks aw ON cts.academic_week_id = aw.id
-         LEFT JOIN rooms r ON cts.room_id = r.id
-         LEFT JOIN trainers tr ON cts.trainer_id = tr.id
-         LEFT JOIN users u ON tr.user_id = u.id
-         WHERE cts.certification_id = $1 AND cts.academic_week_id = $2
-         ORDER BY
-             CASE cts.day_of_week
-                 WHEN 'Monday' THEN 1 WHEN 'Tuesday' THEN 2 WHEN 'Wednesday' THEN 3
-                 WHEN 'Thursday' THEN 4 WHEN 'Friday' THEN 5 WHEN 'Saturday' THEN 6
-             END, cts.time_start`, [certificationId, weekId]
-    ];
+function getTimetableSlots(timetableId) {
+    const sql = `
+        SELECT ts.*, c.name as course_name, cert.name as certification_name,
+               u.full_name as trainer_name, r.name as room_name
+        FROM timetable_slots ts
+        LEFT JOIN courses c ON ts.course_id = c.id
+        LEFT JOIN certifications cert ON ts.certification_id = cert.id
+        LEFT JOIN trainers t ON ts.trainer_id = t.id
+        LEFT JOIN users u ON t.user_id = u.id
+        LEFT JOIN rooms r ON ts.room_id = r.id
+        WHERE ts.timetable_id = $1
+        ORDER BY ts.day_of_week, ts.time_start
+    `;
+    return [sql, [timetableId]];
 }
 
-// All cert timetable slots for student — history view (all weeks, all certs)
-function getStudentCertTimetable(studentId, weekId) {
-    const weekFilter = weekId ? 'AND cts.academic_week_id = $2' : '';
-    return [
-        `SELECT cts.id, cts.day_of_week, cts.time_start, cts.time_end,
-                cert.name AS certification_name, cert.id AS certification_id,
-                u.full_name AS trainer_name,
-                r.name AS room_name,
-                aw.label AS week_label, aw.start_date, aw.end_date, aw.id AS week_id,
-                'certification' AS slot_type
-         FROM enrollments e
-         JOIN certifications cert ON e.certification_id = cert.id
-         JOIN cert_timetable_slots cts ON cts.certification_id = cert.id
-         JOIN academic_weeks aw ON cts.academic_week_id = aw.id
-         LEFT JOIN rooms r ON cts.room_id = r.id
-         LEFT JOIN trainers tr ON cts.trainer_id = tr.id
-         LEFT JOIN users u ON tr.user_id = u.id
-         WHERE e.student_id = $1 ${weekFilter}
-         ORDER BY aw.start_date,
-             CASE cts.day_of_week
-                 WHEN 'Monday' THEN 1 WHEN 'Tuesday' THEN 2 WHEN 'Wednesday' THEN 3
-                 WHEN 'Thursday' THEN 4 WHEN 'Friday' THEN 5 WHEN 'Saturday' THEN 6
-             END, cts.time_start`,
-        weekId ? [studentId, weekId] : [studentId]
-    ];
+function publishTimetable(timetableId) {
+    const sql = `
+        UPDATE timetables 
+        SET status = 'published'
+        WHERE id = $1
+        RETURNING *
+    `;
+    return [sql, [timetableId]];
 }
 
-function getStudentCertTimetableWeeks(studentId) {
-    return [
-        `SELECT DISTINCT aw.id, aw.label, aw.start_date, aw.end_date,
-                cert.id AS certification_id, cert.name AS certification_name
-         FROM academic_weeks aw
-         JOIN cert_timetable_slots cts ON cts.academic_week_id = aw.id
-         JOIN enrollments e ON e.certification_id = cts.certification_id AND e.student_id = $1
-         JOIN certifications cert ON cert.id = cts.certification_id
-         ORDER BY aw.start_date DESC`, [studentId]
-    ];
-}
+// ============================================================
+// TRAINER TIMETABLE VIEW
+// ============================================================
 
-// ─── TRAINER COMBINED TIMETABLE (academic + cert, read-only) ─────────────────
-
-function getTrainerTimetable(trainerId, weekId) {
-    const aFilter = weekId ? 'AND ts.academic_week_id = $2' : '';
-    const cFilter = weekId ? 'AND cts.academic_week_id = $2' : '';
-    const params = weekId ? [trainerId, weekId] : [trainerId];
-    return [
-        `SELECT ts.id, ts.day_of_week, ts.time_start, ts.time_end,
-                r.name AS room_name, r.code AS room_code,
-                c.name AS course_name, c.code AS course_code, c.id AS course_id,
-                NULL::int AS certification_id, NULL::varchar AS certification_name,
-                aw.label AS week_label, aw.start_date, aw.end_date, aw.id AS week_id,
-                'academic' AS slot_type
-         FROM timetable_slots ts
-         JOIN academic_weeks aw ON ts.academic_week_id = aw.id AND aw.status = 'published'
-         LEFT JOIN rooms r ON ts.room_id = r.id
-         LEFT JOIN courses c ON ts.course_id = c.id
-         WHERE ts.trainer_id = $1 ${aFilter}
-
-         UNION ALL
-
-         SELECT cts.id, cts.day_of_week, cts.time_start, cts.time_end,
-                r.name AS room_name, r.code AS room_code,
-                NULL::varchar AS course_name, NULL::varchar AS course_code, NULL::int AS course_id,
-                cert.id AS certification_id, cert.name AS certification_name,
-                aw.label AS week_label, aw.start_date, aw.end_date, aw.id AS week_id,
-                'certification' AS slot_type
-         FROM cert_timetable_slots cts
-         JOIN academic_weeks aw ON cts.academic_week_id = aw.id
-         LEFT JOIN rooms r ON cts.room_id = r.id
-         LEFT JOIN certifications cert ON cts.certification_id = cert.id
-         WHERE cts.trainer_id = $1 ${cFilter}
-
-         ORDER BY
-             CASE day_of_week
-                 WHEN 'Monday' THEN 1 WHEN 'Tuesday' THEN 2 WHEN 'Wednesday' THEN 3
-                 WHEN 'Thursday' THEN 4 WHEN 'Friday' THEN 5 WHEN 'Saturday' THEN 6
-             END, time_start`,
-        params
-    ];
+function getTrainerTimetable(trainerId, weekId = null) {
+    let sql = `
+        SELECT ts.*, c.name as course_name, cert.name as certification_name,
+               r.name as room_name, r.code as room_code,
+               aw.label as week_label, aw.start_date, aw.end_date,
+               p.name as program_name
+        FROM timetable_slots ts
+        LEFT JOIN courses c ON ts.course_id = c.id
+        LEFT JOIN certifications cert ON ts.certification_id = cert.id
+        LEFT JOIN programs p ON ts.program_id = p.id
+        LEFT JOIN rooms r ON ts.room_id = r.id
+        LEFT JOIN academic_weeks aw ON ts.academic_week_id = aw.id
+        WHERE ts.trainer_id = $1
+    `;
+    const params = [trainerId];
+    
+    if (weekId) {
+        sql += ` AND ts.academic_week_id = $2`;
+        params.push(weekId);
+    }
+    
+    sql += ` ORDER BY aw.start_date DESC, ts.day_of_week, ts.time_start`;
+    return [sql, params];
 }
 
 function getAllTrainerWeeks(trainerId) {
-    return [
-        `SELECT DISTINCT aw.id, aw.label, aw.start_date, aw.end_date, aw.status, aw.week_type
-         FROM academic_weeks aw
-         WHERE aw.id IN (
-             SELECT DISTINCT academic_week_id FROM timetable_slots WHERE trainer_id = $1
-             UNION
-             SELECT DISTINCT academic_week_id FROM cert_timetable_slots WHERE trainer_id = $1
-         ) AND aw.status = 'published'
-         ORDER BY aw.start_date DESC`, [trainerId]
-    ];
+    const sql = `
+        SELECT DISTINCT aw.id, aw.label, aw.start_date, aw.end_date, aw.status
+        FROM timetable_slots ts
+        JOIN academic_weeks aw ON ts.academic_week_id = aw.id
+        WHERE ts.trainer_id = $1
+        ORDER BY aw.start_date DESC
+    `;
+    return [sql, [trainerId]];
 }
 
-// ─── STUDENT AVAILABILITY (cert weeks only) ───────────────────────────────────
+// ============================================================
+// STUDENT TIMETABLE VIEW
+// ============================================================
 
-function submitStudentAvailability(studentId, academicWeekId, dayOfWeek, timeStart, timeEnd) {
-    return [
-        `INSERT INTO student_availability (student_id, academic_week_id, day_of_week, time_start, time_end)
-         VALUES ($1,$2,$3,$4,$5)
-         ON CONFLICT (student_id, academic_week_id, day_of_week, time_start, time_end) DO NOTHING
-         RETURNING *`, [studentId, academicWeekId, dayOfWeek, timeStart, timeEnd]
-    ];
+function getStudentTimetable(studentId, weekId = null) {
+    let sql = `
+        SELECT ts.*, c.name as course_name, cert.name as certification_name,
+               u.full_name as trainer_name, r.name as room_name, r.code as room_code,
+               aw.label as week_label, aw.start_date, aw.end_date
+        FROM timetable_slots ts
+        JOIN enrollments e ON (
+            (ts.program_id IS NOT NULL AND e.program_id = ts.program_id) OR
+            (ts.certification_id IS NOT NULL AND e.certification_id = ts.certification_id)
+        )
+        LEFT JOIN courses c ON ts.course_id = c.id
+        LEFT JOIN certifications cert ON ts.certification_id = cert.id
+        LEFT JOIN trainers t ON ts.trainer_id = t.id
+        LEFT JOIN users u ON t.user_id = u.id
+        LEFT JOIN rooms r ON ts.room_id = r.id
+        LEFT JOIN academic_weeks aw ON ts.academic_week_id = aw.id
+        WHERE e.student_id = $1
+    `;
+    const params = [studentId];
+    
+    if (weekId) {
+        sql += ` AND ts.academic_week_id = $2`;
+        params.push(weekId);
+    }
+    
+    sql += ` ORDER BY ts.day_of_week, ts.time_start`;
+    return [sql, params];
 }
 
-function getStudentAvailability(studentId, weekId) {
-    const weekFilter = weekId ? 'AND sa.academic_week_id = $2' : '';
-    return [
-        `SELECT sa.*, aw.label AS week_label, cert.name AS certification_name
-         FROM student_availability sa
-         LEFT JOIN academic_weeks aw ON sa.academic_week_id = aw.id
-         LEFT JOIN certifications cert ON aw.certification_id = cert.id
-         WHERE sa.student_id = $1 ${weekFilter}
-         ORDER BY
-             CASE sa.day_of_week
-                 WHEN 'Monday' THEN 1 WHEN 'Tuesday' THEN 2 WHEN 'Wednesday' THEN 3
-                 WHEN 'Thursday' THEN 4 WHEN 'Friday' THEN 5 WHEN 'Saturday' THEN 6
-             END, sa.time_start`,
-        weekId ? [studentId, weekId] : [studentId]
-    ];
+function getStudentWeeks(studentId) {
+    const sql = `
+        SELECT DISTINCT aw.id, aw.label, aw.start_date, aw.end_date
+        FROM timetable_slots ts
+        JOIN enrollments e ON (
+            (ts.program_id IS NOT NULL AND e.program_id = ts.program_id) OR
+            (ts.certification_id IS NOT NULL AND e.certification_id = ts.certification_id)
+        )
+        JOIN academic_weeks aw ON ts.academic_week_id = aw.id
+        WHERE e.student_id = $1
+        ORDER BY aw.start_date DESC
+    `;
+    return [sql, [studentId]];
 }
 
-function deleteStudentAvailability(id, studentId) {
-    return [`DELETE FROM student_availability WHERE id=$1 AND student_id=$2 RETURNING id`, [id, studentId]];
+// ============================================================
+// ANNOUNCEMENTS
+// ============================================================
+
+function createAnnouncement(title, body, targetRoles, departmentId, createdBy) {
+    const sql = `
+        INSERT INTO announcements (title, body, target_roles, department_id, created_by)
+        VALUES ($1, $2, $3, $4, $5)
+        RETURNING *, (SELECT full_name FROM users WHERE id = $5) as created_by_name
+    `;
+    return [sql, [title, body, targetRoles, departmentId, createdBy]];
 }
 
-// ─── ANNOUNCEMENTS ────────────────────────────────────────────────────────────
-
-function createAnnouncement(title, body, targetRole, departmentId, createdBy) {
-    return [
-        `INSERT INTO announcements (title, body, target_role, department_id, created_by)
-         VALUES ($1,$2,$3,$4,$5) RETURNING *`, [title, body, targetRole || null, departmentId || null, createdBy]
-    ];
-}
-
-function getAnnouncementsByDepartment(departmentId, role) {
-    const roleFilter = role ? `AND (target_role IS NULL OR target_role = $2)` : '';
-    return [
-        `SELECT a.*, u.full_name AS author_name
-         FROM announcements a
-         LEFT JOIN users u ON a.created_by = u.id
-         WHERE (a.department_id = $1 OR a.department_id IS NULL) ${roleFilter}
-         ORDER BY a.created_at DESC`,
-        role ? [departmentId, role] : [departmentId]
-    ];
+function getAnnouncementsByDepartment(departmentId) {
+    const sql = `
+        SELECT a.*, u.full_name as created_by_name, d.name as department_name
+        FROM announcements a
+        JOIN users u ON a.created_by = u.id
+        JOIN departments d ON a.department_id = d.id
+        WHERE a.department_id = $1
+        ORDER BY a.created_at DESC
+    `;
+    return [sql, [departmentId]];
 }
 
 function getAnnouncementsForTrainer(trainerId) {
-    return [
-        `SELECT DISTINCT a.*, u.full_name AS author_name, d.name AS department_name
-         FROM announcements a
-         LEFT JOIN users u ON a.created_by = u.id
-         LEFT JOIN departments d ON a.department_id = d.id
-         WHERE (a.department_id IN (
-             SELECT DISTINCT p.department_id
-             FROM trainer_courses tc
-             JOIN courses c ON tc.course_id = c.id
-             JOIN sessions s ON c.session_id = s.id
-             JOIN programs p ON s.program_id = p.id
-             WHERE tc.trainer_id = $1
-         ) OR a.department_id IS NULL)
-         AND (a.target_role IS NULL OR a.target_role = 'trainer')
-         ORDER BY a.created_at DESC`, [trainerId]
-    ];
+    const sql = `
+        SELECT DISTINCT a.*, u.full_name as created_by_name, d.name as department_name
+        FROM announcements a
+        JOIN users u ON a.created_by = u.id
+        JOIN departments d ON a.department_id = d.id
+        JOIN trainer_courses tc ON (
+            EXISTS (
+                SELECT 1 FROM courses c
+                JOIN sessions s ON c.session_id = s.id
+                JOIN programs p ON s.program_id = p.id
+                WHERE tc.course_id = c.id AND p.department_id = a.department_id
+            ) OR EXISTS (
+                SELECT 1 FROM certifications cert
+                WHERE tc.certification_id = cert.id AND cert.department_id = a.department_id
+            )
+        )
+        WHERE tc.trainer_id = $1
+        AND 'trainer' = ANY(a.target_roles)
+        ORDER BY a.created_at DESC
+    `;
+    return [sql, [trainerId]];
 }
 
 function getAnnouncementsForStudent(studentId) {
-    return [
-        `SELECT a.*, u.full_name AS author_name, d.name AS department_name
-         FROM announcements a
-         LEFT JOIN users u ON a.created_by = u.id
-         LEFT JOIN departments d ON a.department_id = d.id
-         WHERE (a.department_id = (
-             SELECT p.department_id FROM students st
-             JOIN programs p ON st.program_id = p.id
-             WHERE st.id = $1 LIMIT 1
-         ) OR a.department_id IS NULL)
-         AND (a.target_role IS NULL OR a.target_role = 'student')
-         ORDER BY a.created_at DESC`, [studentId]
-    ];
+    const sql = `
+        SELECT a.*, u.full_name as created_by_name, d.name as department_name
+        FROM announcements a
+        JOIN users u ON a.created_by = u.id
+        JOIN departments d ON a.department_id = d.id
+        JOIN students s ON s.program_id IS NOT NULL
+        JOIN programs p ON s.program_id = p.id
+        WHERE s.id = $1 AND p.department_id = a.department_id
+        AND 'student' = ANY(a.target_roles)
+        ORDER BY a.created_at DESC
+    `;
+    return [sql, [studentId]];
 }
 
-function getAnnouncementsForParent(userId) {
-    return [
-        `SELECT DISTINCT a.*, u.full_name AS author_name, d.name AS department_name
-         FROM announcements a
-         LEFT JOIN users u ON a.created_by = u.id
-         LEFT JOIN departments d ON a.department_id = d.id
-         WHERE (a.department_id IN (
-             SELECT DISTINCT p.department_id
-             FROM parent_student_links psl
-             JOIN parents par ON psl.parent_id = par.id
-             JOIN students st ON psl.student_id = st.id
-             JOIN programs p ON st.program_id = p.id
-             WHERE par.user_id = $1
-         ) OR a.department_id IS NULL)
-         AND (a.target_role IS NULL OR a.target_role = 'parent')
-         ORDER BY a.created_at DESC`, [userId]
-    ];
+function getAnnouncementsForParent(parentId) {
+    const sql = `
+        SELECT DISTINCT a.*, u.full_name as created_by_name, d.name as department_name
+        FROM announcements a
+        JOIN users u ON a.created_by = u.id
+        JOIN departments d ON a.department_id = d.id
+        JOIN parent_student_links psl ON psl.parent_id = $1
+        JOIN students s ON psl.student_id = s.id
+        JOIN programs p ON s.program_id = p.id
+        WHERE p.department_id = a.department_id
+        AND 'parent' = ANY(a.target_roles)
+        ORDER BY a.created_at DESC
+    `;
+    return [sql, [parentId]];
 }
 
-// ─── STUDENT GRADES ───────────────────────────────────────────────────────────
+// ============================================================
+// CERTIFICATION TIMETABLE
+// ============================================================
 
-function getStudentGradesByPeriod(studentId, periodId) {
-    return [
-        `SELECT g.*, c.name AS course_name, c.code AS course_code,
-                cert.name AS certification_name, cert.code AS certification_code,
-                u.full_name AS trainer_name, ay.name AS academic_year
-         FROM grades g
-         LEFT JOIN courses c ON g.course_id = c.id
-         LEFT JOIN certifications cert ON g.certification_id = cert.id
-         LEFT JOIN trainers t ON g.trainer_id = t.id
-         LEFT JOIN users u ON t.user_id = u.id
-         LEFT JOIN academic_years ay ON g.academic_year_id = ay.id
-         WHERE g.student_id = $1
-           AND ($2::int IS NULL OR g.academic_year_id = $2)
-         ORDER BY g.submitted_at DESC`, [studentId, periodId || null]
-    ];
+function getCertTimetablesByTrainer(trainerId) {
+    const sql = `
+        SELECT DISTINCT ts.academic_week_id, ts.certification_id,
+               aw.label as week_label, aw.start_date, aw.end_date,
+               c.name as certification_name, c.code as certification_code
+        FROM timetable_slots ts
+        JOIN academic_weeks aw ON ts.academic_week_id = aw.id
+        JOIN certifications c ON ts.certification_id = c.id
+        WHERE ts.trainer_id = $1 AND ts.certification_id IS NOT NULL
+        ORDER BY aw.start_date DESC
+    `;
+    return [sql, [trainerId]];
 }
 
-function getStudentGradePeriods(studentId) {
-    return [
-        `SELECT DISTINCT ay.id, ay.name
-         FROM grades g
-         JOIN academic_years ay ON g.academic_year_id = ay.id
-         WHERE g.student_id = $1
-         ORDER BY ay.name`, [studentId]
-    ];
+function getCertTimetableSlots(certId, weekId) {
+    const sql = `
+        SELECT ts.*, u.full_name as trainer_name, r.name as room_name, r.code as room_code
+        FROM timetable_slots ts
+        LEFT JOIN trainers t ON ts.trainer_id = t.id
+        LEFT JOIN users u ON t.user_id = u.id
+        LEFT JOIN rooms r ON ts.room_id = r.id
+        WHERE ts.certification_id = $1 AND ts.academic_week_id = $2
+        ORDER BY ts.day_of_week, ts.time_start
+    `;
+    return [sql, [certId, weekId]];
 }
 
-function getStudentMarkComplaints(studentId) {
-    return [
-        `SELECT mc.id, mc.subject, mc.status, mc.created_at,
-                mc.description, mc.trainer_response,
-                c.name AS course_name, c.code AS course_code,
-                cert.name AS certification_name,
-                u.full_name AS trainer_name
-         FROM mark_complaints mc
-         LEFT JOIN courses c ON mc.course_id = c.id
-         LEFT JOIN certifications cert ON mc.certification_id = cert.id
-         LEFT JOIN trainers tr ON mc.trainer_id = tr.id
-         LEFT JOIN users u ON tr.user_id = u.id
-         WHERE mc.student_id = $1
-         ORDER BY mc.created_at DESC`, [studentId]
-    ];
-}
-
-function checkExistingMarkComplaint(studentId, courseId, certificationId) {
-    if (courseId) {
-        return [`SELECT id FROM mark_complaints WHERE student_id=$1 AND course_id=$2`, [studentId, courseId]];
-    }
-    return [`SELECT id FROM mark_complaints WHERE student_id=$1 AND certification_id=$2`, [studentId, certificationId]];
-}
-
-function getStudentCoursesWithGrades(studentId) {
-    return [
-        `SELECT DISTINCT c.id, c.name, c.code,
-                u.full_name AS trainer_name, tr.id AS trainer_id,
-                g.grade, g.grade_letter
-         FROM courses c
-         JOIN sessions s ON c.session_id = s.id
-         JOIN students st ON s.program_id = st.program_id
-         LEFT JOIN grades g ON g.course_id = c.id AND g.student_id = st.id
-         LEFT JOIN trainer_courses tc ON tc.course_id = c.id
-         LEFT JOIN trainers tr ON tc.trainer_id = tr.id
-         LEFT JOIN users u ON tr.user_id = u.id
-         WHERE st.id = $1 AND g.grade IS NOT NULL
-         ORDER BY c.name`, [studentId]
-    ];
+function deleteCertSlotsForWeek(certificationId, weekId) {
+    const sql = `
+        DELETE FROM timetable_slots 
+        WHERE certification_id = $1 AND academic_week_id = $2
+    `;
+    return [sql, [certificationId, weekId]];
 }
 
 module.exports = {
-    // Academic weeks (HOD)
+    // Academic weeks
     createAcademicWeek,
     getAcademicWeeksByDepartment,
     getPublishedWeeksByDepartment,
+    getLatestAcademicWeek,
     getLatestPublishedWeek,
+    getActiveAcademicWeek,
     publishAcademicWeek,
-    // Cert weeks (Trainer)
+    
+    // Certification weeks
     createCertWeek,
     getCertWeeksByCert,
     getLatestPublishedCertWeek,
-    getLatestPublishedCertWeeksForStudent,
-    getAllCertWeeksForStudent,
     publishCertWeek,
-    // Academic timetable (HOD)
-    createTimetable,
-    getTimetablesByDepartment,
+    
+    // Availability
+    getAvailabilityForWeek,
+    getStudentAvailabilityForWeek,
+    deleteExistingSlots,
     checkTrainerConflict,
     checkRoomConflict,
+    checkStudentConflict,
+    
+    // Timetables
+    createTimetable,
     createTimetableSlot,
-    getTimetableSlotsByWeek,
-    // Cert timetable (Trainer generates + views)
     createCertTimetableSlot,
-    deleteCertSlotsForWeek,
-    getCertTimetablesByTrainer,
-    getCertTimetableSlots,
-    getStudentCertTimetable,
-    getStudentCertTimetableWeeks,
-    // Trainer combined view
+    getAllTimetables,
+    getTimetablesByDepartment,
+    getTimetableByProgram,
+    getTimetableSlots,
+    publishTimetable,
+    
+    // Views
     getTrainerTimetable,
     getAllTrainerWeeks,
-    // Student academic
     getStudentTimetable,
-    getAllStudentWeeks,
-    // Student cert availability
-    submitStudentAvailability,
-    getStudentAvailability,
-    deleteStudentAvailability,
+    getStudentWeeks,
+    
     // Announcements
     createAnnouncement,
     getAnnouncementsByDepartment,
     getAnnouncementsForTrainer,
     getAnnouncementsForStudent,
     getAnnouncementsForParent,
-    // Student grades
-    getStudentGradesByPeriod,
-    getStudentGradePeriods,
-    getStudentMarkComplaints,
-    checkExistingMarkComplaint,
-    getStudentCoursesWithGrades,
+    
+    // Certification timetables
+    getCertTimetablesByTrainer,
+    getCertTimetableSlots,
+    deleteCertSlotsForWeek,
 };
