@@ -1,59 +1,19 @@
-// FILE: /frontend/src/pages/parent/ParentLayout.jsx
-import { NavLink, Outlet, useNavigate } from 'react-router-dom';
-import { useAuth } from '../../context/AuthContext';
-
+import { Outlet } from "react-router-dom";
+import Sidebar from "../../components/layout/Sidebar";
+import { LayoutDashboard, Users, CalendarDays, BarChart2, MessageCircle, Megaphone } from "lucide-react";
 const NAV = [
-    { to: '/parent',               label: '👨‍👩‍👧 My Children',    end: true },
-    { to: '/parent/announcements', label: '📢 Announcements',  end: false },
-    { to: '/parent/complaints',    label: '💬 Complaints',      end: false },
+  { to: "/parent",              label: "Dashboard",    icon: <LayoutDashboard size={18} /> },
+  { to: "/parent/children",     label: "My Children",  icon: <Users size={18} /> },
+  { to: "/parent/timetable",    label: "Timetable",    icon: <CalendarDays size={18} /> },
+  { to: "/parent/grades",       label: "Grades",       icon: <BarChart2 size={18} /> },
+  { to: "/parent/complaints",   label: "Complaints",   icon: <MessageCircle size={18} /> },
+  { to: "/parent/announcements",label: "Announcements",icon: <Megaphone size={18} /> },
 ];
-
 export default function ParentLayout() {
-    const { user, logout } = useAuth();
-    const navigate = useNavigate();
-    function handleLogout() { logout(); navigate('/login'); }
-
-    return (
-        <div style={{ display: 'flex', minHeight: '100vh', background: '#f0f2f5' }}>
-            <aside style={{
-                width: 240, background: '#1e3a5f', color: '#fff',
-                display: 'flex', flexDirection: 'column', padding: '1.5rem 0',
-            }}>
-                <div style={{ fontWeight: 700, fontSize: '1.1rem', padding: '0 1.25rem', marginBottom: '2rem' }}>
-                    Parent Portal
-                </div>
-                <nav style={{ flex: 1 }}>
-                    {NAV.map(item => (
-                        <NavLink
-                            key={item.to}
-                            to={item.to}
-                            end={item.end}
-                            style={({ isActive }) => ({
-                                display: 'block', padding: '0.65rem 1.25rem',
-                                color: isActive ? '#fff' : 'rgba(255,255,255,0.7)',
-                                background: isActive ? 'rgba(255,255,255,0.15)' : 'transparent',
-                                textDecoration: 'none', fontWeight: isActive ? 600 : 400,
-                                borderLeft: isActive ? '3px solid #fff' : '3px solid transparent',
-                                transition: 'all 0.15s',
-                            })}
-                        >
-                            {item.label}
-                        </NavLink>
-                    ))}
-                </nav>
-                <div style={{ padding: '1rem 1.25rem', borderTop: '1px solid rgba(255,255,255,0.15)' }}>
-                    <div style={{ fontWeight: 600, fontSize: '0.875rem' }}>{user?.fullName || 'Parent'}</div>
-                    <button
-                        onClick={handleLogout}
-                        style={{ marginTop: '0.5rem', background: 'rgba(255,255,255,0.15)', color: '#fff', border: 'none', borderRadius: 6, padding: '0.4rem 0.8rem', cursor: 'pointer', fontSize: '0.8rem' }}
-                    >
-                        Logout
-                    </button>
-                </div>
-            </aside>
-            <main style={{ flex: 1, padding: '2rem', overflowY: 'auto' }}>
-                <Outlet />
-            </main>
-        </div>
-    );
+  return (
+    <div className="flex h-full">
+      <Sidebar navItems={NAV} roleLabel="Parent" roleColor="bg-pink-600" />
+      <main className="flex-1 overflow-y-auto bg-gray-50"><div className="max-w-7xl mx-auto px-6 py-6"><Outlet /></div></main>
+    </div>
+  );
 }

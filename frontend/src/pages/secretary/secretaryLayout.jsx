@@ -1,46 +1,16 @@
-import { NavLink, Outlet, useNavigate } from 'react-router-dom';
-import { useAuth } from '../../context/AuthContext';
-import '../../styles/Secretary.css';
-
+import { Outlet } from "react-router-dom";
+import Sidebar from "../../components/layout/Sidebar";
+import { LayoutDashboard, Users, UserPlus } from "lucide-react";
 const NAV = [
-    { to: '/secretary',          label: ' Dashboard',          end: true  },
-    { to: '/secretary/register', label: ' Register Student',   end: false },
-    { to: '/secretary/students', label: ' All Students',       end: false },
+  { to: "/secretary",          label: "Dashboard",        icon: <LayoutDashboard size={18} /> },
+  { to: "/secretary/students", label: "All Students",     icon: <Users size={18} /> },
+  { to: "/secretary/register", label: "Register Student", icon: <UserPlus size={18} /> },
 ];
-
 export default function SecretaryLayout() {
-    const { user, logout } = useAuth();
-    const navigate = useNavigate();
-
-    function handleLogout() { logout(); navigate('/login'); }
-
-    return (
-        <div className="secretary-shell">
-            <aside className="secretary-sidebar">
-                <div className="secretary-brand">Student Registration</div>
-                <nav className="secretary-nav">
-                    {NAV.map(n => (
-                        <NavLink
-                            key={n.to}
-                            to={n.to}
-                            end={n.end}
-                            className={({ isActive }) =>
-                                `secretary-link${isActive ? ' secretary-link-active' : ''}`
-                            }
-                        >
-                            {n.label}
-                        </NavLink>
-                    ))}
-                </nav>
-                <div className="secretary-footer">
-                    <div className="secretary-footer-name">{user?.fullName}</div>
-                    <div className="secretary-footer-role">SECRETARY </div>
-                    <button className="secretary-footer-logout" onClick={handleLogout}>Logout</button>
-                </div>
-            </aside>
-            <main className="secretary-main">
-                <Outlet />
-            </main>
-        </div>
-    );
+  return (
+    <div className="flex h-full">
+      <Sidebar navItems={NAV} roleLabel="Secretary" roleColor="bg-cyan-600" />
+      <main className="flex-1 overflow-y-auto bg-gray-50"><div className="max-w-7xl mx-auto px-6 py-6"><Outlet /></div></main>
+    </div>
+  );
 }

@@ -1,128 +1,106 @@
-// FILE: /frontend/src/pages/admin/Certifications.jsx
-import { useState, useEffect } from 'react';
-import { getCertifications, createCertification, updateCertification, deleteCertification } from '../../api/adminApi';
-import Modal from '../../components/Modal';
-import Badge from '../../components/Badge';
-import Table from '../../components/Table';
-import '../../styles/Page.css';
+// FILE: src/pages/admin/Certifications.jsx
+import { useEffect, useState } from "react";
+import { Plus, Pencil, Trash2, UserCheck } from "lucide-react";
+import { adminApi } from "../../api";
+import Modal from "../../components/ui/Modal";
+import Table from "../../components/ui/Table";
+import { PageLoader, ErrorAlert, SectionHeader, ConfirmModal, Badge } from "../../components/ui";
 
-const empty = { name: '', code: '', description: '', durationHours: 40, status: 'active' };
+const EMPTY = { name:"", code:"", description:"", durationHours:40, status:"active" };
 
 export default function Certifications() {
-    const [certs, setCerts] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [showModal, setShowModal] = useState(false);
-    const [editItem, setEditItem] = useState(null);
-    const [form, setForm] = useState(empty);
-    const [error, setError] = useState('');
+  const [certs, setCerts]         = useState([]);
+  const [trainers, setTrainers]   = useState([]);
+  const [loading, setLoading]     = useState(true);
+  const [modal, setModal]         = useState(false);
+  const [editing, setEditing]     = useState(null);
+  const [form, setForm]           = useState(EMPTY);
+  const [saving, setSaving]       = useState(false);
+  const [deleteId, setDeleteId]   = useState(null);
+  const [assignModal, setAssignModal] = useState(null);
+  const [selectedTrainer, setSelectedTrainer] = useState("");
 
-    const load = () => {
-        setLoading(true);
-        getCertifications()
-            .then(res => setCerts(res.data.data || []))
-            .catch(() => {})
-            .finally(() => setLoading(false));
-    };
+  function load() {
+    Promise.all([adminApi.getCertifications(), adminApi.getUsers()])
+      .then(([c,u]) => { setCerts(c.data); setTrainers(u.data.filter(x=>x.roles?.includes("trainer"))); setLoading(false); });
+  }
+  useEffect(load, []);
 
-    useEffect(() => { load(); }, []);
+  async function handleSave() {
+    setSaving(true);
+    try {
+      if (editing) await adminApi.updateCertification(editing.id, form);
+      else         await adminApi.createCertification(form);
+      setModal(false); load();
+    } catch(e) { alert(e.response?.data?.message || "Failed"); } finally { setSaving(false); }
+  }
 
-    function openCreate() { setEditItem(null); setForm(empty); setError(''); setShowModal(true); }
-    function openEdit(c) {
-        setEditItem(c);
-        setForm({ name: c.name, code: c.code, description: c.description || '', durationHours: c.duration_hours, status: c.status });
-        setError('');
-        setShowModal(true);
-    }
+  async function handleAssign() {
+    await adminApi.assignTrainerToCert(assignModal.certId, { trainerId: selectedTrainer || null });
+    setAssignModal(null); load();
+  }
 
-    async function handleSubmit() {
-        if (!form.name || !form.code) { setError('Name and code are required.'); return; }
-        try {
-            if (editItem) await updateCertification(editItem.id, form);
-            else await createCertification(form);
-            setShowModal(false);
-            load();
-        } catch (err) {
-            setError(err.response?.data?.message || 'Failed to save.');
-        }
-    }
+  const cols = [
+    { key:"name", label:"Name" },
+    { key:"code", label:"Code" },
+    { key:"durationHours", label:"Hours", render: c => `${c.durationHours}h` },
+    { key:"trainer", label:"Assigned Trainer", render: c => {
+      const t = c.trainerCourses?.[0]?.trainer?.user;
+      return t ? <span className="badge-green">{t.fullName}</span> : <span className="badge-yellow">Unassigned</span>;
+    }},
+    { key:"enrollments", label:"Enrolments", render: c => c._count?.enrollments ?? 0 },
+    { key:"status", label:"Status", render: c => <Badge value={c.status} /> },
+    { key:"actions", label:"", render: c => (
+      <div className="flex gap-1">
+        <button className="btn-ghost btn-sm btn-icon text-blue-500" title="Assign trainer"
+          onClick={() => { setAssignModal({certId:c.id}); setSelectedTrainer(c.trainerCourses?.[0]?.trainer?.id||""); }}>
+          <UserCheck size={14} />
+        </button>
+        <button className="btn-ghost btn-sm btn-icon" onClick={() => { setForm({name:c.name,code:c.code,description:c.description||"",durationHours:c.durationHours,status:c.status}); setEditing(c); setModal(true); }}>
+          <Pencil size={14} />
+        </button>
+        <button className="btn-ghost btn-sm btn-icon text-red-500 hover:bg-red-50" onClick={() => setDeleteId(c.id)}>
+          <Trash2 size={14} />
+        </button>
+      </div>
+    )},
+  ];
 
-    async function handleDelete(id) {
-        if (!confirm('Delete this certification? This will also remove related enrollments and grades.')) return;
-        try {
-            await deleteCertification(id);
-            load();
-        } catch (err) {
-            alert(err.response?.data?.message || 'Failed to delete.');
-        }
-    }
+  if (loading) return <PageLoader />;
 
-    const columns = [
-        { key: 'name', label: 'Certification Name' },
-        { key: 'code', label: 'Code' },
-        { key: 'duration_hours', label: 'Duration', render: r => `${r.duration_hours}h` },
-        { key: 'trainer_count', label: 'Trainers', render: r => r.trainer_count || 0 },
-        { key: 'student_count', label: 'Enrolled', render: r => r.student_count || 0 },
-        { key: 'status', label: 'Status', render: r => <Badge label={r.status} /> },
-        {
-            key: 'actions', label: 'Actions', render: r => (
-                <div className="action-btns">
-                    <button className="um-btn-edit" onClick={() => openEdit(r)}>Edit</button>
-                    <button className="um-btn-del" onClick={() => handleDelete(r.id)}>Delete</button>
-                </div>
-            )
-        },
-    ];
+  return (
+    <div className="space-y-4">
+      <SectionHeader title="Certifications" subtitle="Manage standalone certification courses">
+        <button className="btn-primary" onClick={() => { setForm(EMPTY); setEditing(null); setModal(true); }}>
+          <Plus size={16} /> Add Certification
+        </button>
+      </SectionHeader>
+      <Table columns={cols} data={certs} emptyMsg="No certifications yet." />
 
-    return (
-        <div>
-            <div className="page-header">
-                <div>
-                    <h1 className="page-title">Certifications</h1>
-                    <p className="page-subtitle">Manage standalone certification programs</p>
-                </div>
-                <button className="btn-primary" onClick={openCreate}>+ Add Certification</button>
-            </div>
-
-            {loading ? (
-                <div className="page-loading">Loading…</div>
-            ) : (
-                <div className="table-card">
-                    <Table columns={columns} rows={certs} emptyMessage="No certifications found." />
-                </div>
-            )}
-
-            {showModal && (
-                <Modal title={editItem ? 'Edit Certification' : 'New Certification'} onClose={() => setShowModal(false)}>
-                    <div className="form-field">
-                        <label>Name *</label>
-                        <input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="e.g. AWS Cloud Practitioner" />
-                    </div>
-                    <div className="form-field">
-                        <label>Code *</label>
-                        <input value={form.code} onChange={e => setForm({ ...form, code: e.target.value })} placeholder="e.g. AWS-CP-01" />
-                    </div>
-                    <div className="form-field">
-                        <label>Description</label>
-                        <textarea rows={3} value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} placeholder="Optional description…" />
-                    </div>
-                    <div className="form-field">
-                        <label>Duration (hours)</label>
-                        <input type="number" min={1} value={form.durationHours} onChange={e => setForm({ ...form, durationHours: e.target.value })} />
-                    </div>
-                    <div className="form-field">
-                        <label>Status</label>
-                        <select value={form.status} onChange={e => setForm({ ...form, status: e.target.value })}>
-                            <option value="active">Active</option>
-                            <option value="inactive">Inactive</option>
-                        </select>
-                    </div>
-                    {error && <div className="form-error">{error}</div>}
-                    <div className="modal-actions">
-                        <button className="btn-cancel" onClick={() => setShowModal(false)}>Cancel</button>
-                        <button className="btn-confirm" onClick={handleSubmit}>{editItem ? 'Save' : 'Create'}</button>
-                    </div>
-                </Modal>
-            )}
+      <Modal open={modal} onClose={() => setModal(false)} title={editing ? "Edit Certification" : "Add Certification"}
+        footer={<><button className="btn-secondary" onClick={() => setModal(false)}>Cancel</button><button className="btn-primary" onClick={handleSave} disabled={saving}>{saving?"Saving…":"Save"}</button></>}>
+        <div className="space-y-4">
+          <div><label className="label">Name</label><input className="input" value={form.name} onChange={e=>setForm(p=>({...p,name:e.target.value}))} /></div>
+          <div><label className="label">Code</label><input className="input" value={form.code} onChange={e=>setForm(p=>({...p,code:e.target.value}))} /></div>
+          <div><label className="label">Description</label><textarea rows={3} className="input" value={form.description} onChange={e=>setForm(p=>({...p,description:e.target.value}))} /></div>
+          <div><label className="label">Duration (hours)</label><input type="number" min={1} className="input" value={form.durationHours} onChange={e=>setForm(p=>({...p,durationHours:+e.target.value}))} /></div>
+          <div><label className="label">Status</label><select className="select" value={form.status} onChange={e=>setForm(p=>({...p,status:e.target.value}))}><option value="active">Active</option><option value="inactive">Inactive</option></select></div>
         </div>
-    );
+      </Modal>
+
+      <Modal open={!!assignModal} onClose={() => setAssignModal(null)} title="Assign Trainer to Certification"
+        footer={<><button className="btn-secondary" onClick={() => setAssignModal(null)}>Cancel</button><button className="btn-primary" onClick={handleAssign}>Assign</button></>}>
+        <div>
+          <label className="label">Select Trainer</label>
+          <select className="select" value={selectedTrainer} onChange={e => setSelectedTrainer(e.target.value)}>
+            <option value="">— Remove trainer —</option>
+            {trainers.map(t => <option key={t.id} value={t.id}>{t.fullName}</option>)}
+          </select>
+        </div>
+      </Modal>
+
+      <ConfirmModal open={!!deleteId} onClose={() => setDeleteId(null)} onConfirm={async()=>{ await adminApi.deleteCertification(deleteId); setDeleteId(null); load(); }}
+        title="Delete Certification" message="All related enrollments and grades will also be removed." />
+    </div>
+  );
 }

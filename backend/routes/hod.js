@@ -1,29 +1,36 @@
+// FILE: backend/routes/hod.js
 const router = require('express').Router();
-const ctrl = require('../controllers/hodController');
-const { authenticate } = require('../middleware/auth');
-const { roleCheck } = require('../middleware/roleCheck');
-const guard = [authenticate, roleCheck('hod')];
+const { authenticate, authorize } = require('../middleware/auth');
+const h = require('../controllers/hodController');
 
-router.get('/dashboard', ...guard, ctrl.getDashboard);
-router.get('/programs', ...guard, ctrl.getProgramsHandler);
+router.use(authenticate, authorize('hod'));
 
-// Academic Weeks
-router.post('/weeks', ...guard, ctrl.createAcademicWeekHandler);
-router.get('/weeks', ...guard, ctrl.getAcademicWeeksHandler);
-router.get('/weeks/latest', ...guard, ctrl.getLatestWeekHandler);
-router.get('/weeks/active', ...guard, ctrl.getActiveWeekHandler); // alias kept
-router.put('/weeks/:id/publish', ...guard, ctrl.publishWeekHandler);
+router.get('/dashboard',           h.getDashboard);
+router.get('/programs',            h.getProgramsHandler);
 
-// Availability
-router.get('/availability', ...guard, ctrl.getAvailabilityHandler);
-router.get('/availability/lock-status', ...guard, ctrl.getLockStatus);
-router.post('/availability/lock', ...guard, ctrl.lockAvailabilityHandler);
-router.post('/availability/unlock', ...guard, ctrl.unlockAvailabilityHandler);
+// Academic weeks
+router.get('/weeks',               h.getAcademicWeeksHandler);
+router.post('/weeks',              h.createAcademicWeekHandler);
+router.get('/weeks/published',     h.getPublishedWeeksHandler);
+router.put('/weeks/:id/publish',   h.publishWeekHandler);
+router.put('/weeks/:id/unpublish', h.unpublishWeekHandler);
+router.delete('/weeks/:id',        h.deleteWeekHandler);
 
-// Timetable
-router.post('/timetable/generate', ...guard, ctrl.generateTimetable);
-router.get('/timetables', ...guard, ctrl.getTimetablesHandler);
-router.get('/timetable/:timetableId/program/:programId', ...guard, ctrl.getTimetableByProgramHandler);
-router.put('/timetable/:id/publish', ...guard, ctrl.publishTimetableHandler);
+// Trainer availability
+router.get('/availability',        h.getAvailabilityHandler);
+router.get('/availability/lock',   h.getLockStatus);
+router.post('/availability/lock',  h.lockAvailabilityHandler);
+router.post('/availability/unlock',h.unlockAvailabilityHandler);
+
+// Timetable generation
+router.post('/timetable/generate',      h.generateTimetable);
+router.post('/cert-timetable/generate', h.generateCertTimetable);
+router.get('/timetables',               h.getTimetablesHandler);
+router.put('/timetables/:id/publish',   h.publishTimetableHandler);
+
+// Announcements
+router.get('/announcements',        h.getAnnouncementsHandler);
+router.post('/announcements',       h.createAnnouncementHandler);
+router.delete('/announcements/:id', h.deleteAnnouncementHandler);
 
 module.exports = router;

@@ -1,25 +1,25 @@
-// frontend/src/pages/trainer/TrainerLayout.jsx
 import { Outlet } from 'react-router-dom';
-import Sidebar from '../../components/Sidebar';
+import Sidebar from '../../components/layout/Sidebar';
+import { LayoutDashboard, BookOpen, Award, ClipboardList, Table2, BarChart2, MessageCircle, Megaphone } from 'lucide-react';
 
 const NAV = [
-    { to: '/trainer',               label: 'Dashboard',       icon: 'dashboard',     end: true  },
-    { to: '/trainer/courses',       label: 'Courses',         icon: 'courses',       end: false },
-    { to: '/trainer/certifications',label: 'Certifications',  icon: 'certification', end: false },
-    { to: '/trainer/cert-weeks',    label: 'Cert Scheduling', icon: 'weeks',         end: false },
-    { to: '/trainer/timetable',     label: 'Timetable',       icon: 'timetable',     end: false },
-    { to: '/trainer/availability',  label: 'Availability',    icon: 'availability',  end: false },
-    { to: '/trainer/complaints',    label: 'Complaints',      icon: 'complaint',     end: false },
-    { to: '/trainer/announcements', label: 'Announcements',   icon: 'announcement',  end: false },
+  { to: '/trainer',              label: 'Dashboard',      icon: <LayoutDashboard size={18} /> },
+  { to: '/trainer/courses',      label: 'My Courses',     icon: <BookOpen size={18} /> },
+  { to: '/trainer/certifications',label: 'Certifications',icon: <Award size={18} /> },
+  { to: '/trainer/availability', label: 'Availability',   icon: <ClipboardList size={18} /> },
+  { to: '/trainer/timetable',    label: 'My Timetable',   icon: <Table2 size={18} /> },
+  { to: '/trainer/grades',       label: 'Grades',         icon: <BarChart2 size={18} /> },
+  { to: '/trainer/complaints',   label: 'Complaints',     icon: <MessageCircle size={18} /> },
+  { to: '/trainer/announcements',label: 'Announcements',  icon: <Megaphone size={18} /> },
 ];
 
 export default function TrainerLayout() {
-    return (
-        <div style={{ display: 'flex', minHeight: '100vh', background: '#f0f2f5' }}>
-            <Sidebar title="TCMS — Trainer" items={NAV} />
-            <main style={{ flex: 1, padding: '2rem', overflowY: 'auto' }}>
-                <Outlet />
-            </main>
-        </div>
-    );
+  return (
+    <div className="flex h-full">
+      <Sidebar navItems={NAV} roleLabel="Trainer" roleColor="bg-amber-600" />
+      <main className="flex-1 overflow-y-auto bg-gray-50">
+        <div className="max-w-7xl mx-auto px-6 py-6"><Outlet /></div>
+      </main>
+    </div>
+  );
 }

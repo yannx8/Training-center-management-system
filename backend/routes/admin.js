@@ -1,35 +1,67 @@
+// FILE: backend/routes/admin.js
 const router = require('express').Router();
-const ctrl = require('../controllers/adminController');
-const { authenticate } = require('../middleware/auth');
-const { roleCheck } = require('../middleware/roleCheck');
+const { authenticate, authorize } = require('../middleware/auth');
+const a = require('../controllers/adminController');
 
-const guard = [authenticate, roleCheck('admin')];
+// All admin routes require authentication + admin role
+router.use(authenticate, authorize('admin'));
 
-router.get('/dashboard', ...guard, ctrl.getDashboard);
-router.get('/users', ...guard, ctrl.getUsers);
-router.post('/users', ...guard, ctrl.createUserHandler);
-router.put('/users/:id', ...guard, ctrl.updateUserHandler);
-router.delete('/users/:id', ...guard, ctrl.deleteUserHandler);
-router.get('/departments', ...guard, ctrl.getDepartmentsHandler);
-router.post('/departments', ...guard, ctrl.createDepartmentHandler);
-router.put('/departments/:id', ...guard, ctrl.updateDepartmentHandler);
-router.delete('/departments/:id', ...guard, ctrl.deleteDepartmentHandler);
-router.get('/programs', ...guard, ctrl.getProgramsHandler);
-router.post('/programs', ...guard, ctrl.createProgramHandler);
-router.put('/programs/:id', ...guard, ctrl.updateProgramHandler);
-router.delete('/programs/:id', ...guard, ctrl.deleteProgramHandler);
+// Dashboard
+router.get('/dashboard', a.getDashboard);
 
+// Users
+router.get('/users',        a.getUsers);
+router.post('/users',       a.createUserHandler);
+router.put('/users/:id',    a.updateUserHandler);
+router.delete('/users/:id', a.deleteUserHandler);
 
-router.get('/programs/:id/courses', ...guard, ctrl.getProgramCoursesHandler);
+// Departments
+router.get('/departments',        a.getDepartmentsHandler);
+router.post('/departments',       a.createDepartmentHandler);
+router.put('/departments/:id',    a.updateDepartmentHandler);
+router.delete('/departments/:id', a.deleteDepartmentHandler);
+router.get('/departments/:id/trainers', a.getTrainersByDeptHandler);
 
-router.get('/academic-years', ...guard, ctrl.getAcademicYearsHandler);
-router.post('/academic-years', ...guard, ctrl.createAcademicYearHandler);
-router.put('/academic-years/:id', ...guard, ctrl.updateAcademicYearHandler);
-router.get('/rooms', ...guard, ctrl.getRoomsHandler);
-router.post('/rooms', ...guard, ctrl.createRoomHandler);
-router.put('/rooms/:id', ...guard, ctrl.updateRoomHandler);
-router.delete('/rooms/:id', ...guard, ctrl.deleteRoomHandler);
-router.get('/complaints', ...guard, ctrl.getComplaintsHandler);
-router.put('/complaints/:id', ...guard, ctrl.updateComplaintHandler);
+// Programs
+router.get('/programs',        a.getProgramsHandler);
+router.post('/programs',       a.createProgramHandler);
+router.put('/programs/:id',    a.updateProgramHandler);
+router.delete('/programs/:id', a.deleteProgramHandler);
+
+// Program Courses page — full semester/course view with CRUD
+router.get('/programs/:id/courses', a.getProgramCoursesHandler);
+router.get('/programs/:id/sessions', a.getSessionsForProgramHandler);
+router.post('/sessions',       a.createSessionHandler);
+
+// Courses CRUD
+router.post('/courses',                  a.createCourseHandler);
+router.put('/courses/:id',               a.updateCourseHandler);
+router.delete('/courses/:id',            a.deleteCourseHandler);
+router.put('/courses/:id/assign-trainer', a.assignTrainerHandler);
+
+// Certifications CRUD
+router.get('/certifications',        a.getCertificationsHandler);
+router.post('/certifications',       a.createCertificationHandler);
+router.put('/certifications/:id',    a.updateCertificationHandler);
+router.delete('/certifications/:id', a.deleteCertificationHandler);
+router.put('/certifications/:id/assign-trainer', a.assignTrainerToCertHandler);
+
+// Rooms
+router.get('/rooms',        a.getRoomsHandler);
+router.post('/rooms',       a.createRoomHandler);
+router.put('/rooms/:id',    a.updateRoomHandler);
+router.delete('/rooms/:id', a.deleteRoomHandler);
+
+// Academic Years
+router.get('/academic-years',  a.getAcademicYearsHandler);
+router.post('/academic-years', a.createAcademicYearHandler);
+
+// Academic Levels & Semesters (read-only for forms)
+router.get('/academic-levels', a.getAcademicLevelsHandler);
+router.get('/semesters',       a.getSemestersHandler);
+
+// Complaints
+router.get('/complaints',        a.getComplaintsHandler);
+router.put('/complaints/:id',    a.updateComplaintHandler);
 
 module.exports = router;

@@ -1,181 +1,140 @@
-// FILE: /frontend/src/pages/trainer/TrainerAvailability.jsx
-import { useState, useEffect, Fragment } from 'react';
-import { getAvailability, submitAvailability, deleteAvailability, getPublishedWeeks } from '../../api/trainerApi';
-import '../../styles/Trainer.css';
+// FILE: src/pages/trainer/TrainerAvailability.jsx
+import { useEffect, useState } from "react";
+import { Save, Trash2 } from "lucide-react";
+import { trainerApi } from "../../api";
+import { PageLoader, ErrorAlert, Badge } from "../../components/ui";
 
-const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-const TIME_SLOTS = [
-    { start: '08:00', end: '10:00', label: '8h–10h' },
-    { start: '10:00', end: '12:00', label: '10h–12h' },
-    { start: '13:00', end: '15:00', label: '13h–15h' },
-    { start: '15:00', end: '17:00', label: '15h–17h' },
-    { start: '17:00', end: '19:00', label: '17h–19h' },
-    { start: '19:00', end: '21:00', label: '19h–21h' },
-];
-
-const fmt = (d) => d ? new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
+const DAYS = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+const TIME_SLOTS = ["08:00","09:00","10:00","11:00","12:00","13:00","14:00","15:00","16:00","17:00","18:00"];
 
 export default function TrainerAvailability() {
-    const [weeks, setWeeks] = useState([]);
-    const [weeksLoading, setWeeksLoading] = useState(true);
-    const [selectedWeekId, setSelectedWeekId] = useState('');
-    const [availability, setAvailability] = useState([]);
-    const [selectedCells, setSelectedCells] = useState(new Set());
-    const [error, setError] = useState('');
-    const [message, setMessage] = useState('');
-    const [submitting, setSubmitting] = useState(false);
+  const [weeks, setWeeks]       = useState([]);
+  const [weekId, setWeekId]     = useState("");
+  const [slots, setSlots]       = useState([]); // [{dayOfWeek,timeStart,timeEnd}]
+  const [loading, setLoading]   = useState(true);
+  const [saving, setSaving]     = useState(false);
+  const [error, setError]       = useState("");
+  const [msg, setMsg]           = useState("");
 
-    // Load published weeks from HOD
-    useEffect(() => {
-        getPublishedWeeks()
-            .then(res => {
-                const w = res.data.data || [];
-                setWeeks(w);
-                if (w.length) setSelectedWeekId(String(w[0].id));
-            })
-            .catch(() => {})
-            .finally(() => setWeeksLoading(false));
-    }, []);
+  useEffect(() => {
+    trainerApi.getPublishedWeeks()
+      .then(r => { setWeeks(r.data); setLoading(false); })
+      .catch(() => { setError("Failed to load published weeks"); setLoading(false); });
+  }, []);
 
-    // Load existing availability when week changes
-    useEffect(() => {
-        if (!selectedWeekId) { setAvailability([]); setSelectedCells(new Set()); return; }
-        getAvailability({ weekId: selectedWeekId })
-            .then(res => {
-                const avail = res.data.data || [];
-                setAvailability(avail);
-                const existing = new Set(avail.map(a => cellKey(a.day_of_week, a.time_start)));
-                setSelectedCells(existing);
-            })
-            .catch(() => {});
-    }, [selectedWeekId]);
+  useEffect(() => {
+    if (!weekId) return;
+    trainerApi.getAvailability({ weekId }).then(r => {
+      setSlots(r.data.map(a => ({ dayOfWeek: a.dayOfWeek, timeStart: a.timeStart.slice(0,5), timeEnd: a.timeEnd.slice(0,5) })));
+    });
+  }, [weekId]);
 
-    const cellKey = (day, t) => `${day}|${String(t).substring(0, 5)}`;
+  function toggleSlot(day, time) {
+    const key = `${day}|${time}`;
+    const end = TIME_SLOTS[TIME_SLOTS.indexOf(time) + 1] || "19:00";
+    const exists = slots.find(s => s.dayOfWeek === day && s.timeStart === time);
+    if (exists) setSlots(s => s.filter(x => !(x.dayOfWeek === day && x.timeStart === time)));
+    else        setSlots(s => [...s, { dayOfWeek: day, timeStart: time, timeEnd: end }]);
+  }
 
-    function handleCellToggle(day, slot) {
-        if (!selectedWeekId) return;
-        const key = cellKey(day, slot.start);
-        setSelectedCells(prev => {
-            const next = new Set(prev);
-            if (next.has(key)) next.delete(key); else next.add(key);
-            return next;
-        });
-    }
+  function isSelected(day, time) {
+    return slots.some(s => s.dayOfWeek === day && s.timeStart === time);
+  }
 
-    async function handleSubmit() {
-        if (!selectedWeekId) { setError('Please select a week first.'); return; }
-        setSubmitting(true); setError(''); setMessage('');
-        try {
-            const existingKeys = new Set(availability.map(a => cellKey(a.day_of_week, a.time_start)));
+  async function handleSave() {
+    if (!weekId) return;
+    setSaving(true); setMsg(""); setError("");
+    try {
+      await trainerApi.submitAvailability({ weekId, slots });
+      setMsg("Availability saved successfully!");
+    } catch(e) {
+      setError(e.response?.data?.message || "Failed to save");
+    } finally { setSaving(false); }
+  }
 
-            // Delete deselected
-            const toDelete = availability.filter(a => !selectedCells.has(cellKey(a.day_of_week, a.time_start)));
-            for (const a of toDelete) await deleteAvailability(a.id);
+  if (loading) return <PageLoader />;
 
-            // Add new selections
-            const toAdd = [...selectedCells].filter(k => !existingKeys.has(k));
-            for (const key of toAdd) {
-                const [day, timeStart] = key.split('|');
-                const slot = TIME_SLOTS.find(s => s.start === timeStart);
-                if (!slot) continue;
-                await submitAvailability({ dayOfWeek: day, timeStart: slot.start, timeEnd: slot.end, weekId: selectedWeekId });
-            }
-
-            // Refresh
-            const res = await getAvailability({ weekId: selectedWeekId });
-            const avail = res.data.data || [];
-            setAvailability(avail);
-            setSelectedCells(new Set(avail.map(a => cellKey(a.day_of_week, a.time_start))));
-            setMessage('✓ Availability saved successfully.');
-        } catch (err) {
-            setError(err.response?.data?.message || 'Failed to save availability.');
-        } finally {
-            setSubmitting(false);
-        }
-    }
-
-    const currentWeek = weeks.find(w => String(w.id) === selectedWeekId);
-
-    return (
+  return (
+    <div className="space-y-5">
+      <div className="page-header">
         <div>
-            <div className="trainer-page-head">
-                <div>
-                    <h1 className="trainer-title">My Availability</h1>
-                    <p className="trainer-sub">Click cells to mark when you are available for scheduling.</p>
-                </div>
-            </div>
-
-            {weeksLoading ? (
-                <div className="trainer-msg">Loading published weeks…</div>
-            ) : !weeks.length ? (
-                <div className="trainer-card">
-                    <p className="trainer-msg">
-                        No published weeks available yet. Your HOD needs to create and publish an academic week first.
-                    </p>
-                </div>
-            ) : (
-                <div className="trainer-card">
-                    {/* Week selector */}
-                    <div className="trainer-row" style={{ marginBottom: '1.2rem', gap: '1rem', flexWrap: 'wrap' }}>
-                        <label style={{ fontWeight: 600, fontSize: '0.875rem', color: '#1a1a2e', alignSelf: 'center' }}>Week:</label>
-                        <select
-                            className="trainer-select"
-                            value={selectedWeekId}
-                            onChange={e => setSelectedWeekId(e.target.value)}
-                            style={{ flex: 1, maxWidth: 400 }}
-                        >
-                            {weeks.map(w => (
-                                <option key={w.id} value={w.id}>
-                                    {w.label} — {fmt(w.start_date)} → {fmt(w.end_date)}
-                                </option>
-                            ))}
-                        </select>
-                        {currentWeek && (
-                            <span style={{ fontSize: '0.8rem', color: '#666', alignSelf: 'center' }}>
-                                Status: <strong style={{ color: '#16a34a' }}>Published</strong>
-                            </span>
-                        )}
-                    </div>
-
-                    {/* Grid */}
-                    <div className="trainer-timetable-grid" style={{ marginBottom: '1rem' }}>
-                        <div className="trainer-timetable-header" style={{ fontSize: '0.68rem' }}>Time</div>
-                        {DAYS.map(d => <div key={d} className="trainer-timetable-header">{d}</div>)}
-
-                        {TIME_SLOTS.map(slot => (
-                            <Fragment key={slot.start}>
-                                <div className="trainer-timetable-time">{slot.label}</div>
-                                {DAYS.map(day => {
-                                    const key = cellKey(day, slot.start);
-                                    const selected = selectedCells.has(key);
-                                    return (
-                                        <div
-                                            key={`${day}-${slot.start}`}
-                                            onClick={() => handleCellToggle(day, slot)}
-                                            className={`trainer-timetable-cell ${selected ? 'scheduled' : 'free'}`}
-                                            style={{ cursor: 'pointer', transition: 'background 0.15s' }}
-                                        >
-                                            {selected
-                                                ? <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#1a1a2e' }}>✓ Available</span>
-                                                : <span style={{ color: '#bbb', fontSize: '0.7rem' }}>Click</span>
-                                            }
-                                        </div>
-                                    );
-                                })}
-                            </Fragment>
-                        ))}
-                    </div>
-
-                    {error && <div className="trainer-error">{error}</div>}
-                    {message && <div className="trainer-success">{message}</div>}
-
-                    <div style={{ textAlign: 'right' }}>
-                        <button className="trainer-btn-primary" onClick={handleSubmit} disabled={submitting}>
-                            {submitting ? 'Saving…' : '💾 Save Availability'}
-                        </button>
-                    </div>
-                </div>
-            )}
+          <h1 className="page-title">My Availability</h1>
+          <p className="page-subtitle">Select the time slots you are available for teaching</p>
         </div>
-    );
+      </div>
+
+      {weeks.length === 0 && !error && (
+        <div className="card p-8 text-center text-gray-400">
+          <p className="font-medium">No published weeks available yet.</p>
+          <p className="text-sm mt-1">Your HOD needs to publish an academic week before you can submit availability.</p>
+        </div>
+      )}
+
+      {error && <ErrorAlert message={error} />}
+
+      {weeks.length > 0 && (
+        <>
+          <div className="card p-4 flex flex-wrap gap-4 items-end">
+            <div>
+              <label className="label">Select Week</label>
+              <select className="select w-72" value={weekId} onChange={e=>setWeekId(e.target.value)}>
+                <option value="">— Choose a published week —</option>
+                {weeks.map(w => (
+                  <option key={w.id} value={w.id}>{w.label} ({w.department?.name || ""})</option>
+                ))}
+              </select>
+            </div>
+            {weekId && (
+              <div className="flex gap-3">
+                <button className="btn-primary" onClick={handleSave} disabled={saving}>
+                  <Save size={15} /> {saving ? "Saving…" : "Save Availability"}
+                </button>
+                <button className="btn-secondary" onClick={() => setSlots([])}>
+                  <Trash2 size={15} /> Clear All
+                </button>
+              </div>
+            )}
+          </div>
+
+          {msg && <p className="text-sm text-green-600 bg-green-50 rounded-lg px-4 py-2">{msg}</p>}
+
+          {weekId && (
+            <div className="card overflow-x-auto">
+              <div className="p-4 border-b border-gray-100">
+                <p className="text-sm text-gray-500">Click cells to toggle availability. <strong>{slots.length}</strong> slot{slots.length !== 1 ? "s" : ""} selected.</p>
+              </div>
+              <table className="w-full text-sm border-collapse">
+                <thead>
+                  <tr className="bg-gray-50">
+                    <th className="px-3 py-2 text-left text-xs text-gray-500 font-semibold w-20">Time</th>
+                    {DAYS.map(d => <th key={d} className="px-3 py-2 text-center text-xs text-gray-500 font-semibold">{d}</th>)}
+                  </tr>
+                </thead>
+                <tbody>
+                  {TIME_SLOTS.slice(0,-1).map(time => (
+                    <tr key={time} className="border-t border-gray-100">
+                      <td className="px-3 py-2 text-xs text-gray-400 font-mono">{time}</td>
+                      {DAYS.map(day => (
+                        <td key={day} className="px-1 py-1 text-center">
+                          <button
+                            onClick={() => toggleSlot(day, time)}
+                            className={`w-full h-8 rounded text-xs font-medium transition-colors ${
+                              isSelected(day, time)
+                                ? "bg-primary-500 text-white"
+                                : "bg-gray-100 text-gray-400 hover:bg-gray-200"
+                            }`}>
+                            {isSelected(day, time) ? "✓" : ""}
+                          </button>
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
 }

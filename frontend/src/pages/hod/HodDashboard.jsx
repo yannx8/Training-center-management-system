@@ -1,95 +1,34 @@
-import { useState } from 'react';
-import { useFetch } from '../../hooks/useFetch';
-import { getDashboard } from '../../api/hodApi';
-import '../../styles/Hod.css';
+
+// FILE: src/pages/hod/HodDashboard.jsx
+import { useEffect, useState } from 'react';
+import { BookOpen, Users, CalendarDays, Megaphone } from 'lucide-react';
+import { hodApi } from '../../api';
+import { PageLoader, ErrorAlert, StatCard } from '../../components/ui';
 
 export default function HodDashboard() {
-  const { data, loading, error } = useFetch(getDashboard);
-  const [openId, setOpenId] = useState(null);
-
-  if (loading) return <p className="hod-msg">Loading...</p>;
-  if (error)   return <p className="hod-msg hod-err">{error}</p>;
-
-  const { department, programs = [] } = data || {};
-
+  const [data, setData] = useState(null);
+  const [error, setError] = useState('');
+  useEffect(() => { hodApi.getDashboard().then(r=>setData(r.data)).catch(()=>setError('Load failed')); }, []);
+  if (!data && !error) return <PageLoader />;
+  if (error) return <ErrorAlert message={error} />;
+  const { department, programs, stats } = data;
   return (
-    <div>
-      <div className="hod-page-head">
-        <div>
-          <h1 className="hod-title">Dashboard</h1>
-          <p className="hod-sub">Department: <strong>{department || '—'}</strong></p>
-        </div>
+    <div className="space-y-6">
+      <div><h1 className="page-title">{department}</h1><p className="page-subtitle">Department Overview</p></div>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="card p-4 text-center"><p className="text-2xl font-bold text-teal-600">{stats.programCount}</p><p className="text-xs text-gray-500 mt-1">Programs</p></div>
+        <div className="card p-4 text-center"><p className="text-2xl font-bold text-amber-600">{stats.trainerCount}</p><p className="text-xs text-gray-500 mt-1">Trainers</p></div>
+        <div className="card p-4 text-center"><p className="text-2xl font-bold text-blue-600">{stats.availabilityCount}</p><p className="text-xs text-gray-500 mt-1">Availability Slots</p></div>
+        <div className="card p-4 text-center"><p className="text-sm font-semibold text-green-600 truncate">{stats.activeWeek || 'None'}</p><p className="text-xs text-gray-500 mt-1">Active Week</p></div>
       </div>
-
-      {programs.length === 0 ? (
-        <p className="hod-msg">No programs found for your department.</p>
-      ) : (
-        <div className="hod-card">
-          <table className="hod-table">
-            <thead>
-              <tr>
-                <th>Program</th>
-                <th>Code</th>
-                <th>Status</th>
-                <th>Courses</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              {programs.map(prog => (
-                <>
-                  <tr key={prog.id}>
-                    <td><strong>{prog.name}</strong></td>
-                    <td>{prog.code}</td>
-                    <td>{prog.status}</td>
-                    <td>{prog.courses.length}</td>
-                    <td>
-                      <button
-                        className="hod-btn-sm"
-                        onClick={() => setOpenId(openId === prog.id ? null : prog.id)}
-                      >
-                        {openId === prog.id ? 'Hide' : 'View courses'}
-                      </button>
-                    </td>
-                  </tr>
-                  {openId === prog.id && (
-                    <tr key={`${prog.id}-courses`}>
-                      <td colSpan={5} className="hod-expand-cell">
-                        {prog.courses.length === 0 ? (
-                          <p className="hod-msg" style={{ margin: '0.5rem 0' }}>No courses in this program.</p>
-                        ) : (
-                          <table className="hod-table hod-inner">
-                            <thead>
-                              <tr>
-                                <th>Course</th>
-                                <th>Code</th>
-                                <th>Credits</th>
-                                <th>Hrs/week</th>
-                                <th>Trainer</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {prog.courses.map((c, i) => (
-                                <tr key={c.id ?? i}>
-                                  <td>{c.name}</td>
-                                  <td>{c.code}</td>
-                                  <td>{c.credits ?? '—'}</td>
-                                  <td>{c.hours_per_week ?? '—'}</td>
-                                  <td>{c.trainer_name || <span className="hod-dim">Unassigned</span>}</td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        )}
-                      </td>
-                    </tr>
-                  )}
-                </>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {programs.map(p => (
+          <div key={p.id} className="card p-4">
+            <p className="font-semibold text-gray-900">{p.name}</p>
+            <p className="text-xs text-gray-400 mt-0.5">{p.code} · {p.courseCount} courses</p>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

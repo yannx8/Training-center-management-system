@@ -1,14 +1,15 @@
+// FILE: backend/routes/secretary.js
 const router = require('express').Router();
-const ctrl = require('../controllers/secretaryController');
-const { authenticate } = require('../middleware/auth');
-const { roleCheck } = require('../middleware/roleCheck');
+const { authenticate, authorize } = require('../middleware/auth');
+const s = require('../controllers/secretaryController');
 
-const guard = [authenticate, roleCheck('secretary')];
+router.use(authenticate, authorize('secretary'));
 
-router.post('/register-student', ...guard, ctrl.registerStudent);
-router.get('/students', ...guard, ctrl.getStudentsHandler);
-router.get('/parents', ...guard, ctrl.getParentsHandler);
-router.get('/programs', ...guard, ctrl.getProgramsForSecretary);
-router.get('/certifications', ...guard, ctrl.getCertificationsForSecretary);
+router.get('/dashboard',  s.getDashboard);
+router.get('/students',   s.getAllStudentsHandler);
+router.post('/students',  s.registerStudentHandler);
+router.put('/students/:id', s.updateStudentHandler);
+router.get('/programs',   s.getProgramsHandler);
+router.get('/certifications', s.getCertificationsHandler);
 
 module.exports = router;
