@@ -91,7 +91,6 @@ model Certification {
   trainerCourses    TrainerCourse[]
   enrollments       Enrollment[]
   grades            Grade[]
-  timetableSlots    TimetableSlot[]
   markComplaints    MarkComplaint[]
   studentAvailability StudentAvailability[]
   certTimetableSlots CertTimetableSlot[]

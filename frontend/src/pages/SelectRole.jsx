@@ -1,68 +1,71 @@
 // FILE: src/pages/SelectRole.jsx
-import { useLocation, useNavigate } from 'react-router-dom';
-import { useState } from 'react';
-import { Shield, BookOpen, Users, UserCheck, GraduationCap, Heart, Loader2 } from 'lucide-react';
-import { useAuth } from '../context/AuthContext';
-import { authApi } from '../api';
+import { useLocation, useNavigate } from "react-router-dom";
+import { useState } from "react";
+import { GraduationCap, Loader2 } from "lucide-react";
+import { useAuth } from "../context/AuthContext";
+import { authApi } from "../api";
 
-const ROLE_CONFIG = {
-  admin:     { label: 'Administrator', icon: Shield,      color: 'bg-violet-100 text-violet-700 hover:bg-violet-200 border-violet-200', accent: 'bg-violet-600' },
-  secretary: { label: 'Secretary',     icon: UserCheck,   color: 'bg-cyan-100 text-cyan-700 hover:bg-cyan-200 border-cyan-200',         accent: 'bg-cyan-600' },
-  hod:       { label: 'Head of Dept',  icon: BookOpen,    color: 'bg-teal-100 text-teal-700 hover:bg-teal-200 border-teal-200',         accent: 'bg-teal-600' },
-  trainer:   { label: 'Trainer',       icon: Users,       color: 'bg-amber-100 text-amber-700 hover:bg-amber-200 border-amber-200',     accent: 'bg-amber-600' },
-  student:   { label: 'Student',       icon: GraduationCap, color: 'bg-blue-100 text-blue-700 hover:bg-blue-200 border-blue-200',      accent: 'bg-blue-600' },
-  parent:    { label: 'Parent',        icon: Heart,       color: 'bg-pink-100 text-pink-700 hover:bg-pink-200 border-pink-200',         accent: 'bg-pink-600' },
+const ROLE_LABELS = {
+  admin: "Administrator", secretary: "Secretary", hod: "Head of Department",
+  trainer: "Trainer", student: "Student", parent: "Parent",
 };
 
 export default function SelectRole() {
-  const { state }         = useLocation();
-  const navigate          = useNavigate();
-  const { login }         = useAuth();
-  const [loading, setLoading] = useState(null);
-  const [error, setError]     = useState('');
+  const { state }             = useLocation();
+  const navigate              = useNavigate();
+  const { login }             = useAuth();
+  const [selected, setSelected] = useState(state?.roles?.[0] || "");
+  const [loading, setLoading] = useState(false);
+  const [error, setError]     = useState("");
 
-  if (!state?.roles) { navigate('/login'); return null; }
+  if (!state?.roles) { navigate("/login"); return null; }
 
-  async function pick(role) {
-    setLoading(role); setError('');
+  async function handleConfirm() {
+    if (!selected) return;
+    setLoading(true); setError("");
     try {
-      const res = await authApi.selectRole({ userId: state.userId, role });
+      const res = await authApi.selectRole({ userId: state.userId, role: selected });
       login(res.data.token, res.data.role, res.data.user);
-      navigate(`/${role}`);
-    } catch (err) {
-      setError(err.response?.data?.message || 'Failed to select role');
-      setLoading(null);
+      navigate(`/${selected}`);
+    } catch (e) {
+      setError(e.response?.data?.message || "Failed to select role");
+      setLoading(false);
     }
   }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary-900 via-primary-800 to-primary-600 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md">
+      <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-sm">
         <div className="text-center mb-6">
-          <h2 className="text-2xl font-bold text-gray-900">Hello, {state.fullName?.split(' ')[0]}!</h2>
-          <p className="text-gray-500 text-sm mt-1">You have multiple roles. Which one are you accessing as today?</p>
+          <div className="inline-flex items-center justify-center w-12 h-12 bg-primary-100 rounded-xl mb-3">
+            <GraduationCap size={24} className="text-primary-600" />
+          </div>
+          <h2 className="text-xl font-bold text-gray-900">Select your role</h2>
+          <p className="text-sm text-gray-500 mt-1">Hello {state.fullName?.split(" ")[0]}, choose how you want to sign in today</p>
         </div>
 
-        {error && (
-          <div className="mb-4 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-4 py-3">{error}</div>
-        )}
+        {error && <div className="mb-4 text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg px-4 py-2">{error}</div>}
 
-        <div className="space-y-3">
-          {state.roles.map(role => {
-            const cfg = ROLE_CONFIG[role] || { label: role, icon: Shield, color: 'bg-gray-100 text-gray-700 hover:bg-gray-200 border-gray-200' };
-            const Icon = cfg.icon;
-            const isLoading = loading === role;
-            return (
-              <button key={role} onClick={() => pick(role)} disabled={!!loading}
-                className={`w-full flex items-center gap-4 px-5 py-4 rounded-xl border-2 font-medium transition-all ${cfg.color} disabled:opacity-50`}>
-                <Icon size={22} />
-                <span className="text-base">{cfg.label}</span>
-                {isLoading && <Loader2 size={16} className="ml-auto animate-spin" />}
-              </button>
-            );
-          })}
+        <div className="space-y-2 mb-6">
+          {state.roles.map(role => (
+            <label key={role}
+              className={`flex items-center gap-3 px-4 py-3 rounded-xl border-2 cursor-pointer transition-colors ${
+                selected === role ? "border-primary-500 bg-primary-50" : "border-gray-200 hover:border-gray-300"
+              }`}>
+              <input type="radio" name="role" value={role} checked={selected === role}
+                onChange={() => setSelected(role)} className="accent-primary-600 w-4 h-4" />
+              <span className="text-sm font-medium text-gray-800">{ROLE_LABELS[role] || role}</span>
+            </label>
+          ))}
         </div>
-        <button onClick={() => navigate('/login')} className="w-full text-center text-sm text-gray-400 hover:text-gray-600 mt-4">
+
+        <button onClick={handleConfirm} disabled={!selected || loading}
+          className="btn-primary w-full justify-center py-2.5">
+          {loading ? <Loader2 size={16} className="animate-spin" /> : null}
+          {loading ? "Signing in…" : "Continue"}
+        </button>
+
+        <button onClick={() => navigate("/login")} className="w-full text-center text-sm text-gray-400 hover:text-gray-600 mt-3">
           ← Back to login
         </button>
       </div>

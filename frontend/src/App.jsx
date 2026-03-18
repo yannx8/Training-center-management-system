@@ -1,35 +1,36 @@
-
 // FILE: src/App.jsx
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider, useAuth } from './context/AuthContext';
-import Login from './pages/Login';
-import SelectRole from './pages/SelectRole';
-import AdminLayout from './pages/admin/AdminLayout';
-import AdminDashboard from './pages/admin/Dashboard';
-import UserManagement from './pages/admin/UserManagement';
-import Programs from './pages/admin/Programs';
-import ProgramCourses from './pages/admin/ProgramCourses';
-import Certifications from './pages/admin/Certifications';
-import Rooms from './pages/admin/Rooms';
-import HodLayout from './pages/hod/HodLayout';
-import HodDashboard from './pages/hod/HodDashboard';
-import HodWeeks from './pages/hod/HodWeeks';
-import HodAvailability from './pages/hod/HodAvailability';
-import HodTimetable from './pages/hod/HodTimetable';
-import HodAnnouncements from './pages/hod/HodAnnouncements';
-import TrainerLayout from './pages/trainer/TrainerLayout';
-import TrainerDashboard from './pages/trainer/TrainerDashboard';
-import TrainerAvailability from './pages/trainer/TrainerAvailability';
-import TrainerTimetable from './pages/trainer/TrainerTimetable';
-import StudentLayout from './pages/student/StudentLayout';
-import StudentDashboard from './pages/student/StudentDashboard';
-import StudentCertAvailability from './pages/student/StudentCertAvailability';
-import ParentLayout from './pages/parent/ParentLayout';
-import ParentDashboard from './pages/parent/ParentDashboard';
-import SecretaryLayout from './pages/secretary/SecretaryLayout';
-import SecretaryDashboard from './pages/secretary/SecretaryDashboard';
-import RegisterStudent from './pages/secretary/RegisterStudent';
-import AllStudents from './pages/secretary/AllStudents';
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { AuthProvider, useAuth } from "./context/AuthContext";
+import Login from "./pages/Login";
+import SelectRole from "./pages/SelectRole";
+import AdminLayout from "./pages/admin/AdminLayout";
+import AdminDashboard from "./pages/admin/Dashboard";
+import UserManagement from "./pages/admin/UserManagement";
+import Departments from "./pages/admin/Departments";
+import Programs from "./pages/admin/Programs";
+import ProgramCourses from "./pages/admin/ProgramCourses";
+import Certifications from "./pages/admin/Certifications";
+import Rooms from "./pages/admin/Rooms";
+import Complaints from "./pages/admin/Complaints";
+import HodLayout from "./pages/hod/HodLayout";
+import HodDashboard from "./pages/hod/HodDashboard";
+import HodWeeks from "./pages/hod/HodWeeks";
+import HodAvailability from "./pages/hod/HodAvailability";
+import HodTimetable from "./pages/hod/HodTimetable";
+import HodAnnouncements from "./pages/hod/HodAnnouncements";
+import TrainerLayout from "./pages/trainer/TrainerLayout";
+import TrainerDashboard from "./pages/trainer/TrainerDashboard";
+import TrainerAvailability from "./pages/trainer/TrainerAvailability";
+import TrainerTimetable from "./pages/trainer/TrainerTimetable";
+import StudentLayout from "./pages/student/StudentLayout";
+import StudentDashboard from "./pages/student/StudentDashboard";
+import StudentCertAvailability from "./pages/student/StudentCertAvailability";
+import ParentLayout from "./pages/parent/ParentLayout";
+import ParentDashboard from "./pages/parent/ParentDashboard";
+import SecretaryLayout from "./pages/secretary/SecretaryLayout";
+import SecretaryDashboard from "./pages/secretary/SecretaryDashboard";
+import RegisterStudent from "./pages/secretary/RegisterStudent";
+import AllStudents from "./pages/secretary/AllStudents";
 
 function Protected({ role, children }) {
   const { isAuthenticated, role: userRole, loading } = useAuth();
@@ -40,7 +41,7 @@ function Protected({ role, children }) {
 }
 
 function Todo({ label }) {
-  return <div className="card p-10 text-center text-gray-400"><p className="font-semibold">{label}</p><p className="text-sm mt-1">Component file available — connect as needed.</p></div>;
+  return <div className="card p-10 text-center text-gray-400"><p className="font-semibold">{label}</p><p className="text-sm mt-1">Component file available.</p></div>;
 }
 
 export default function App() {
@@ -55,13 +56,13 @@ export default function App() {
           <Route path="/admin" element={<Protected role="admin"><AdminLayout /></Protected>}>
             <Route index element={<AdminDashboard />} />
             <Route path="users" element={<UserManagement />} />
-            <Route path="departments" element={<Todo label="Departments" />} />
+            <Route path="departments" element={<Departments />} />
             <Route path="programs" element={<Programs />} />
             <Route path="programs/:id/courses" element={<ProgramCourses />} />
             <Route path="certifications" element={<Certifications />} />
             <Route path="rooms" element={<Rooms />} />
             <Route path="academic-years" element={<Todo label="Academic Years" />} />
-            <Route path="complaints" element={<Todo label="Complaints" />} />
+            <Route path="complaints" element={<Complaints />} />
           </Route>
 
           <Route path="/hod" element={<Protected role="hod"><HodLayout /></Protected>}>
