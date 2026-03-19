@@ -1,4 +1,3 @@
-// FILE: src/pages/SelectRole.jsx
 import { useLocation, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { GraduationCap, Loader2 } from "lucide-react";
@@ -11,12 +10,12 @@ const ROLE_LABELS = {
 };
 
 export default function SelectRole() {
-  const { state }             = useLocation();
-  const navigate              = useNavigate();
-  const { login }             = useAuth();
+  const { state } = useLocation();
+  const navigate = useNavigate();
+  const { login } = useAuth();
   const [selected, setSelected] = useState(state?.roles?.[0] || "");
   const [loading, setLoading] = useState(false);
-  const [error, setError]     = useState("");
+  const [error, setError] = useState("");
 
   if (!state?.roles) { navigate("/login"); return null; }
 
@@ -41,7 +40,7 @@ export default function SelectRole() {
             <GraduationCap size={24} className="text-primary-600" />
           </div>
           <h2 className="text-xl font-bold text-gray-900">Select your role</h2>
-          <p className="text-sm text-gray-500 mt-1">Hello {state.fullName?.split(" ")[0]}, choose how you want to sign in today</p>
+          <p className="text-sm text-gray-500 mt-1">Hello {state.fullName?.split(" ")[0]}, choose how you want to sign in to continue</p>
         </div>
 
         {error && <div className="mb-4 text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg px-4 py-2">{error}</div>}
@@ -66,7 +65,7 @@ export default function SelectRole() {
         </button>
 
         <button onClick={() => navigate("/login")} className="w-full text-center text-sm text-gray-400 hover:text-gray-600 mt-3">
-          ← Back to login
+          Back to login
         </button>
       </div>
     </div>

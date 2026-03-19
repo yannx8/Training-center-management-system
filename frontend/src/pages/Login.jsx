@@ -1,4 +1,3 @@
-// FILE: src/pages/Login.jsx
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Mail, Lock, Eye, EyeOff, GraduationCap, Loader2 } from 'lucide-react';
@@ -6,12 +5,12 @@ import { useAuth } from '../context/AuthContext';
 import { authApi } from '../api';
 
 export default function Login() {
-  const [form, setForm]       = useState({ email: '', password: '' });
-  const [show, setShow]       = useState(false);
+  const [form, setForm]= useState({ email: '', password: '' });
+  const [show, setShow]= useState(false);
   const [loading, setLoading] = useState(false);
-  const [error, setError]     = useState('');
-  const { login }             = useAuth();
-  const navigate              = useNavigate();
+  const [error, setError] = useState('');
+  const { login } = useAuth();
+  const navigate  = useNavigate();
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -65,7 +64,7 @@ export default function Login() {
               <label className="label">Email Address</label>
               <div className="relative">
                 <Mail size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                <input type="email" className="input pl-9" placeholder="you@tcms.edu"
+                <input type="email" className="input pl-9" placeholder="your email here"
                   value={form.email} onChange={e => setForm(p => ({ ...p, email: e.target.value }))} required />
               </div>
             </div>
@@ -82,7 +81,7 @@ export default function Login() {
                   {show ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
               </div>
-              <p className="text-xs text-gray-400 mt-1">Default password is your phone number</p>
+              <p className="text-xs text-gray-400 mt-1">By default password is your phone number</p>
             </div>
 
             <button type="submit" disabled={loading}
