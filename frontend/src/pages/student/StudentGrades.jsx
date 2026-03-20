@@ -1,4 +1,3 @@
-// FILE: src/pages/student/StudentGrades.jsx
 import { useEffect, useState } from "react";
 import { BarChart2 } from "lucide-react";
 import { studentApi } from "../../api";

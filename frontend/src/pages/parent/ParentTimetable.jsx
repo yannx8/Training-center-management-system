@@ -1,4 +1,3 @@
-// FILE: src/pages/parent/ParentTimetable.jsx
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { CalendarDays } from "lucide-react";

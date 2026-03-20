@@ -1,4 +1,3 @@
-// FILE: src/pages/parent/ParentDashboard.jsx
 import { useEffect, useState } from "react";
 import { Megaphone, Users } from "lucide-react";
 import { parentApi } from "../../api";

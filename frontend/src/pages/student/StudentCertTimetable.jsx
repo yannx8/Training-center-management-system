@@ -1,4 +1,3 @@
-// FILE: src/pages/student/StudentCertTimetable.jsx
 import { useEffect, useState } from "react";
 import { Award } from "lucide-react";
 import { studentApi } from "../../api";

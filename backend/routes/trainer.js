@@ -1,21 +1,23 @@
-const router = require("express").Router();
-const { authenticate, authorize } = require("../middleware/auth");
-const t = require("../controllers/trainerController");
-router.use(authenticate, authorize("trainer"));
-router.get("/dashboard",         t.getDashboard);
-router.get("/courses",           t.getCoursesHandler);
-router.get("/certifications",    t.getCertificationsHandler);
-router.get("/weeks/published",   t.getPublishedWeeksHandler);
-router.get("/availability",      t.getAvailabilityHandler);
-router.post("/availability",     t.submitAvailabilityHandler);
-router.delete("/availability/:weekId", t.clearAvailabilityHandler);
-// Cert timetable generation by the responsible trainer
-router.post("/cert-timetable/generate", t.generateCertTimetableHandler);
-router.get("/cert-timetable/student-status", t.getCertStudentAvailabilityStatusHandler);
-router.get("/timetable",         t.getTimetableHandler);
-router.get("/grades",            t.getGradesHandler);
-router.post("/grades",           t.upsertGradeHandler);
-router.get("/complaints",        t.getComplaintsHandler);
-router.put("/complaints/:id",    t.respondToComplaintHandler);
-router.get("/announcements",     t.getAnnouncementsHandler);
+const router = require('express').Router();
+const { authenticate, authorize } = require('../middleware/auth');
+const t = require('../controllers/trainerController');
+
+router.use(authenticate, authorize('trainer'));
+router.get('/dashboard',         t.getDashboard);
+router.get('/courses',           t.getCoursesHandler);
+router.get('/certifications',    t.getCertificationsHandler);
+router.get('/weeks/published',   t.getPublishedWeeksHandler);
+router.get('/availability',      t.getAvailabilityHandler);
+router.post('/availability',     t.submitAvailabilityHandler);
+router.delete('/availability/:weekId', t.clearAvailabilityHandler);
+router.get('/students-for-grading', t.getStudentsForGradingHandler);
+router.post('/cert-timetable/generate', t.generateCertTimetableHandler);
+router.get('/cert-timetable/student-status', t.getCertStudentAvailabilityStatusHandler);
+router.get('/timetable',         t.getTimetableHandler);
+router.get('/grades',            t.getGradesHandler);
+router.post('/grades',           t.upsertGradeHandler);
+router.get('/complaints',        t.getComplaintsHandler);
+router.put('/complaints/:id',    t.respondToComplaintHandler);
+router.get('/announcements',     t.getAnnouncementsHandler);
+
 module.exports = router;

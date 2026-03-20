@@ -1,4 +1,3 @@
-// FILE: src/pages/hod/HodAnnouncements.jsx
 import { useEffect, useState } from "react";
 import { Plus, Trash2, Megaphone } from "lucide-react";
 import { hodApi } from "../../api";
@@ -62,7 +61,7 @@ export default function HodAnnouncements() {
           <div><label className="label">Title</label><input className="input" value={form.title} onChange={e=>setForm(p=>({...p,title:e.target.value}))} /></div>
           <div><label className="label">Message</label><textarea rows={5} className="input" value={form.body} onChange={e=>setForm(p=>({...p,body:e.target.value}))} /></div>
           <div>
-            <label className="label">Target Audience</label>
+            <label className="label">Targeted Audience</label>
             <select className="select" value={form.targetRole} onChange={e=>setForm(p=>({...p,targetRole:e.target.value}))}>
               <option value="all">Everyone</option>
               <option value="trainer">Trainers only</option>

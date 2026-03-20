@@ -1,4 +1,3 @@
-// FILE: src/pages/student/StudentAnnouncements.jsx
 import { useEffect, useState } from "react";
 import { Megaphone, Bell } from "lucide-react";
 import { studentApi } from "../../api";

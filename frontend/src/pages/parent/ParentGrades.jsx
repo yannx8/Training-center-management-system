@@ -1,4 +1,3 @@
-// FILE: src/pages/parent/ParentGrades.jsx
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { BarChart2 } from "lucide-react";

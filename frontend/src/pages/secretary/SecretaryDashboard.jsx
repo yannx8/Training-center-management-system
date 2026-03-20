@@ -1,4 +1,3 @@
-// FILE: src/pages/secretary/SecretaryDashboard.jsx
 import { useEffect, useState } from "react";
 import { Users, BookMarked, Award, Building2 } from "lucide-react";
 import { secretaryApi } from "../../api";

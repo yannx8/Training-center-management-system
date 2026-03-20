@@ -1,4 +1,3 @@
-// FILE: src/pages/trainer/TrainerTimetable.jsx
 import { useEffect, useState } from "react";
 import { trainerApi } from "../../api";
 import { PageLoader, ErrorAlert } from "../../components/ui";

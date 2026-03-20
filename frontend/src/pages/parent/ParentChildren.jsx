@@ -1,4 +1,3 @@
-// FILE: src/pages/parent/ParentChildren.jsx
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Users, CalendarDays, BarChart2, GraduationCap } from "lucide-react";

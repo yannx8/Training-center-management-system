@@ -1,4 +1,3 @@
-// FILE: src/pages/admin/ProgramCourses.jsx
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, Plus, Pencil, Trash2, UserCheck } from "lucide-react";

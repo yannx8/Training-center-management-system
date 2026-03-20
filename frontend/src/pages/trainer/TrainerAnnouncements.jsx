@@ -1,4 +1,3 @@
-// FILE: src/pages/trainer/TrainerAnnouncements.jsx
 import { useEffect, useState } from "react";
 import { Megaphone, Bell } from "lucide-react";
 import { trainerApi } from "../../api";

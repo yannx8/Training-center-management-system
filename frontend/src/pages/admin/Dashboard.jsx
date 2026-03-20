@@ -1,4 +1,3 @@
-// FILE: src/pages/admin/Dashboard.jsx
 import { useEffect, useState } from "react";
 import { Users, Building2, BookMarked, DoorOpen, MessageSquare, Award } from "lucide-react";
 import { adminApi } from "../../api";

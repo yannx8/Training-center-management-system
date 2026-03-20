@@ -1,4 +1,3 @@
-// FILE: src/pages/trainer/TrainerCourses.jsx
 import { useEffect, useState } from "react";
 import { BookOpen, Clock, Award } from "lucide-react";
 import { trainerApi } from "../../api";

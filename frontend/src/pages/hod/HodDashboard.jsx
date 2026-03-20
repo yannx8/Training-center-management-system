@@ -1,5 +1,4 @@
 
-// FILE: src/pages/hod/HodDashboard.jsx
 import { useEffect, useState } from 'react';
 import { BookOpen, Users, CalendarDays, Megaphone } from 'lucide-react';
 import { hodApi } from '../../api';

@@ -1,4 +1,3 @@
-// FILE: src/pages/student/StudentTimetable.jsx
 import { useEffect, useState } from "react";
 import { CalendarDays } from "lucide-react";
 import { studentApi } from "../../api";

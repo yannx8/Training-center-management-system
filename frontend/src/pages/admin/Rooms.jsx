@@ -1,4 +1,3 @@
-// FILE: src/pages/admin/Rooms.jsx
 import { useEffect, useState } from "react";
 import { Plus, Pencil, Trash2 } from "lucide-react";
 import { adminApi } from "../../api";

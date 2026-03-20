@@ -1,4 +1,3 @@
-// FILE: src/pages/trainer/TrainerCertifications.jsx
 import { useEffect, useState } from "react";
 import { Award, Zap, Users, CheckCircle, XCircle, ChevronDown, ChevronUp } from "lucide-react";
 import { trainerApi } from "../../api";

@@ -1,4 +1,3 @@
-// FILE: src/pages/student/StudentCertAvailability.jsx
 import { useEffect, useState } from "react";
 import { Save } from "lucide-react";
 import { studentApi } from "../../api";

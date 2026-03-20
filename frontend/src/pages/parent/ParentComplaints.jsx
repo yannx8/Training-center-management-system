@@ -1,4 +1,3 @@
-// FILE: src/pages/parent/ParentComplaints.jsx
 import { useEffect, useState } from "react";
 import { MessageSquare, Plus } from "lucide-react";
 import { parentApi } from "../../api";

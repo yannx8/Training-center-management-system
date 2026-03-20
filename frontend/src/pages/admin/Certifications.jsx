@@ -1,4 +1,3 @@
-// FILE: src/pages/admin/Certifications.jsx
 import { useEffect, useState } from "react";
 import { Plus, Pencil, Trash2, UserCheck } from "lucide-react";
 import { adminApi } from "../../api";

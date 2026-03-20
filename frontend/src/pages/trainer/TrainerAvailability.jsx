@@ -1,4 +1,3 @@
-// FILE: src/pages/trainer/TrainerAvailability.jsx
 import { useEffect, useState } from "react";
 import { Save, Trash2 } from "lucide-react";
 import { trainerApi } from "../../api";

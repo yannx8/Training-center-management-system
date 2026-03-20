@@ -1,49 +1,46 @@
-// FILE: src/context/AuthContext.jsx
-import { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import axiosInstance from '../api/axiosInstance';
+import { createContext, useContext, useState, useEffect } from 'react';
 
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
-  const [user, setUser]     = useState(null);
-  const [role, setRole]     = useState(null);
-  const [token, setToken]   = useState(() => localStorage.getItem('tcms_token'));
-  const [loading, setLoading] = useState(true);
+  const [token, setToken]               = useState(() => localStorage.getItem('token'));
+  const [role, setRole]                 = useState(() => localStorage.getItem('role'));
+  const [user, setUser]                 = useState(() => {
+    try { return JSON.parse(localStorage.getItem('user')); } catch { return null; }
+  });
+  const [loading, setLoading]           = useState(false);
 
-  // Restore session from localStorage on mount
-  useEffect(() => {
-    const savedToken = localStorage.getItem('tcms_token');
-    const savedRole  = localStorage.getItem('tcms_role');
-    const savedUser  = localStorage.getItem('tcms_user');
+  const isAuthenticated = !!token && !!role;
 
-    if (savedToken && savedRole && savedUser) {
-      setToken(savedToken);
-      setRole(savedRole);
-      setUser(JSON.parse(savedUser));
-    }
-    setLoading(false);
-  }, []);
+  function login(newToken, newRole, newUser) {
+    localStorage.setItem('token', newToken);
+    localStorage.setItem('role', newRole);
+    localStorage.setItem('user', JSON.stringify(newUser));
+    setToken(newToken);
+    setRole(newRole);
+    setUser(newUser);
+  }
 
-  const login = useCallback((tokenValue, roleValue, userData) => {
-    localStorage.setItem('tcms_token', tokenValue);
-    localStorage.setItem('tcms_role',  roleValue);
-    localStorage.setItem('tcms_user',  JSON.stringify(userData));
-    setToken(tokenValue);
-    setRole(roleValue);
-    setUser(userData);
-  }, []);
-
-  const logout = useCallback(() => {
-    localStorage.removeItem('tcms_token');
-    localStorage.removeItem('tcms_role');
-    localStorage.removeItem('tcms_user');
+  function logout() {
+    localStorage.removeItem('token');
+    localStorage.removeItem('role');
+    localStorage.removeItem('user');
     setToken(null);
     setRole(null);
     setUser(null);
-  }, []);
+  }
 
-  const value = { user, role, token, loading, login, logout, isAuthenticated: !!token };
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  function updateUser(updated) {
+    const merged = { ...user, ...updated };
+    localStorage.setItem('user', JSON.stringify(merged));
+    setUser(merged);
+  }
+
+  return (
+    <AuthContext.Provider value={{ token, role, user, isAuthenticated, loading, login, logout, updateUser, setUser }}>
+      {children}
+    </AuthContext.Provider>
+  );
 }
 
 export function useAuth() {

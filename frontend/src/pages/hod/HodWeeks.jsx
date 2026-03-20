@@ -1,4 +1,3 @@
-// FILE: src/pages/hod/HodWeeks.jsx
 import { useEffect, useState } from "react";
 import { Plus, Send, Eye, Trash2, Lock, Unlock } from "lucide-react";
 import { hodApi } from "../../api";

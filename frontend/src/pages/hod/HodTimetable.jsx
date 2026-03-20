@@ -1,4 +1,3 @@
-// FILE: src/pages/hod/HodTimetable.jsx
 import { useEffect, useState } from "react";
 import { Zap, Send } from "lucide-react";
 import { hodApi } from "../../api";
@@ -67,7 +66,7 @@ export default function HodTimetable() {
             <Zap size={16}/> {generating ? "Generating…" : "Generate Timetable"}
           </button>
         </div>
-        {msg   && <p className="text-sm text-green-600 bg-green-50 rounded-lg px-4 py-2">✅ {msg}</p>}
+        {msg   && <p className="text-sm text-green-600 bg-green-50 rounded-lg px-4 py-2"> {msg}</p>}
         {error && <p className="text-sm text-red-600 bg-red-50 rounded-lg px-4 py-2">{error}</p>}
       </div>
 

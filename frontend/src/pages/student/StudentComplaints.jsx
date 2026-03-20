@@ -1,4 +1,3 @@
-// FILE: src/pages/student/StudentComplaints.jsx
 import { useEffect, useState } from "react";
 import { MessageCircle, Plus } from "lucide-react";
 import { studentApi } from "../../api";

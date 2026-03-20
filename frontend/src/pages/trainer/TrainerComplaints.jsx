@@ -1,4 +1,3 @@
-// FILE: src/pages/trainer/TrainerComplaints.jsx
 import { useEffect, useState } from "react";
 import { MessageCircle, CheckCircle } from "lucide-react";
 import { trainerApi } from "../../api";
