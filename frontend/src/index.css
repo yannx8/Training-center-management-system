@@ -4,13 +4,25 @@
 
 /* ── Base ──────────────────────────────────────────────────────── */
 body {
-  background-color: #f3f4f6;   /* slight gray — not pure white */
+  background-color: #f3f4f6;
   color: #111827;
   font-family: ui-sans-serif, system-ui, sans-serif;
+  /* Prevent unwanted text scaling on iOS */
+  -webkit-text-size-adjust: 100%;
 }
 
-/* ── Cards ─────────────────────────────────────────────────────── */
+/* ── Layout wrapper — shifts main content on mobile for hamburger ─ */
+/* Desktop: sidebar is inline. Mobile: add left padding so content  */
+/* doesn't overlap the fixed hamburger button.                       */
+@media (max-width: 1023px) {
+  main {
+    padding-left: 0 !important;
+  }
+  /* The topbar already sits at top; the hamburger is inside it on mobile */
+}
+
 @layer components {
+  /* ── Cards ──────────────────────────────────────────────────────── */
   .card {
     @apply bg-white rounded-xl border border-gray-100 shadow-sm;
   }
@@ -19,113 +31,131 @@ body {
            hover:border-primary-200 hover:shadow-md transition-all;
   }
 
-  /* ── Buttons ──────────────────────────────────────────────────── */
+  /* ── Buttons ────────────────────────────────────────────────────── */
+  /* Minimum touch target: 44px height on mobile */
   .btn-primary {
-    @apply inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary-600 text-white
+    @apply inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-primary-600 text-white
            text-sm font-medium hover:bg-primary-700 active:bg-primary-800
-           disabled:opacity-50 disabled:cursor-not-allowed transition-colors;
+           disabled:opacity-50 disabled:cursor-not-allowed transition-colors
+           min-h-[44px] lg:min-h-0 lg:py-2;
   }
   .btn-secondary {
-    @apply inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-gray-100 text-gray-700
+    @apply inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gray-100 text-gray-700
            text-sm font-medium hover:bg-gray-200 active:bg-gray-300
-           disabled:opacity-50 transition-colors;
+           disabled:opacity-50 transition-colors
+           min-h-[44px] lg:min-h-0 lg:py-2;
   }
   .btn-success {
-    @apply inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-green-600 text-white
+    @apply inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-green-600 text-white
            text-sm font-medium hover:bg-green-700 active:bg-green-800
-           disabled:opacity-50 disabled:cursor-not-allowed transition-colors;
+           disabled:opacity-50 disabled:cursor-not-allowed transition-colors
+           min-h-[44px] lg:min-h-0 lg:py-2;
   }
   .btn-danger {
-    @apply inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-red-600 text-white
-           text-sm font-medium hover:bg-red-700 disabled:opacity-50 transition-colors;
+    @apply inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-red-600 text-white
+           text-sm font-medium hover:bg-red-700 disabled:opacity-50 transition-colors
+           min-h-[44px] lg:min-h-0 lg:py-2;
   }
   .btn-ghost {
-    @apply inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-gray-600
+    @apply inline-flex items-center gap-2 px-3 py-2 rounded-xl text-gray-600
            text-sm font-medium hover:bg-gray-100 transition-colors;
   }
   .btn-sm {
-    @apply px-3 py-1.5 text-xs rounded-md;
+    @apply px-3 py-1.5 text-xs rounded-lg min-h-0 !important;
   }
   .btn-icon {
-    @apply p-1.5 !gap-0;
+    @apply p-2 !gap-0;
   }
 
-  /* ── Form elements ────────────────────────────────────────────── */
+  /* ── Form elements ──────────────────────────────────────────────── */
+  /* 44px min height for mobile touch targets */
   .input {
-    @apply w-full px-3 py-2.5 rounded-lg border border-gray-300 bg-white text-sm text-gray-900
+    @apply w-full px-3 py-3 rounded-xl border border-gray-300 bg-white text-sm text-gray-900
            placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent
-           transition-colors;
+           transition-colors min-h-[44px];
   }
   .select {
-    @apply w-full px-3 py-2.5 rounded-lg border border-gray-300 bg-white text-sm text-gray-900
+    @apply w-full px-3 py-3 rounded-xl border border-gray-300 bg-white text-sm text-gray-900
            focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent
-           transition-colors;
+           transition-colors min-h-[44px];
   }
   .label {
     @apply block text-sm font-medium text-gray-700 mb-1.5;
   }
+  .textarea {
+    @apply w-full px-3 py-3 rounded-xl border border-gray-300 bg-white text-sm text-gray-900
+           placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent
+           transition-colors resize-none;
+  }
 
-  /* ── Badges ───────────────────────────────────────────────────── */
-  .badge-green  { @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800; }
-  .badge-red    { @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800; }
-  .badge-yellow { @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800; }
-  .badge-blue   { @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800; }
-  .badge-gray   { @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-700; }
-  .badge-purple { @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-violet-100 text-violet-800; }
-
-  /* ── Table ────────────────────────────────────────────────────── */
+  /* ── Table ──────────────────────────────────────────────────────── */
   .table {
     @apply w-full text-sm;
   }
-  .table thead tr {
-    @apply border-b border-gray-100;
+  .table th {
+    @apply px-4 py-3 text-left text-xs font-semibold text-gray-500 bg-gray-50
+           border-b border-gray-100 whitespace-nowrap;
   }
-  .table thead th {
-    @apply text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide;
+  .table td {
+    @apply px-4 py-3 text-gray-700 border-b border-gray-50;
   }
-  .table tbody tr {
-    @apply border-b border-gray-50 hover:bg-gray-50 transition-colors last:border-0;
+  .table tr:last-child td {
+    @apply border-b-0;
   }
-  .table tbody td {
-    @apply px-5 py-3 text-gray-700;
-  }
-  .table-container {
-    @apply card overflow-hidden;
+  .table tbody tr:hover td {
+    @apply bg-gray-50/50;
   }
 
-  /* ── Typography ───────────────────────────────────────────────── */
-  .page-title    { @apply text-2xl font-bold text-gray-900; }
-  .page-subtitle { @apply text-sm text-gray-500 mt-1; }
-  .page-header   { @apply flex items-start justify-between gap-4 flex-wrap; }
-  .section-title { @apply text-base font-semibold text-gray-800; }
-
-  /* ── Sidebar ──────────────────────────────────────────────────── */
-  .sidebar-link {
-    @apply flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 text-sm font-medium
-           hover:bg-gray-100 transition-colors;
-  }
-  .sidebar-link.active {
-    @apply bg-primary-50 text-primary-700;
-  }
-
-  /* ── Modal ────────────────────────────────────────────────────── */
+  /* ── Modal ──────────────────────────────────────────────────────── */
   .modal-backdrop {
-    @apply fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4;
+    @apply fixed inset-0 bg-black/50 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4;
   }
   .modal-box {
-    @apply bg-white rounded-2xl shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto;
+    @apply bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-lg
+           max-h-[90vh] flex flex-col overflow-hidden;
   }
   .modal-header {
-    @apply flex items-center justify-between px-6 py-4 border-b border-gray-100;
+    @apply flex items-center justify-between px-5 py-4 border-b border-gray-100 flex-shrink-0;
   }
-  .modal-body   { @apply px-6 py-5; }
+  .modal-body {
+    @apply px-5 py-4 overflow-y-auto flex-1;
+  }
   .modal-footer {
-    @apply flex justify-end gap-3 px-6 py-4 border-t border-gray-100 bg-gray-50;
+    @apply flex justify-end gap-3 px-5 py-4 border-t border-gray-100 flex-shrink-0 flex-wrap;
   }
 
-  /* ── Stat card ────────────────────────────────────────────────── */
+  /* ── Page typography ────────────────────────────────────────────── */
+  .page-title {
+    @apply text-xl font-bold text-gray-900;
+  }
+  .page-subtitle {
+    @apply text-sm text-gray-500 mt-0.5;
+  }
+  .page-header {
+    @apply flex items-start justify-between gap-4 flex-wrap;
+  }
+
+  /* ── Badges ─────────────────────────────────────────────────────── */
+  .badge-green  { @apply inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-700; }
+  .badge-red    { @apply inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-red-100 text-red-700; }
+  .badge-yellow { @apply inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-yellow-100 text-yellow-700; }
+  .badge-blue   { @apply inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-700; }
+  .badge-purple { @apply inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-purple-100 text-purple-700; }
+  .badge-gray   { @apply inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-gray-100 text-gray-700; }
+
+  /* ── Stat card ──────────────────────────────────────────────────── */
   .stat-card { @apply card p-4 flex items-center gap-3; }
   .stat-icon { @apply w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0; }
+}
+
+/* ── Mobile layout adjustments ──────────────────────────────────── */
+/* On mobile the sidebar is a drawer overlay, so the main layout    */
+/* doesn't need to reserve sidebar width.                            */
+@media (max-width: 1023px) {
+  /* Give some top padding to account for the hamburger button */
+  .mobile-safe-top {
+    padding-top: 3.5rem;
+  }
 }
 
 /* ── Scrollbar ──────────────────────────────────────────────────── */

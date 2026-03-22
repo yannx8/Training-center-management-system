@@ -1,10 +1,13 @@
-// Re-exports for cleaner imports
+// Re-exports + shared UI components — fully i18n-aware, mobile-friendly
+import { useTranslation } from 'react-i18next';
 
-export { default as Modal }          from './Modal';
-export { default as Table }          from './Table';
+export { default as Modal }         from './Modal';
+export { default as Table }         from './Table';
+export { default as TimetableGrid } from './TimetableGrid';
 
+// ── Badge ────────────────────────────────────────────────────────────────────
 export function Badge({ value, label }) {
-  const v = value?.toLowerCase() || '';
+  const v    = value?.toLowerCase() || '';
   const text = label || value;
   if (v === 'active' || v === 'resolved' || v === 'a' || v === 'a+')
     return <span className="badge-green capitalize">{text}</span>;
@@ -23,6 +26,7 @@ export function Badge({ value, label }) {
   return <span className="badge-gray capitalize">{text?.replace('_', ' ')}</span>;
 }
 
+// ── PageLoader ───────────────────────────────────────────────────────────────
 export function PageLoader() {
   return (
     <div className="flex items-center justify-center py-20">
@@ -31,6 +35,7 @@ export function PageLoader() {
   );
 }
 
+// ── ErrorAlert ───────────────────────────────────────────────────────────────
 export function ErrorAlert({ message }) {
   return (
     <div className="card p-4 border-l-4 border-l-red-500 bg-red-50 text-red-800 text-sm">
@@ -39,19 +44,22 @@ export function ErrorAlert({ message }) {
   );
 }
 
+// ── SectionHeader ────────────────────────────────────────────────────────────
 export function SectionHeader({ title, subtitle, children }) {
   return (
     <div className="flex items-start justify-between gap-4 flex-wrap">
-      <div>
+      <div className="min-w-0">
         <h1 className="page-title">{title}</h1>
         {subtitle && <p className="page-subtitle">{subtitle}</p>}
       </div>
-      {children && <div className="flex gap-2 flex-wrap">{children}</div>}
+      {children && <div className="flex gap-2 flex-wrap flex-shrink-0">{children}</div>}
     </div>
   );
 }
 
+// ── ConfirmModal ─────────────────────────────────────────────────────────────
 export function ConfirmModal({ open, onClose, onConfirm, title, message }) {
+  const { t } = useTranslation();
   if (!open) return null;
   return (
     <div className="modal-backdrop" onClick={onClose}>
@@ -63,14 +71,15 @@ export function ConfirmModal({ open, onClose, onConfirm, title, message }) {
           <p className="text-sm text-gray-600">{message}</p>
         </div>
         <div className="modal-footer">
-          <button className="btn-secondary" onClick={onClose}>Cancel</button>
-          <button className="btn-danger" onClick={() => { onConfirm(); onClose(); }}>Delete</button>
+          <button className="btn-secondary" onClick={onClose}>{t('common.cancel', 'Cancel')}</button>
+          <button className="btn-danger" onClick={() => { onConfirm(); onClose(); }}>{t('common.delete', 'Delete')}</button>
         </div>
       </div>
     </div>
   );
 }
 
+// ── StatCard ─────────────────────────────────────────────────────────────────
 export function StatCard({ label, value, icon, color = 'bg-primary-100 text-primary-700' }) {
   return (
     <div className="stat-card">

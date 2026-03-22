@@ -1,80 +1,113 @@
-import { useEffect, useState } from "react";
-import { Plus, Trash2, Megaphone } from "lucide-react";
-import { hodApi } from "../../api";
-import Modal from "../../components/ui/Modal";
-import { PageLoader, SectionHeader, ConfirmModal, Badge } from "../../components/ui";
+import { useEffect, useState } from 'react';
+import { Plus, Megaphone, Trash2 } from 'lucide-react';
+import { hodApi } from '../../api';
+import Modal from '../../components/ui/Modal';
+import { PageLoader, ErrorAlert, SectionHeader, ConfirmModal } from '../../components/ui';
+import { useTranslation } from 'react-i18next';
+
+const EMPTY = { title: '', body: '', targetRole: 'all' };
 
 export default function HodAnnouncements() {
-  const [items, setItems]       = useState([]);
-  const [loading, setLoading]   = useState(true);
-  const [modal, setModal]       = useState(false);
-  const [form, setForm]         = useState({ title:"", body:"", targetRole:"all" });
-  const [saving, setSaving]     = useState(false);
+  const { t, i18n } = useTranslation();
+  const [announcements, setAnnouncements] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError]     = useState('');
+  const [modal, setModal]     = useState(false);
+  const [form, setForm]       = useState(EMPTY);
+  const [saving, setSaving]   = useState(false);
   const [deleteId, setDeleteId] = useState(null);
+  const locale = i18n.language?.startsWith('fr') ? 'fr-FR' : 'en-GB';
 
-  function load() { hodApi.getAnnouncements().then(r=>{ setItems(r.data); setLoading(false); }); }
+  function load() {
+    hodApi.getAnnouncements()
+      .then(r => { setAnnouncements(r.data||[]); setLoading(false); })
+      .catch(() => setError(t('common.failedLoad','Failed to load')));
+  }
   useEffect(load, []);
 
   async function handleSave() {
+    if (!form.title.trim() || !form.body.trim()) return;
     setSaving(true);
-    try { await hodApi.createAnnouncement(form); setModal(false); load(); }
-    catch(e) { alert(e.response?.data?.message||"Failed"); } finally { setSaving(false); }
+    try { await hodApi.createAnnouncement(form); setModal(false); setForm(EMPTY); load(); }
+    catch (e) { alert(e.response?.data?.message || t('common.failedSave','Failed')); }
+    finally { setSaving(false); }
   }
 
-  const TARGET_LABELS = { all:"Everyone", trainer:"Trainers only", student:"Students only", parent:"Parents only" };
+  const TARGET_OPTIONS = [
+    { value: 'all',     label: t('announcements.targetEveryone','Everyone') },
+    { value: 'trainer', label: t('announcements.targetTrainers','Trainers only') },
+    { value: 'student', label: t('announcements.targetStudents','Students only') },
+    { value: 'parent',  label: t('announcements.targetParents','Parents only') },
+  ];
 
   if (loading) return <PageLoader />;
+
   return (
     <div className="space-y-4">
-      <SectionHeader title="Announcements" subtitle="Publish messages to your department stakeholders">
-        <button className="btn-primary" onClick={() => { setForm({title:"",body:"",targetRole:"all"}); setModal(true); }}>
-          <Plus size={16} /> New Announcement
+      <SectionHeader title={t('announcements.title','Announcements')} subtitle={t('announcements.subtitle','Publish messages to your department stakeholders')}>
+        <button className="btn-primary" onClick={() => { setForm(EMPTY); setModal(true); }}>
+          <Plus size={16}/> {t('announcements.newAnnouncement','New Announcement')}
         </button>
       </SectionHeader>
+      {error && <ErrorAlert message={error} />}
+
+      {announcements.length === 0 && (
+        <div className="card p-10 text-center">
+          <Megaphone size={36} className="mx-auto text-gray-300 mb-3"/>
+          <p className="text-gray-500">{t('announcements.noAnnouncementsYet','No announcements yet.')}</p>
+        </div>
+      )}
 
       <div className="space-y-3">
-        {items.length === 0 && (
-          <div className="card p-10 text-center text-gray-400"><Megaphone size={32} className="mx-auto mb-3 opacity-30" /><p>No announcements yet.</p></div>
-        )}
-        {items.map(a => (
-          <div key={a.id} className="card p-5">
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex-1">
-                <div className="flex items-center gap-2 mb-1">
-                  <p className="font-semibold text-gray-900">{a.title}</p>
-                  <Badge value={a.targetRole || "all"} label={TARGET_LABELS[a.targetRole] || a.targetRole} />
+        {announcements.map(a => (
+          <div key={a.id} className="card p-4">
+            <div className="flex items-start gap-3">
+              <div className="w-9 h-9 bg-teal-100 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5">
+                <Megaphone size={16} className="text-teal-600"/>
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap mb-1">
+                  <p className="font-semibold text-gray-900 text-sm">{a.title}</p>
+                  <span className="badge-blue capitalize">{TARGET_OPTIONS.find(o=>o.value===a.targetRole)?.label || a.targetRole}</span>
                 </div>
                 <p className="text-sm text-gray-600 whitespace-pre-line">{a.body}</p>
-                <p className="text-xs text-gray-400 mt-2">By {a.creator?.fullName} · {new Date(a.createdAt).toLocaleString()}</p>
+                <p className="text-xs text-gray-400 mt-2">
+                  {t('announcements.by','By {{name}}', { name: a.creator?.fullName })} · {new Date(a.createdAt).toLocaleDateString(locale, { day:'numeric', month:'short', year:'numeric' })}
+                </p>
               </div>
-              <button className="btn-ghost btn-icon text-red-500 hover:bg-red-50 flex-shrink-0" onClick={() => setDeleteId(a.id)}>
-                <Trash2 size={15} />
+              <button className="btn-ghost btn-sm btn-icon text-red-400 hover:bg-red-50 flex-shrink-0" onClick={() => setDeleteId(a.id)}>
+                <Trash2 size={14}/>
               </button>
             </div>
           </div>
         ))}
       </div>
 
-      <Modal open={modal} onClose={() => setModal(false)} title="Create Announcement"
-        footer={<><button className="btn-secondary" onClick={() => setModal(false)}>Cancel</button><button className="btn-primary" onClick={handleSave} disabled={saving}>{saving?"Publishing…":"Publish"}</button></>}>
+      <Modal open={modal} onClose={() => setModal(false)} title={t('announcements.createAnnouncement','Create Announcement')}
+        footer={
+          <>
+            <button className="btn-secondary" onClick={() => setModal(false)}>{t('common.cancel','Cancel')}</button>
+            <button className="btn-primary" onClick={handleSave} disabled={saving||!form.title||!form.body}>
+              {saving ? t('common.saving','Saving…') : t('common.publish','Publish')}
+            </button>
+          </>
+        }>
         <div className="space-y-4">
-          <div><label className="label">Title</label><input className="input" value={form.title} onChange={e=>setForm(p=>({...p,title:e.target.value}))} /></div>
-          <div><label className="label">Message</label><textarea rows={5} className="input" value={form.body} onChange={e=>setForm(p=>({...p,body:e.target.value}))} /></div>
+          <div><label className="label">{t('announcements.messageTitle','Title')}</label><input className="input" value={form.title} onChange={e=>setForm(f=>({...f,title:e.target.value}))}/></div>
+          <div><label className="label">{t('announcements.message','Message')}</label><textarea rows={4} className="input" value={form.body} onChange={e=>setForm(f=>({...f,body:e.target.value}))}/></div>
           <div>
-            <label className="label">Targeted Audience</label>
-            <select className="select" value={form.targetRole} onChange={e=>setForm(p=>({...p,targetRole:e.target.value}))}>
-              <option value="all">Everyone</option>
-              <option value="trainer">Trainers only</option>
-              <option value="student">Students only</option>
-              <option value="parent">Parents only</option>
+            <label className="label">{t('announcements.targetAudience','Target Audience')}</label>
+            <select className="select" value={form.targetRole} onChange={e=>setForm(f=>({...f,targetRole:e.target.value}))}>
+              {TARGET_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
             </select>
           </div>
         </div>
       </Modal>
 
       <ConfirmModal open={!!deleteId} onClose={() => setDeleteId(null)}
-        onConfirm={async()=>{ await hodApi.deleteAnnouncement(deleteId); setDeleteId(null); load(); }}
-        title="Delete Announcement" message="Remove this announcement?" />
+        onConfirm={async () => { await hodApi.deleteAnnouncement(deleteId); setDeleteId(null); load(); }}
+        title={t('announcements.title','Announcement')}
+        message={t('announcements.deleteConfirm','Remove this announcement?')} />
     </div>
   );
 }
