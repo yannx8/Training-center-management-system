@@ -1,233 +1,152 @@
-import { useState } from 'react';
-import { useFetch } from '../../hooks/useFetch';
-import { getUsers, createUser, updateUser, deleteUser, getDepartments } from '../../api/adminApi';
-import Modal from '../../components/Modal';
-import Badge from '../../components/Badge';
-import '../../styles/Page.css';
-import '../../styles/UserManagement.css';
+import { useEffect, useState } from 'react';
+import { Plus, Pencil, Trash2, Search, Filter } from 'lucide-react';
+import { adminApi } from '../../api';
+import Modal from '../../components/ui/Modal';
+import Table from '../../components/ui/Table';
+import { PageLoader, ErrorAlert, SectionHeader, ConfirmModal, Badge } from '../../components/ui';
 
-const ROLES = ['hod', 'trainer', 'secretary'];
+// Admin can only assign these three roles (admin is assigned at DB level)
+const ASSIGNABLE_ROLES = ['hod', 'trainer', 'secretary'];
+const ALL_ROLES        = ['admin', 'hod', 'trainer', 'secretary', 'student', 'parent'];
+const EMPTY = { fullName: '', email: '', phone: '', roleName: 'trainer', department: '', status: 'active' };
 
 export default function UserManagement() {
-  const { data: users, loading, refetch } = useFetch(getUsers);
-  const { data: departments } = useFetch(getDepartments);
-  const [search, setSearch] = useState('');
+  const [users, setUsers]         = useState([]);
+  const [depts, setDepts]         = useState([]);
+  const [loading, setLoading]     = useState(true);
+  const [error, setError]         = useState('');
+  const [search, setSearch]       = useState('');
   const [roleFilter, setRoleFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
-  const [showModal, setShowModal] = useState(false);
-  const [editUser, setEditUser] = useState(null);
-  const [form, setForm] = useState({ fullName: '', email: '', roleName: 'trainer', department: '', phone: '', status: 'active' });
-  const [error, setError] = useState('');
-  const [saving, setSaving] = useState(false);
+  const [modal, setModal]         = useState(false);
+  const [editing, setEditing]     = useState(null);
+  const [form, setForm]           = useState(EMPTY);
+  const [saving, setSaving]       = useState(false);
+  const [deleteId, setDeleteId]   = useState(null);
+  const [hodWarning, setHodWarning] = useState('');
 
-  const filtered = (users || []).filter(u => {
-    const q = search.toLowerCase();
-    const matchSearch = !q || (u.full_name||'').toLowerCase().includes(q) || (u.email||'').toLowerCase().includes(q);
-    const matchRole = !roleFilter || (u.roles||'').toLowerCase().split(',').map(r=>r.trim()).includes(roleFilter);
-    const matchStatus = !statusFilter || u.status === statusFilter;
-    return matchSearch && matchRole && matchStatus;
-  });
+  function load() {
+    setLoading(true);
+    Promise.all([adminApi.getUsers(roleFilter ? { role: roleFilter } : {}), adminApi.getDepartments()])
+      .then(([u, d]) => { setUsers(u.data); setDepts(d.data); setLoading(false); })
+      .catch(() => setError('Failed to load'));
+  }
+  useEffect(load, [roleFilter]);
 
-  function openCreate() {
-    setEditUser(null);
-    setForm({ fullName: '', email: '', roleName: 'trainer', department: '', phone: '', status: 'active' });
-    setError('');
-    setShowModal(true);
+  // When role = hod and department is chosen, check if another HOD already exists for that dept
+  useEffect(() => {
+    if (form.roleName !== 'hod' || !form.department) { setHodWarning(''); return; }
+    const deptObj = depts.find(d => d.name === form.department);
+    if (!deptObj || !deptObj.hodUserId) { setHodWarning(''); return; }
+    if (editing && deptObj.hodUserId === editing.id) { setHodWarning(''); return; }
+    setHodWarning(`⚠ This department already has an HOD (${deptObj.hodName}). Saving will replace them.`);
+  }, [form.roleName, form.department]);
+
+  async function handleSave() {
+    setSaving(true);
+    try {
+      if (editing) await adminApi.updateUser(editing.id, { ...form, roles: [form.roleName] });
+      else         await adminApi.createUser(form);
+      setModal(false); load();
+    } catch (e) { alert(e.response?.data?.message || 'Save failed'); }
+    finally { setSaving(false); }
   }
 
   function openEdit(u) {
-    setEditUser(u);
-    setForm({
-      fullName: u.full_name,
-      email: u.email,
-      roles: (u.roles || '').split(',').map(r => r.trim()).filter(Boolean),
-      department: u.department || '',
-      phone: u.phone || '',
-      status: u.status,
-    });
-    setError('');
-    setShowModal(true);
+    setForm({ fullName: u.fullName, email: u.email, phone: u.phone || '', roleName: u.roles?.[0] || 'trainer', department: u.department || '', status: u.status });
+    setEditing(u); setModal(true);
   }
 
-  async function handleSubmit() {
-    setSaving(true);
-    setError('');
-    try {
-      if (editUser) {
-        await updateUser(editUser.id, {
-          fullName: form.fullName, email: form.email,
-          phone: form.phone, department: form.department,
-          status: form.status, roles: form.roles,
-        });
-      } else {
-        const payload = { fullName: form.fullName, email: form.email, roleName: form.roleName, phone: form.phone, status: form.status };
-        if (['trainer', 'hod'].includes(form.roleName)) payload.department = form.department;
-        await createUser(payload);
-      }
-      setShowModal(false);
-      refetch();
-    } catch (err) {
-      setError(err.response?.data?.message || 'Operation failed');
-    } finally {
-      setSaving(false);
-    }
-  }
+  const filtered = users.filter(u => {
+    const matchSearch = u.fullName.toLowerCase().includes(search.toLowerCase()) || u.email.toLowerCase().includes(search.toLowerCase());
+    const matchStatus = !statusFilter || u.status === statusFilter;
+    return matchSearch && matchStatus;
+  });
 
-  async function handleDelete(id, name) {
-    if (!confirm(`Delete "${name}"?`)) return;
-    try { await deleteUser(id); refetch(); }
-    catch (err) { alert(err.response?.data?.message || 'Delete failed'); }
-  }
+  const cols = [
+    { key: 'name',   label: 'Name',   render: u => <span className="font-medium">{u.fullName}</span> },
+    { key: 'email',  label: 'Email',  render: u => <span className="text-gray-500">{u.email}</span> },
+    { key: 'phone',  label: 'Phone',  render: u => u.phone || '—' },
+    { key: 'status', label: 'Status', render: u => <Badge value={u.status}/> },
+    { key: 'actions',label: '',       render: u => (
+      <div className="flex gap-1">
+        <button className="btn-ghost btn-sm btn-icon" onClick={() => openEdit(u)}><Pencil size={13}/></button>
+        <button className="btn-ghost btn-sm btn-icon text-red-500 hover:bg-red-50" onClick={() => setDeleteId(u.id)}><Trash2 size={13}/></button>
+      </div>
+    )},
+  ];
 
-  const needsDept = (roles) => (roles || []).some(r => ['trainer','hod'].includes(r));
+  if (loading) return <PageLoader/>;
 
   return (
-    <div>
-      <div className="page-header">
-        <div>
-          <h1 className="page-title">User accounts management</h1>
-          <p className="page-subtitle">Department heads, Trainer and Secretary accounts</p>
+    <div className="space-y-4">
+      <SectionHeader title="User Management" subtitle={`${filtered.length} of ${users.length} users`}>
+        <button className="btn-primary" onClick={() => { setForm(EMPTY); setEditing(null); setModal(true); }}>
+          <Plus size={16}/> Add User
+        </button>
+      </SectionHeader>
+      {error && <ErrorAlert message={error}/>}
+
+      <div className="card p-4 flex flex-wrap gap-3 items-center">
+        <div className="relative flex-1 min-w-[180px]">
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"/>
+          <input className="input pl-9 text-sm" placeholder="Search name or email…" value={search} onChange={e => setSearch(e.target.value)}/>
         </div>
-        <button className="btn-primary" onClick={openCreate}>+ Add User</button>
+        <div className="flex items-center gap-2">
+          <Filter size={14} className="text-gray-400"/>
+          <select className="select text-sm w-36" value={roleFilter} onChange={e => setRoleFilter(e.target.value)}>
+            <option value="">All Roles</option>
+            {ALL_ROLES.map(r => <option key={r} value={r}>{r}</option>)}
+          </select>
+          <select className="select text-sm w-32" value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
+            <option value="">All Status</option>
+            <option value="active">Active</option>
+            <option value="inactive">Inactive</option>
+          </select>
+        </div>
       </div>
 
-      {/* Toolbar */}
-      <div className="um-toolbar">
-        <input
-          className="um-search"
-          type="text"
-          placeholder="Search name or email..."
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-        />
-        <select className="um-select" value={roleFilter} onChange={e => setRoleFilter(e.target.value)}>
-          <option value="">All Roles</option>
-          {ROLES.map(r => <option key={r} value={r}>{r.charAt(0).toUpperCase()+r.slice(1)}</option>)}
-        </select>
-        <select className="um-select" value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
-          <option value="">All Status</option>
-          <option value="active">Active</option>
-          <option value="inactive">Inactive</option>
-        </select>
-        {(search || roleFilter || statusFilter) && (
-          <button className="um-clear" onClick={() => { setSearch(''); setRoleFilter(''); setStatusFilter(''); }}>Clear</button>
-        )}
-        <span className="um-count">{loading ? '...' : `${filtered.length} user(s)`}</span>
-      </div>
+      <Table columns={cols} data={filtered} emptyMsg="No users found."/>
 
-      {/* Table */}
-      <div className="table-card">
-        {loading ? (
-          <p className="um-msg">Loading...</p>
-        ) : filtered.length === 0 ? (
-          <p className="um-msg">No users found.</p>
-        ) : (
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>Name</th>
-                <th>Email</th>
-                <th>Department</th>
-                <th>Phone</th>
-                <th>Status</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map(u => (
-                <tr key={u.id}>
-                  <td>{u.full_name}</td>
-                  <td>{u.email}</td>
-                  <td>{u.department || '—'}</td>
-                  <td>{u.phone || '—'}</td>
-                  <td><Badge label={u.status} /></td>
-                  <td>
-                    <button className="um-btn-edit" onClick={() => openEdit(u)}>Edit</button>
-                    <button className="um-btn-del" onClick={() => handleDelete(u.id, u.full_name)}>Delete</button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </div>
-
-      {/* Modal */}
-      {showModal && (
-        <Modal title={editUser ? 'Edit User' : 'Add User'} onClose={() => setShowModal(false)}>
-          <div className="form-field">
-            <label>Full Name *</label>
-            <input value={form.fullName} onChange={e => setForm({...form, fullName: e.target.value})} placeholder="Full name" />
+      <Modal open={modal} onClose={() => setModal(false)} title={editing ? 'Edit User' : 'New User'}
+        footer={<><button className="btn-secondary" onClick={() => setModal(false)}>Cancel</button><button className="btn-primary" onClick={handleSave} disabled={saving}>{saving ? 'Saving…' : 'Save'}</button></>}>
+        <div className="space-y-4">
+          {[['Full Name', 'fullName', 'text'], ['Email', 'email', 'email'], ['Phone', 'phone', 'tel']].map(([l, k, t]) => (
+            <div key={k}>
+              <label className="label">{l}</label>
+              <input type={t} className="input" value={form[k]} onChange={e => setForm(f => ({ ...f, [k]: e.target.value }))}/>
+            </div>
+          ))}
+          <div>
+            <label className="label">Role</label>
+            <select className="select" value={form.roleName} onChange={e => setForm(f => ({ ...f, roleName: e.target.value }))}>
+              {ASSIGNABLE_ROLES.map(r => <option key={r} value={r} className="capitalize">{r}</option>)}
+            </select>
+            <p className="text-xs text-gray-400 mt-1">Only HOD, trainer, and secretary roles can be assigned here.</p>
           </div>
-          <div className="form-field">
-            <label>Email *</label>
-            <input type="email" value={form.email} onChange={e => setForm({...form, email: e.target.value})} placeholder="email@example.com" />
-          </div>
-          <div className="form-field">
-            <label>Phone *</label>
-            <input value={form.phone} onChange={e => setForm({...form, phone: e.target.value})} placeholder="+237 6XX XXX XXX" />
-          </div>
-
-          {!editUser && (
-            <div className="form-field">
-              <label>Role *</label>
-              <select value={form.roleName} onChange={e => setForm({...form, roleName: e.target.value})}>
-                {ROLES.map(r => <option key={r} value={r}>{r.charAt(0).toUpperCase()+r.slice(1)}</option>)}
+          {(form.roleName === 'hod' || form.roleName === 'trainer') && (
+            <div>
+              <label className="label">Department</label>
+              <select className="select" value={form.department} onChange={e => setForm(f => ({ ...f, department: e.target.value }))}>
+                <option value="">— None —</option>
+                {depts.map(d => <option key={d.id} value={d.name}>{d.name}</option>)}
               </select>
+              {hodWarning && <p className="text-xs text-amber-600 mt-1">{hodWarning}</p>}
             </div>
           )}
-
-          {editUser && (
-            <div className="form-field">
-              <label>Roles</label>
-              <div className="um-checks">
-                {ROLES.map(r => (
-                  <label key={r} className="um-check">
-                    <input
-                      type="checkbox"
-                      checked={(form.roles||[]).includes(r)}
-                      onChange={e => setForm(prev => ({
-                        ...prev,
-                        roles: e.target.checked ? [...(prev.roles||[]), r] : (prev.roles||[]).filter(x=>x!==r)
-                      }))}
-                    />
-                    {r.charAt(0).toUpperCase()+r.slice(1)}
-                  </label>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {((!editUser && ['trainer','hod'].includes(form.roleName)) ||
-            (editUser && needsDept(form.roles))) && (
-            <div className="form-field">
-              <label>Department</label>
-              <select value={form.department} onChange={e => setForm({...form, department: e.target.value})}>
-                <option value="">Select Department</option>
-                {(departments||[]).map(d => <option key={d.id} value={d.name}>{d.name}</option>)}
-              </select>
-            </div>
-          )}
-
-          <div className="form-field">
-            <label>Status</label>
-            <select value={form.status} onChange={e => setForm({...form, status: e.target.value})}>
+          <div>
+            <label className="label">Status</label>
+            <select className="select" value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value }))}>
               <option value="active">Active</option>
               <option value="inactive">Inactive</option>
             </select>
           </div>
+        </div>
+      </Modal>
 
-          {!editUser && <p className="um-hint">Default password = phone number.</p>}
-          {error && <div className="form-error">{error}</div>}
-
-          <div className="modal-actions">
-            <button className="btn-cancel" onClick={() => setShowModal(false)} disabled={saving}>Cancel</button>
-            <button className="btn-confirm" onClick={handleSubmit} disabled={saving}>
-              {saving ? 'Saving...' : editUser ? 'Save' : 'Create'}
-            </button>
-          </div>
-        </Modal>
-      )}
+      <ConfirmModal open={!!deleteId} onClose={() => setDeleteId(null)}
+        onConfirm={async () => { await adminApi.deleteUser(deleteId); setDeleteId(null); load(); }}
+        title="Delete User" message="This cannot be undone."/>
     </div>
   );
 }

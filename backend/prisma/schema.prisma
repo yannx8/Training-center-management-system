@@ -1,0 +1,550 @@
+// ============================================================
+// TCMS - Training Center Management System
+// Prisma Schema (PostgreSQL)
+// ============================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ─── ROLES ────────────────────────────────────────────────────
+model Role {
+  id        Int        @id @default(autoincrement())
+  name      String     @unique @db.VarChar(50)
+  userRoles UserRole[]
+
+  @@map("roles")
+}
+
+// ─── USERS ────────────────────────────────────────────────────
+model User {
+  id              Int       @id @default(autoincrement())
+  fullName        String    @map("full_name") @db.VarChar(150)
+  email           String    @unique @db.VarChar(150)
+  passwordHash    String    @map("password_hash") @db.VarChar(255)
+  phone           String?   @db.VarChar(30)
+  department      String?   @db.VarChar(100)
+  status          String    @default("active") @db.VarChar(20)
+  passwordChanged Boolean   @default(false) @map("password_changed")
+  createdAt       DateTime  @default(now()) @map("created_at")
+
+  userRoles       UserRole[]
+  trainer         Trainer?
+  student         Student?
+  parent          Parent?
+  hodDepartments  Department[] @relation("HodDepartment")
+  generatedTimetables Timetable[] @relation("GeneratedBy")
+  academicWeeksCreated AcademicWeek[] @relation("WeekCreatedBy")
+  announcements   Announcement[] @relation("AnnouncementCreatedBy")
+  availabilityLocks AvailabilityLock[] @relation("HodLocks")
+
+  @@map("users")
+}
+
+// ─── USER ROLES ───────────────────────────────────────────────
+model UserRole {
+  id     Int  @id @default(autoincrement())
+  userId Int  @map("user_id")
+  roleId Int  @map("role_id")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, roleId])
+  @@map("user_roles")
+}
+
+// ─── DEPARTMENTS ──────────────────────────────────────────────
+model Department {
+  id           Int       @id @default(autoincrement())
+  name         String    @db.VarChar(150)
+  code         String    @unique @db.VarChar(20)
+  hodName      String?   @map("hod_name") @db.VarChar(150)
+  hodUserId    Int?      @map("hod_user_id")
+  studentCount Int       @default(0) @map("student_count")
+  status       String    @default("active") @db.VarChar(20)
+  createdAt    DateTime  @default(now()) @map("created_at")
+
+  hod          User?     @relation("HodDepartment", fields: [hodUserId], references: [id], onDelete: SetNull)
+  programs     Program[]
+  academicWeeks AcademicWeek[]
+  announcements Announcement[]
+
+  @@map("departments")
+}
+
+// ─── CERTIFICATIONS ───────────────────────────────────────────
+model Certification {
+  id            Int       @id @default(autoincrement())
+  name          String    @db.VarChar(150)
+  code          String    @unique @db.VarChar(30)
+  description   String?
+  durationHours Int       @default(40) @map("duration_hours")
+  status        String    @default("active") @db.VarChar(20)
+  createdAt     DateTime  @default(now()) @map("created_at")
+
+  trainerCourses    TrainerCourse[]
+  enrollments       Enrollment[]
+  grades            Grade[]
+  markComplaints    MarkComplaint[]
+  studentAvailability StudentAvailability[]
+  certTimetableSlots CertTimetableSlot[]
+  academicYears     AcademicYear[]
+
+  @@map("certifications")
+}
+
+// ─── PROGRAMS ─────────────────────────────────────────────────
+model Program {
+  id            Int       @id @default(autoincrement())
+  name          String    @db.VarChar(150)
+  code          String    @unique @db.VarChar(20)
+  departmentId  Int?      @map("department_id")
+  durationYears Int       @default(3) @map("duration_years")
+  status        String    @default("active") @db.VarChar(20)
+  createdAt     DateTime  @default(now()) @map("created_at")
+
+  department    Department? @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  levels        AcademicLevel[]
+  sessions      Session[]
+  students      Student[]
+  enrollments   Enrollment[]
+  academicYears AcademicYear[]
+
+  @@map("programs")
+}
+
+// ─── ACADEMIC LEVELS ──────────────────────────────────────────
+model AcademicLevel {
+  id         Int       @id @default(autoincrement())
+  name       String    @db.VarChar(100)
+  programId  Int       @map("program_id")
+  levelOrder Int       @default(1) @map("level_order")
+  createdAt  DateTime  @default(now()) @map("created_at")
+
+  program    Program   @relation(fields: [programId], references: [id], onDelete: Cascade)
+  sessions   Session[]
+
+  @@map("academic_levels")
+}
+
+// ─── SEMESTERS ────────────────────────────────────────────────
+model Semester {
+  id             Int       @id @default(autoincrement())
+  name           String    @db.VarChar(100)
+  semesterOrder  Int       @default(1) @map("semester_order")
+  createdAt      DateTime  @default(now()) @map("created_at")
+
+  sessions       Session[]
+
+  @@map("semesters")
+}
+
+// ─── ACADEMIC YEARS ───────────────────────────────────────────
+model AcademicYear {
+  id              Int       @id @default(autoincrement())
+  name            String    @db.VarChar(50)
+  startDate       DateTime  @map("start_date") @db.Date
+  endDate         DateTime  @map("end_date") @db.Date
+  isActive        Boolean   @default(false) @map("is_active")
+  programId       Int?      @map("program_id")
+  certificationId Int?      @map("certification_id")
+  createdAt       DateTime  @default(now()) @map("created_at")
+
+  program         Program?       @relation(fields: [programId], references: [id], onDelete: Cascade)
+  certification   Certification? @relation(fields: [certificationId], references: [id], onDelete: Cascade)
+  sessions        Session[]
+  academicWeeks   AcademicWeek[]
+  enrollments     Enrollment[]
+  grades          Grade[]
+
+  @@map("academic_years")
+}
+
+// ─── SESSIONS ─────────────────────────────────────────────────
+model Session {
+  id              Int       @id @default(autoincrement())
+  academicYearId  Int?      @map("academic_year_id")
+  academicLevelId Int?      @map("academic_level_id")
+  semesterId      Int?      @map("semester_id")
+  programId       Int?      @map("program_id")
+  createdAt       DateTime  @default(now()) @map("created_at")
+
+  academicYear    AcademicYear?  @relation(fields: [academicYearId], references: [id], onDelete: Cascade)
+  academicLevel   AcademicLevel? @relation(fields: [academicLevelId], references: [id], onDelete: Cascade)
+  semester        Semester?      @relation(fields: [semesterId], references: [id], onDelete: Cascade)
+  program         Program?       @relation(fields: [programId], references: [id], onDelete: Cascade)
+  courses         Course[]
+
+  @@map("sessions")
+}
+
+// ─── ROOMS ────────────────────────────────────────────────────
+model Room {
+  id        Int       @id @default(autoincrement())
+  name      String    @db.VarChar(100)
+  code      String    @unique @db.VarChar(30)
+  building  String?   @db.VarChar(100)
+  capacity  Int       @default(30)
+  roomType  String    @default("Classroom") @map("room_type") @db.VarChar(50)
+  status    String    @default("available") @db.VarChar(20)
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  timetableSlots     TimetableSlot[]
+  certTimetableSlots CertTimetableSlot[]
+
+  @@map("rooms")
+}
+
+// ─── ACADEMIC WEEKS ───────────────────────────────────────────
+model AcademicWeek {
+  id             Int       @id @default(autoincrement())
+  academicYearId Int?      @map("academic_year_id")
+  departmentId   Int       @map("department_id")
+  weekNumber     Int       @map("week_number")
+  label          String    @db.VarChar(100)
+  startDate      DateTime  @map("start_date") @db.Date
+  endDate        DateTime  @map("end_date") @db.Date
+  status         String    @default("draft") @db.VarChar(20)
+  createdBy      Int?      @map("created_by")
+  createdAt      DateTime  @default(now()) @map("created_at")
+
+  academicYear   AcademicYear?     @relation(fields: [academicYearId], references: [id], onDelete: Cascade)
+  department     Department        @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+  creator        User?             @relation("WeekCreatedBy", fields: [createdBy], references: [id], onDelete: SetNull)
+  timetables     Timetable[]
+  availability   Availability[]
+  availabilityLocks AvailabilityLock[]
+  timetableSlots TimetableSlot[]
+  certTimetableSlots CertTimetableSlot[]
+  studentAvailability StudentAvailability[]
+
+  @@map("academic_weeks")
+}
+
+// ─── COURSES ──────────────────────────────────────────────────
+model Course {
+  id           Int       @id @default(autoincrement())
+  name         String    @db.VarChar(150)
+  code         String    @unique @db.VarChar(30)
+  sessionId    Int?      @map("session_id")
+  credits      Int       @default(3)
+  hoursPerWeek Int       @default(2) @map("hours_per_week")
+  createdAt    DateTime  @default(now()) @map("created_at")
+
+  session        Session?       @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+  trainerCourses TrainerCourse[]
+  grades         Grade[]
+  timetableSlots TimetableSlot[]
+  markComplaints MarkComplaint[]
+
+  @@map("courses")
+}
+
+// ─── TRAINERS ─────────────────────────────────────────────────
+model Trainer {
+  id             Int       @id @default(autoincrement())
+  userId         Int       @unique @map("user_id")
+  specialization String?   @db.VarChar(150)
+  createdAt      DateTime  @default(now()) @map("created_at")
+
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  trainerCourses TrainerCourse[]
+  availability   Availability[]
+  timetableSlots TimetableSlot[]
+  grades         Grade[]
+  markComplaints MarkComplaint[]
+  certTimetableSlots CertTimetableSlot[]
+
+  @@map("trainers")
+}
+
+// ─── TRAINER COURSES ──────────────────────────────────────────
+model TrainerCourse {
+  id              Int  @id @default(autoincrement())
+  trainerId       Int  @map("trainer_id")
+  courseId        Int? @map("course_id")
+  certificationId Int? @map("certification_id")
+
+  trainer       Trainer        @relation(fields: [trainerId], references: [id], onDelete: Cascade)
+  course        Course?        @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  certification Certification? @relation(fields: [certificationId], references: [id], onDelete: Cascade)
+
+  @@map("trainer_courses")
+}
+
+// ─── STUDENTS ─────────────────────────────────────────────────
+model Student {
+  id          Int       @id @default(autoincrement())
+  userId      Int?      @unique @map("user_id")
+  matricule   String    @unique @db.VarChar(50)
+  dateOfBirth DateTime? @map("date_of_birth") @db.Date
+  programId   Int?      @map("program_id")
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  user         User?       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  program      Program?    @relation(fields: [programId], references: [id], onDelete: SetNull)
+  enrollments  Enrollment[]
+  grades       Grade[]
+  parentLinks  ParentStudentLink[]
+  markComplaints MarkComplaint[]
+  attendance   Attendance[]
+  studentAvailability StudentAvailability[]
+
+  @@map("students")
+}
+
+// ─── PARENTS ──────────────────────────────────────────────────
+model Parent {
+  id           Int       @id @default(autoincrement())
+  userId       Int?      @unique @map("user_id")
+  relationship String    @default("Father") @db.VarChar(50)
+  createdAt    DateTime  @default(now()) @map("created_at")
+
+  user         User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  studentLinks ParentStudentLink[]
+  complaints   Complaint[]
+
+  @@map("parents")
+}
+
+// ─── PARENT STUDENT LINKS ─────────────────────────────────────
+model ParentStudentLink {
+  id        Int @id @default(autoincrement())
+  parentId  Int @map("parent_id")
+  studentId Int @map("student_id")
+
+  parent  Parent  @relation(fields: [parentId], references: [id], onDelete: Cascade)
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([parentId, studentId])
+  @@map("parent_student_links")
+}
+
+// ─── ENROLLMENTS ──────────────────────────────────────────────
+model Enrollment {
+  id              Int       @id @default(autoincrement())
+  studentId       Int       @map("student_id")
+  academicYearId  Int?      @map("academic_year_id")
+  programId       Int?      @map("program_id")
+  certificationId Int?      @map("certification_id")
+  enrolledAt      DateTime  @default(now()) @map("enrolled_at")
+  status          String    @default("active") @db.VarChar(20)
+
+  student       Student        @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  academicYear  AcademicYear?  @relation(fields: [academicYearId], references: [id], onDelete: Cascade)
+  program       Program?       @relation(fields: [programId], references: [id], onDelete: Cascade)
+  certification Certification? @relation(fields: [certificationId], references: [id], onDelete: Cascade)
+
+  @@map("enrollments")
+}
+
+// ─── GRADES ───────────────────────────────────────────────────
+model Grade {
+  id              Int       @id @default(autoincrement())
+  studentId       Int       @map("student_id")
+  courseId        Int?      @map("course_id")
+  certificationId Int?      @map("certification_id")
+  trainerId       Int?      @map("trainer_id")
+  grade           Decimal?  @db.Decimal(5, 2)
+  gradeLetter     String?   @map("grade_letter") @db.VarChar(5)
+  academicYearId  Int?      @map("academic_year_id")
+  submittedAt     DateTime  @default(now()) @map("submitted_at")
+
+  student       Student        @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  course        Course?        @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  certification Certification? @relation(fields: [certificationId], references: [id], onDelete: Cascade)
+  trainer       Trainer?       @relation(fields: [trainerId], references: [id], onDelete: SetNull)
+  academicYear  AcademicYear?  @relation(fields: [academicYearId], references: [id])
+
+  @@unique([studentId, courseId])
+  @@unique([studentId, certificationId])
+  @@map("grades")
+}
+
+// ─── AVAILABILITY (TRAINER) ───────────────────────────────────
+model Availability {
+  id             Int      @id @default(autoincrement())
+  trainerId      Int      @map("trainer_id")
+  academicWeekId Int      @map("academic_week_id")
+  dayOfWeek      String   @map("day_of_week") @db.VarChar(10)
+  timeStart      String   @map("time_start") @db.VarChar(8)
+  timeEnd        String   @map("time_end") @db.VarChar(8)
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  trainer      Trainer      @relation(fields: [trainerId], references: [id], onDelete: Cascade)
+  academicWeek AcademicWeek @relation(fields: [academicWeekId], references: [id], onDelete: Cascade)
+
+  @@unique([trainerId, academicWeekId, dayOfWeek, timeStart, timeEnd])
+  @@map("availability")
+}
+
+// ─── STUDENT AVAILABILITY ─────────────────────────────────────
+model StudentAvailability {
+  id              Int      @id @default(autoincrement())
+  studentId       Int      @map("student_id")
+  academicWeekId  Int      @map("academic_week_id")
+  certificationId Int      @map("certification_id")
+  dayOfWeek       String   @map("day_of_week") @db.VarChar(10)
+  timeStart       String   @map("time_start") @db.VarChar(8)
+  timeEnd         String   @map("time_end") @db.VarChar(8)
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  student       Student       @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  academicWeek  AcademicWeek  @relation(fields: [academicWeekId], references: [id], onDelete: Cascade)
+  certification Certification @relation(fields: [certificationId], references: [id], onDelete: Cascade)
+
+  @@unique([studentId, academicWeekId, certificationId, dayOfWeek, timeStart, timeEnd])
+  @@map("student_availability")
+}
+
+// ─── AVAILABILITY LOCKS ───────────────────────────────────────
+model AvailabilityLock {
+  id             Int      @id @default(autoincrement())
+  hodUserId      Int      @map("hod_user_id")
+  academicWeekId Int      @map("academic_week_id")
+  isLocked       Boolean  @default(false) @map("is_locked")
+  updatedAt      DateTime @default(now()) @updatedAt @map("updated_at")
+
+  hodUser      User         @relation("HodLocks", fields: [hodUserId], references: [id], onDelete: Cascade)
+  academicWeek AcademicWeek @relation(fields: [academicWeekId], references: [id], onDelete: Cascade)
+
+  @@unique([hodUserId, academicWeekId])
+  @@map("availability_locks")
+}
+
+// ─── TIMETABLES ───────────────────────────────────────────────
+model Timetable {
+  id             Int      @id @default(autoincrement())
+  academicWeekId Int      @unique @map("academic_week_id")
+  generatedBy    Int?     @map("generated_by")
+  generatedAt    DateTime @default(now()) @map("generated_at")
+  label          String?  @db.VarChar(150)
+  status         String   @default("draft") @db.VarChar(20)
+
+  academicWeek AcademicWeek    @relation(fields: [academicWeekId], references: [id], onDelete: Cascade)
+  generator    User?           @relation("GeneratedBy", fields: [generatedBy], references: [id])
+  slots        TimetableSlot[]
+
+  @@map("timetables")
+}
+
+// ─── TIMETABLE SLOTS ──────────────────────────────────────────
+model TimetableSlot {
+  id              Int     @id @default(autoincrement())
+  timetableId     Int     @map("timetable_id")
+  academicWeekId  Int     @map("academic_week_id")
+  dayOfWeek       String  @map("day_of_week") @db.VarChar(10)
+  timeStart       String  @map("time_start") @db.VarChar(8)
+  timeEnd         String  @map("time_end") @db.VarChar(8)
+  roomId          Int?    @map("room_id")
+  trainerId       Int?    @map("trainer_id")
+  courseId        Int?    @map("course_id")
+
+  timetable    Timetable    @relation(fields: [timetableId], references: [id], onDelete: Cascade)
+  academicWeek AcademicWeek @relation(fields: [academicWeekId], references: [id], onDelete: Cascade)
+  room         Room?        @relation(fields: [roomId], references: [id], onDelete: SetNull)
+  trainer      Trainer?     @relation(fields: [trainerId], references: [id], onDelete: SetNull)
+  course       Course?      @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  attendance   Attendance[]
+
+  @@map("timetable_slots")
+}
+
+// ─── CERT TIMETABLE SLOTS ─────────────────────────────────────
+// Separate table for certification sessions (no parent timetable)
+model CertTimetableSlot {
+  id              Int     @id @default(autoincrement())
+  certificationId Int     @map("certification_id")
+  trainerId       Int     @map("trainer_id")
+  academicWeekId  Int     @map("academic_week_id")
+  dayOfWeek       String  @map("day_of_week") @db.VarChar(10)
+  timeStart       String  @map("time_start") @db.VarChar(8)
+  timeEnd         String  @map("time_end") @db.VarChar(8)
+  roomId          Int?    @map("room_id")
+  status          String  @default("scheduled") @db.VarChar(20)
+
+  certification Certification @relation(fields: [certificationId], references: [id], onDelete: Cascade)
+  trainer       Trainer       @relation(fields: [trainerId], references: [id], onDelete: Cascade)
+  academicWeek  AcademicWeek  @relation(fields: [academicWeekId], references: [id], onDelete: Cascade)
+  room          Room?         @relation(fields: [roomId], references: [id], onDelete: SetNull)
+
+  @@map("cert_timetable_slots")
+}
+
+// ─── ATTENDANCE ───────────────────────────────────────────────
+model Attendance {
+  id               Int      @id @default(autoincrement())
+  studentId        Int      @map("student_id")
+  timetableSlotId  Int      @map("timetable_slot_id")
+  status           String   @default("present") @db.VarChar(20)
+  recordedAt       DateTime @default(now()) @map("recorded_at")
+
+  student       Student       @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  timetableSlot TimetableSlot @relation(fields: [timetableSlotId], references: [id], onDelete: Cascade)
+
+  @@map("attendance")
+}
+
+// ─── COMPLAINTS (parent → admin) ─────────────────────────────
+model Complaint {
+  id            Int      @id @default(autoincrement())
+  parentId      Int      @map("parent_id")
+  studentId     Int?     @map("student_id")
+  subject       String   @db.VarChar(255)
+  description   String?
+  priority      String   @default("medium") @db.VarChar(20)
+  status        String   @default("pending") @db.VarChar(20)
+  adminResponse String?  @map("admin_response")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  parent Parent @relation(fields: [parentId], references: [id], onDelete: Cascade)
+
+  @@map("complaints")
+}
+
+// ─── MARK COMPLAINTS (student → trainer) ─────────────────────
+model MarkComplaint {
+  id              Int      @id @default(autoincrement())
+  studentId       Int      @map("student_id")
+  trainerId       Int?     @map("trainer_id")
+  courseId        Int?     @map("course_id")
+  certificationId Int?     @map("certification_id")
+  subject         String   @db.VarChar(255)
+  description     String?
+  status          String   @default("pending") @db.VarChar(20)
+  trainerResponse String?  @map("trainer_response")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  student       Student        @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  trainer       Trainer?       @relation(fields: [trainerId], references: [id], onDelete: Cascade)
+  course        Course?        @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  certification Certification? @relation(fields: [certificationId], references: [id], onDelete: Cascade)
+
+  @@unique([studentId, courseId])
+  @@unique([studentId, certificationId])
+  @@map("mark_complaints")
+}
+
+// ─── ANNOUNCEMENTS ────────────────────────────────────────────
+model Announcement {
+  id           Int      @id @default(autoincrement())
+  title        String   @db.VarChar(255)
+  body         String
+  targetRole   String?  @map("target_role") @db.VarChar(50) // 'trainer' | 'student' | 'parent' | 'all'
+  departmentId Int?     @map("department_id")
+  createdBy    Int?     @map("created_by")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  creator    User?       @relation("AnnouncementCreatedBy", fields: [createdBy], references: [id])
+  department Department? @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+
+  @@map("announcements")
+}

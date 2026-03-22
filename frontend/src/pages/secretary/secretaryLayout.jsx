@@ -1,46 +1,25 @@
-import { NavLink, Outlet, useNavigate } from 'react-router-dom';
-import { useAuth } from '../../context/AuthContext';
-import '../../styles/Secretary.css';
-
-const NAV = [
-    { to: '/secretary',          label: ' Dashboard',          end: true  },
-    { to: '/secretary/register', label: ' Register Student',   end: false },
-    { to: '/secretary/students', label: ' All Students',       end: false },
-];
+import { Outlet } from 'react-router-dom';
+import Sidebar from '../../components/layout/Sidebar';
+import TopBar  from '../../components/layout/TopBar';
+import { LayoutDashboard, Users, UserPlus } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 export default function SecretaryLayout() {
-    const { user, logout } = useAuth();
-    const navigate = useNavigate();
-
-    function handleLogout() { logout(); navigate('/login'); }
-
-    return (
-        <div className="secretary-shell">
-            <aside className="secretary-sidebar">
-                <div className="secretary-brand">Student Registration</div>
-                <nav className="secretary-nav">
-                    {NAV.map(n => (
-                        <NavLink
-                            key={n.to}
-                            to={n.to}
-                            end={n.end}
-                            className={({ isActive }) =>
-                                `secretary-link${isActive ? ' secretary-link-active' : ''}`
-                            }
-                        >
-                            {n.label}
-                        </NavLink>
-                    ))}
-                </nav>
-                <div className="secretary-footer">
-                    <div className="secretary-footer-name">{user?.fullName}</div>
-                    <div className="secretary-footer-role">SECRETARY </div>
-                    <button className="secretary-footer-logout" onClick={handleLogout}>Logout</button>
-                </div>
-            </aside>
-            <main className="secretary-main">
-                <Outlet />
-            </main>
-        </div>
-    );
+  const { t } = useTranslation();
+  const NAV = [
+    { to: '/secretary',          label: 'Dashboard', icon: <LayoutDashboard size={18}/> },
+    { to: '/secretary/students', label: 'Students',  icon: <Users size={18}/> },
+    { to: '/secretary/register', label: 'Register',  icon: <UserPlus size={18}/> },
+  ];
+  return (
+    <div className="flex h-screen overflow-hidden bg-gray-50">
+      <Sidebar navItems={NAV} roleLabel={t('roles.secretary','Secretary')} roleColor="bg-cyan-600" />
+      <div className="flex-1 flex flex-col overflow-hidden min-w-0">
+        <TopBar roleLabel={t('roles.secretary','Secretary')} roleColor="bg-cyan-600" />
+        <main className="flex-1 overflow-y-auto">
+          <div className="max-w-7xl mx-auto px-4 py-4 lg:px-6 lg:py-6 pt-16 lg:pt-4"><Outlet /></div>
+        </main>
+      </div>
+    </div>
+  );
 }

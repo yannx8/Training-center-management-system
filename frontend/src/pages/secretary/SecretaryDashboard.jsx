@@ -1,168 +1,93 @@
-
-import { useState, useEffect } from 'react';
-import { useAuth } from '../../context/AuthContext';
-import { secretaryApi } from '../../api/secretaryApi';
-import '../../styles/Secretary.css';
-
-const TABS = ['Overview', 'Students'];
+import { useEffect, useState } from "react";
+import { Users, BookMarked, Award, Building2 } from "lucide-react";
+import { secretaryApi } from "../../api";
+import { PageLoader, ErrorAlert } from "../../components/ui";
 
 export default function SecretaryDashboard() {
-    const { user } = useAuth();
-    const [tab, setTab] = useState('Overview');
-    const [students, setStudents] = useState([]);
-    const [programs, setPrograms] = useState([]);
-    const [filterProgram, setFilterProgram] = useState('');
-    const [search, setSearch] = useState('');
-    const [loading, setLoading] = useState(true);
+  const [data, setData]   = useState(null);
+  const [error, setError] = useState("");
 
-    useEffect(() => { load(); }, []);
+  useEffect(() => {
+    secretaryApi.getDashboard().then(r => setData(r.data)).catch(() => setError("Failed to load"));
+  }, []);
 
-    async function load() {
-        setLoading(true);
-        try {
-            const [studRes, progRes] = await Promise.all([
-                secretaryApi.getStudents(),
-                secretaryApi.getPrograms(),
-            ]);
-            setStudents(studRes.data.data || []);
-            setPrograms(progRes.data.data || []);
-        } catch (e) { console.error(e); }
-        finally { setLoading(false); }
-    }
+  if (!data && !error) return <PageLoader />;
+  if (error) return <ErrorAlert message={error} />;
 
-    const filtered = students.filter(s => {
-        const matchProg = !filterProgram || String(s.program_id) === filterProgram || s.program_name === filterProgram;
-        const q = search.toLowerCase();
-        const matchSearch = !q || s.full_name?.toLowerCase().includes(q) || s.matricule?.toLowerCase().includes(q);
-        return matchProg && matchSearch;
-    });
+  const { activeYear, programs, certifications, studentCount } = data;
 
-    const todayCount = students.filter(s => {
-        if (!s.created_at) return false;
-        return new Date(s.created_at).toDateString() === new Date().toDateString();
-    }).length;
+  return (
+    <div className="space-y-6">
+      <div>
+        <h1 className="page-title">Secretary Dashboard</h1>
+        {activeYear && <p className="page-subtitle">Active Academic Year: <span className="font-semibold text-gray-700">{activeYear.name}</span></p>}
+      </div>
 
-    return (
-        <div className="secretary-body">
-            <div className="sec-page-head">
+      {/* Stats row */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {[
+          { label:"Students", value:studentCount, icon:<Users size={20}/>, color:"bg-cyan-100 text-cyan-700" },
+          { label:"Programs", value:programs.length, icon:<BookMarked size={20}/>, color:"bg-blue-100 text-blue-700" },
+          { label:"Certifications", value:certifications.length, icon:<Award size={20}/>, color:"bg-violet-100 text-violet-700" },
+        ].map(s => (
+          <div key={s.label} className="card p-4 flex items-center gap-3">
+            <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${s.color}`}>{s.icon}</div>
+            <div><p className="text-xl font-bold text-gray-900">{s.value}</p><p className="text-xs text-gray-500">{s.label}</p></div>
+          </div>
+        ))}
+      </div>
+
+      <div className="grid md:grid-cols-2 gap-5">
+        {/* Academic programs */}
+        <div className="card">
+          <div className="px-5 py-4 border-b border-gray-100">
+            <h2 className="font-semibold text-gray-900 flex items-center gap-2"><BookMarked size={15} className="text-blue-500"/> Academic Programs</h2>
+            {activeYear && <p className="text-xs text-gray-400 mt-0.5">For {activeYear.name}</p>}
+          </div>
+          <div className="divide-y divide-gray-50 max-h-72 overflow-y-auto">
+            {programs.length === 0 && <p className="px-5 py-4 text-sm text-gray-400">No programs for this academic year.</p>}
+            {programs.map(p => (
+              <div key={p.id} className="px-5 py-3 flex items-center justify-between">
                 <div>
-                    <h1 className="sec-title">Secretary Dashboard</h1>
-                    <p className="sec-sub">Welcome, {user?.fullName}</p>
+                  <p className="text-sm font-medium text-gray-900">{p.name}</p>
+                  <p className="text-xs text-gray-400">{p.code} · {p.department?.name}</p>
                 </div>
-            </div>
-
-            {/* Stats */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '1rem', marginBottom: '1.5rem' }}>
-                {[
-                    { label: 'Total Students', value: students.length, color: '#2c3e50' },
-                    { label: 'Active Programs', value: programs.filter(p => p.status === 'active').length, color: '#2980b9' },
-                    { label: "Today's Registrations", value: todayCount, color: '#27ae60' },
-                ].map(stat => (
-                    <div key={stat.label} className="sec-card" style={{ marginBottom: 0, textAlign: 'center' }}>
-                        <div style={{ fontSize: '1.8rem', fontWeight: 800, color: stat.color }}>{stat.value}</div>
-                        <div style={{ fontSize: '0.8rem', color: '#555', marginTop: 4 }}>{stat.label}</div>
-                    </div>
-                ))}
-            </div>
-
-            {/* Tabs */}
-            <div className="sec-tabs">
-                {TABS.map(t => (
-                    <button key={t} className={`sec-tab${tab === t ? ' active' : ''}`} onClick={() => setTab(t)}>{t}</button>
-                ))}
-            </div>
-
-            {loading ? (
-                <p style={{ color: '#888', padding: '2rem', textAlign: 'center' }}>Loading…</p>
-            ) : tab === 'Overview' ? (
-                <div className="sec-card">
-                    <p className="sec-card-title">Recent Registrations</p>
-                    <table className="sec-table">
-                        <thead>
-                            <tr>
-                                <th>Matricule</th><th>Name</th><th>Program</th><th>Status</th><th>Registered</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {students.slice(0, 10).map(s => (
-                                <tr key={s.id}>
-                                    <td><code style={{ fontSize: '0.8rem' }}>{s.matricule}</code></td>
-                                    <td>{s.full_name}</td>
-                                    <td>{s.program_name || '—'}</td>
-                                    <td>
-                                        <span style={{
-                                            padding: '0.15rem 0.5rem', borderRadius: 999, fontSize: '0.72rem', fontWeight: 600,
-                                            background: s.enrollment_status === 'active' ? '#dcfce7' : '#f3f4f6',
-                                            color: s.enrollment_status === 'active' ? '#166534' : '#555',
-                                        }}>{s.enrollment_status || 'enrolled'}</span>
-                                    </td>
-                                    <td style={{ fontSize: '0.8rem', color: '#666' }}>
-                                        {s.created_at ? new Date(s.created_at).toLocaleDateString() : '—'}
-                                    </td>
-                                </tr>
-                            ))}
-                            {!students.length && (
-                                <tr><td colSpan={5} style={{ textAlign: 'center', color: '#888', padding: '1.5rem' }}>No students yet</td></tr>
-                            )}
-                        </tbody>
-                    </table>
-                </div>
-            ) : (
-                /* All Students Tab */
-                <div className="sec-card">
-                    <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
-                        <input
-                            className="sec-input"
-                            placeholder="Search by name or matricule…"
-                            value={search}
-                            onChange={e => setSearch(e.target.value)}
-                            style={{ flex: 1, minWidth: 180 }}
-                        />
-                        <select
-                            className="sec-select"
-                            value={filterProgram}
-                            onChange={e => setFilterProgram(e.target.value)}
-                        >
-                            <option value="">All Programs</option>
-                            {programs.map(p => (
-                                <option key={p.id} value={p.name}>{p.name}</option>
-                            ))}
-                        </select>
-                    </div>
-                    <table className="sec-table">
-                        <thead>
-                            <tr>
-                                <th>Matricule</th><th>Name</th><th>Email</th><th>Phone</th><th>Program</th><th>Year</th><th>Status</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {filtered.map(s => (
-                                <tr key={s.id}>
-                                    <td><code style={{ fontSize: '0.8rem' }}>{s.matricule}</code></td>
-                                    <td style={{ fontWeight: 600 }}>{s.full_name}</td>
-                                    <td style={{ fontSize: '0.82rem', color: '#555' }}>{s.email || '—'}</td>
-                                    <td style={{ fontSize: '0.82rem', color: '#555' }}>{s.phone || '—'}</td>
-                                    <td>{s.program_name || '—'}</td>
-                                    <td style={{ fontSize: '0.82rem' }}>{s.academic_year_name || '—'}</td>
-                                    <td>
-                                        <span style={{
-                                            padding: '0.15rem 0.5rem', borderRadius: 999, fontSize: '0.72rem', fontWeight: 600,
-                                            background: s.enrollment_status === 'active' ? '#dcfce7' : '#f3f4f6',
-                                            color: s.enrollment_status === 'active' ? '#166534' : '#555',
-                                        }}>{s.enrollment_status || 'enrolled'}</span>
-                                    </td>
-                                </tr>
-                            ))}
-                            {!filtered.length && (
-                                <tr><td colSpan={7} style={{ textAlign: 'center', color: '#888', padding: '1.5rem' }}>No students found</td></tr>
-                            )}
-                        </tbody>
-                    </table>
-                    <div style={{ marginTop: '0.75rem', fontSize: '0.8rem', color: '#888' }}>
-                        {filtered.length} student{filtered.length !== 1 ? 's' : ''} shown
-                    </div>
-                </div>
-            )}
+                <span className="text-xs text-gray-500">
+                  {p._count?.enrollments || 0}{p.capacity ? `/${p.capacity}` : ""} enrolled
+                </span>
+              </div>
+            ))}
+          </div>
         </div>
-    );
+
+        {/* Certifications */}
+        <div className="card">
+          <div className="px-5 py-4 border-b border-gray-100">
+            <h2 className="font-semibold text-gray-900 flex items-center gap-2"><Award size={15} className="text-violet-500"/> Certifications</h2>
+            <p className="text-xs text-gray-400 mt-0.5">Current enrollment status</p>
+          </div>
+          <div className="divide-y divide-gray-50 max-h-72 overflow-y-auto">
+            {certifications.length === 0 && <p className="px-5 py-4 text-sm text-gray-400">No active certifications.</p>}
+            {certifications.map(c => {
+              const trainer = c.trainerCourses?.[0]?.trainer?.user;
+              return (
+                <div key={c.id} className="px-5 py-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-gray-900">{c.name}</p>
+                      <p className="text-xs text-gray-400">{c.code} · {c.durationHours}h</p>
+                    </div>
+                    <span className="text-xs text-gray-500">
+                      {c._count?.enrollments || 0}{c.capacity ? `/${c.capacity}` : ""} enrolled
+                    </span>
+                  </div>
+                  {trainer && <p className="text-xs text-gray-400 mt-0.5">Trainer: {trainer.fullName}</p>}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 }

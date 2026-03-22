@@ -1,146 +1,139 @@
-import { useState, useEffect } from 'react';
-import { getGrades, getGradePeriods } from '../../api/studentApi';
-import '../../styles/Student.css';
+import { useEffect, useState } from 'react';
+import { BarChart2 } from 'lucide-react';
+import { studentApi } from '../../api';
+import { PageLoader, ErrorAlert } from '../../components/ui';
+import { useTranslation } from 'react-i18next';
 
-function gradePillClass(letter) {
-    if (!letter) return '';
-    if (letter.startsWith('A')) return 'A';
-    if (letter.startsWith('B')) return 'B';
-    if (letter.startsWith('C')) return 'C';
-    if (letter.startsWith('D')) return 'D';
-    return 'F';
+function GradePill({ letter, value }) {
+  const n = parseFloat(value);
+  let cls = 'bg-green-100 text-green-700';
+  if (n < 50)  cls = 'bg-red-100 text-red-700';
+  else if (n < 70) cls = 'bg-yellow-100 text-yellow-700';
+  return (
+    <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold flex-shrink-0 ${cls}`}>
+      {letter || '—'}
+    </div>
+  );
 }
 
 export default function StudentGrades() {
-    const [periods, setPeriods] = useState([]);
-    const [selectedPeriodId, setSelectedPeriodId] = useState('');
-    const [grades, setGrades] = useState([]);
-    const [loading, setLoading] = useState(false);
-    const [periodsLoading, setPeriodsLoading] = useState(true);
+  const { t } = useTranslation();
+  const [grades, setGrades]     = useState([]);
+  const [loading, setLoading]   = useState(true);
+  const [error, setError]       = useState('');
+  const [semFilter, setSemFilter] = useState('');
 
-    useEffect(() => {
-        getGradePeriods()
-            .then(res => {
-                const p = res.data.data || [];
-                setPeriods(p);
-                // Don't auto-select — let user choose
-                setPeriodsLoading(false);
-            })
-            .catch(() => setPeriodsLoading(false));
-    }, []);
+  useEffect(() => {
+    studentApi.getGrades()
+      .then(r => { setGrades(r.data || []); setLoading(false); })
+      .catch(() => setError(t('common.failedLoad','Failed to load grades')));
+  }, []);
 
-    useEffect(() => {
-        setLoading(true);
-        getGrades(selectedPeriodId ? { periodId: selectedPeriodId } : {})
-            .then(res => setGrades(res.data.data || []))
-            .catch(() => setGrades([]))
-            .finally(() => setLoading(false));
-    }, [selectedPeriodId]);
+  if (loading) return <PageLoader />;
+  if (error)   return <ErrorAlert message={error} />;
 
-    const gpa = grades.length
-        ? (grades.reduce((acc, g) => acc + (parseFloat(g.grade) || 0), 0) / grades.length).toFixed(2)
-        : '—';
+  const academic  = grades.filter(g => g.courseId);
+  const certGrades = grades.filter(g => g.certificationId);
 
-    const passed = grades.filter(g => parseFloat(g.grade) >= 50).length;
+  // Build semester list from academic grades
+  const semesters = [...new Set(
+    academic.map(g => g.course?.session?.semester?.name).filter(Boolean)
+  )];
 
-    return (
-        <div>
-            <div className="student-page-head">
-                <div>
-                    <h1 className="student-title">My Grades</h1>
-                    <p className="student-sub">Select a school period </p>
-                </div>
-            </div>
+  const filteredAcademic = semFilter
+    ? academic.filter(g => g.course?.session?.semester?.name === semFilter)
+    : academic;
 
-            {/* Stats */}
-            <div className="student-stats">
-                <div className="student-stat">
-                    <div className="student-stat-value">{grades.length}</div>
-                    <div className="student-stat-label">Courses Graded</div>
-                </div>
-                <div className="student-stat">
-                    <div className="student-stat-value">{gpa}</div>
-                    <div className="student-stat-label">Average Grade</div>
-                </div>
-                <div className="student-stat">
-                    <div className="student-stat-value">{passed}</div>
-                    <div className="student-stat-label">Courses Passed</div>
-                </div>
-            </div>
+  const passed = grades.filter(g => parseFloat(g.grade) >= 50).length;
+  const failed  = grades.filter(g => parseFloat(g.grade) <  50).length;
+  const avg     = grades.length
+    ? (grades.reduce((s, g) => s + parseFloat(g.grade || 0), 0) / grades.length).toFixed(1)
+    : null;
 
-            <div className="student-card">
-                {/* Period filter */}
-                <div className="student-row" style={{ marginBottom: '1.25rem' }}>
-                    <label style={{ fontSize: '0.875rem', fontWeight: 600, color: '#0f4c3a', whiteSpace: 'nowrap' }}>
-                        School Period:
-                    </label>
-                    <select
-                        className="student-select"
-                        value={selectedPeriodId}
-                        onChange={e => setSelectedPeriodId(e.target.value)}
-                        style={{ flex: 1, maxWidth: 400 }}
-                    >
-                        <option value="">— All Periods —</option>
-                        {periods.map(p => (
-                            <option key={p.id} value={p.id}>{p.label}</option>
-                        ))}
-                    </select>
-                </div>
+  return (
+    <div className="space-y-4">
+      <div>
+        <h1 className="page-title">{t('grades.studentTitle','My Grades')}</h1>
+      </div>
 
-                {loading ? (
-                    <div className="student-msg">Loading grades…</div>
-                ) : !grades.length ? (
-                    <div className="student-msg">
-                        {selectedPeriodId ? 'No grades found for this school period.' : 'No grades available yet.'}
-                    </div>
-                ) : (
-                    <div style={{ overflowX: 'auto' }}>
-                        <table className="student-table">
-                            <thead>
-                                <tr>
-                                    <th>Course </th>
-                                    <th>School Period</th>
-                                    <th>Trainer</th>
-                                    <th>Grade</th>
-                                    <th>Letter</th>
-                                    <th>Status</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {grades.map(g => (
-                                    <tr key={g.id}>
-                                        <td>
-                                            <strong>{g.course_name || g.certification_name || '—'}</strong>
-                                            {(g.course_code || g.certification_code) && (
-                                                <div style={{ fontSize: '0.75rem', color: '#888' }}>
-                                                    {g.course_code || g.certification_code}
-                                                </div>
-                                            )}
-                                        </td>
-                                        <td style={{ fontSize: '0.82rem', color: '#666' }}>
-                                            {g.school_period || g.academic_year || '—'}
-                                        </td>
-                                        <td style={{ fontSize: '0.875rem' }}>{g.trainer_name || '—'}</td>
-                                        <td style={{ fontWeight: 700, fontSize: '1rem' }}>{g.grade ?? '—'}</td>
-                                        <td>
-                                            {g.grade_letter ? (
-                                                <span className={`grade-pill ${gradePillClass(g.grade_letter)}`}>
-                                                    {g.grade_letter}
-                                                </span>
-                                            ) : '—'}
-                                        </td>
-                                        <td>
-                                            <span className={`status-badge ${parseFloat(g.grade) >= 50 ? 'status-reviewed' : 'status-pending'}`}>
-                                                {parseFloat(g.grade) >= 50 ? 'Passed' : 'Failed'}
-                                            </span>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                )}
-            </div>
+      {grades.length === 0 && (
+        <div className="card p-10 text-center">
+          <BarChart2 size={36} className="mx-auto text-gray-300 mb-3" />
+          <p className="text-gray-500">{t('grades.noGradesYet','No grades recorded yet.')}</p>
         </div>
-    );
+      )}
+
+      {grades.length > 0 && (
+        <>
+          {/* Summary stats */}
+          <div className="grid grid-cols-3 gap-3">
+            <div className="card p-3 text-center">
+              <p className="text-xl font-bold text-primary-600">{avg || '—'}</p>
+              <p className="text-xs text-gray-500 mt-0.5">{t('grades.overall','Average')}</p>
+            </div>
+            <div className="card p-3 text-center">
+              <p className="text-xl font-bold text-green-600">{passed}</p>
+              <p className="text-xs text-gray-500 mt-0.5">{t('grades.passed','Passed')}</p>
+            </div>
+            <div className="card p-3 text-center">
+              <p className="text-xl font-bold text-red-500">{failed}</p>
+              <p className="text-xs text-gray-500 mt-0.5">{t('grades.failed','Failed')}</p>
+            </div>
+          </div>
+
+          {/* Academic courses */}
+          {filteredAcademic.length > 0 && (
+            <div className="card overflow-hidden">
+              {/* Semester filter */}
+              <div className="px-4 py-3 border-b border-gray-100 flex items-center gap-3 flex-wrap">
+                <h2 className="font-semibold text-gray-900 text-sm flex-1">{t('grades.academicCourses','Academic Courses')}</h2>
+                {semesters.length > 0 && (
+                  <select className="select text-xs py-1.5 w-44" value={semFilter} onChange={e => setSemFilter(e.target.value)}>
+                    <option value="">{t('grades.allSemesters','All Semesters')}</option>
+                    {semesters.map(s => <option key={s} value={s}>{s}</option>)}
+                  </select>
+                )}
+              </div>
+              <div className="divide-y divide-gray-50">
+                {filteredAcademic.map(g => (
+                  <div key={g.id} className="px-4 py-3 flex items-center gap-3">
+                    <GradePill letter={g.gradeLetter} value={g.grade} />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-900 truncate">{g.course?.name}</p>
+                      <p className="text-xs text-gray-400">
+                        {g.course?.code}
+                        {g.course?.session?.semester?.name && ` · ${g.course.session.semester.name}`}
+                        {g.academicYear?.name && ` · ${g.academicYear.name}`}
+                      </p>
+                    </div>
+                    <span className="text-sm font-bold text-gray-700 flex-shrink-0">{g.grade}%</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Certification grades */}
+          {certGrades.length > 0 && (
+            <div className="card overflow-hidden">
+              <div className="px-4 py-3 border-b border-violet-100 bg-violet-50">
+                <h2 className="font-semibold text-violet-900 text-sm">{t('grades.certificationGrades','Certifications')}</h2>
+              </div>
+              <div className="divide-y divide-gray-50">
+                {certGrades.map(g => (
+                  <div key={g.id} className="px-4 py-3 flex items-center gap-3">
+                    <GradePill letter={g.gradeLetter} value={g.grade} />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-900 truncate">{g.certification?.name}</p>
+                    </div>
+                    <span className="text-sm font-bold text-gray-700 flex-shrink-0">{g.grade}%</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
 }

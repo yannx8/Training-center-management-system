@@ -1,52 +1,62 @@
-// FILE: /frontend/src/pages/student/StudentAnnouncements.jsx
-import { useState, useEffect } from 'react';
-import { getAnnouncements } from '../../api/studentApi';
-import '../../styles/Student.css';
-
-const fmt = (d) => d ? new Date(d).toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—';
+// ─── StudentAnnouncements.jsx ────────────────────────────────────────────────
+import { useEffect, useState } from 'react';
+import { Megaphone, Bell } from 'lucide-react';
+import { studentApi } from '../../api';
+import { PageLoader, ErrorAlert } from '../../components/ui';
+import { useTranslation } from 'react-i18next';
 
 export default function StudentAnnouncements() {
-    const [announcements, setAnnouncements] = useState([]);
-    const [loading, setLoading] = useState(true);
+  const { t, i18n } = useTranslation();
+  const [announcements, setAnnouncements] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError]     = useState('');
+  const locale = i18n.language?.startsWith('fr') ? 'fr-FR' : 'en-GB';
 
-    useEffect(() => {
-        getAnnouncements()
-            .then(res => setAnnouncements(res.data.data || []))
-            .catch(() => {})
-            .finally(() => setLoading(false));
-    }, []);
+  useEffect(() => {
+    studentApi.getAnnouncements()
+      .then(r => { setAnnouncements(r.data || []); setLoading(false); })
+      .catch(() => setError(t('common.failedLoad','Failed to load')));
+  }, []);
 
-    return (
-        <div>
-            <div className="student-page-head">
-                <div>
-                    <h1 className="student-title">Announcements</h1>
-                    <p className="student-sub">Department announcements from your HOD.</p>
-                </div>
-            </div>
+  if (loading) return <PageLoader />;
+  if (error)   return <ErrorAlert message={error} />;
 
-            {loading ? (
-                <div className="student-msg">Loading announcements…</div>
-            ) : !announcements.length ? (
-                <div className="student-card">
-                    <p className="student-msg">No announcements yet. Check back soon.</p>
-                </div>
-            ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                    {announcements.map(a => (
-                        <div key={a.id} className="student-card" style={{ borderLeft: '4px solid #0f4c3a' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem' }}>
-                                <h3 style={{ fontWeight: 700, color: '#0f4c3a', margin: 0 }}>{a.title}</h3>
-                                <span style={{ fontSize: '0.75rem', color: '#888' }}>{fmt(a.created_at)}</span>
-                            </div>
-                            <p style={{ color: '#444', fontSize: '0.875rem', marginTop: '0.5rem', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{a.body}</p>
-                            {a.author_name && (
-                                <p style={{ fontSize: '0.75rem', color: '#888', marginTop: '0.5rem' }}>— {a.author_name}</p>
-                            )}
-                        </div>
-                    ))}
-                </div>
-            )}
+  return (
+    <div className="space-y-4">
+      <div>
+        <h1 className="page-title">{t('announcements.title','Announcements')}</h1>
+        <p className="page-subtitle">{t('announcements.departmentMessagesStudent','Announcements from your department')}</p>
+      </div>
+
+      {announcements.length === 0 && (
+        <div className="card p-10 text-center">
+          <Megaphone size={36} className="mx-auto text-gray-300 mb-3" />
+          <p className="text-gray-500 font-medium">{t('announcements.noAnnouncementsYet','No announcements yet.')}</p>
+          <p className="text-sm text-gray-400 mt-1">{t('announcements.noMessagesFromHOD','Announcements from your HOD will appear here.')}</p>
         </div>
-    );
+      )}
+
+      <div className="space-y-3">
+        {announcements.map(a => (
+          <div key={a.id} className="card p-4">
+            <div className="flex items-start gap-3">
+              <div className="w-9 h-9 bg-blue-100 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5">
+                <Bell size={16} className="text-blue-600" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap mb-1">
+                  <p className="font-semibold text-gray-900 text-sm">{a.title}</p>
+                  {a.department?.name && <span className="badge-blue text-xs">{a.department.name}</span>}
+                </div>
+                <p className="text-sm text-gray-600 whitespace-pre-line">{a.body}</p>
+                <p className="text-xs text-gray-400 mt-2">
+                  {a.creator?.fullName} · {new Date(a.createdAt).toLocaleDateString(locale, { day:'numeric', month:'long', year:'numeric' })}
+                </p>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 }

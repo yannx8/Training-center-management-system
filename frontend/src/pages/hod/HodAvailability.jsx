@@ -1,168 +1,167 @@
-// FILE: /frontend/src/pages/hod/HodAvailability.jsx
-import { useState, useEffect } from 'react';
-import { getAvailability, getLockStatus, lockAvailability, unlockAvailability, getAcademicWeeks } from '../../api/hodApi';
-import '../../styles/Hod.css';
-
-const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-const TIME_SLOTS = [
-    { start: '08:00', label: '8h–10h' },
-    { start: '10:00', label: '10h–12h' },
-    { start: '13:00', label: '13h–15h' },
-    { start: '15:00', label: '15h–17h' },
-    { start: '17:00', label: '17h–19h' },
-    { start: '19:00', label: '19h–21h' },
-];
-
-function normalizeTime(t) {
-    if (!t) return '';
-    return t.substring(0, 5); // Take HH:MM portion
-}
+import { useEffect, useState } from 'react';
+import { Lock, Unlock, ChevronDown, ChevronUp, CheckCircle, XCircle } from 'lucide-react';
+import { hodApi } from '../../api';
+import { PageLoader, ErrorAlert } from '../../components/ui';
+import { useTranslation } from 'react-i18next';
 
 export default function HodAvailability() {
-    const [weeks, setWeeks] = useState([]);
-    const [selectedWeekId, setSelectedWeekId] = useState('');
-    const [slots, setSlots] = useState([]);
-    const [loading, setLoading] = useState(false);
-    const [isLocked, setIsLocked] = useState(false);
-    const [locking, setLocking] = useState(false);
+  const { t } = useTranslation();
+  const [weeks, setWeeks]       = useState([]);
+  const [weekId, setWeekId]     = useState('');
+  const [status, setStatus]     = useState(null); // { trainers, weekId }
+  const [isLocked, setIsLocked] = useState(false);
+  const [loading, setLoading]   = useState(true);
+  const [loadingStatus, setLoadingStatus] = useState(false);
+  const [expanded, setExpanded] = useState({});
+  const [error, setError]       = useState('');
 
-    useEffect(() => {
-        getAcademicWeeks()
-            .then(res => {
-                const w = res.data.data || [];
-                setWeeks(w);
-                if (w.length) setSelectedWeekId(String(w[0].id));
-            })
-            .catch(() => {});
-    }, []);
+  useEffect(() => {
+    hodApi.getWeeks()
+      .then(r => { setWeeks(r.data||[]); setLoading(false); })
+      .catch(() => setError(t('common.failedLoad','Failed to load')));
+  }, []);
 
-    useEffect(() => {
-        if (!selectedWeekId) { setSlots([]); return; }
-        loadAvailability(selectedWeekId);
-        loadLockStatus(selectedWeekId);
-    }, [selectedWeekId]);
+  useEffect(() => {
+    if (!weekId) { setStatus(null); setIsLocked(false); return; }
+    setLoadingStatus(true);
+    Promise.all([
+      hodApi.getTrainerAvailabilityStatus(weekId),
+      hodApi.getLockStatus(weekId),
+    ]).then(([s, l]) => {
+      setStatus(s.data);
+      setIsLocked(l.data?.isLocked || false);
+      setLoadingStatus(false);
+    }).catch(() => { setLoadingStatus(false); });
+  }, [weekId]);
 
-    async function loadAvailability(weekId) {
-        setLoading(true);
-        try {
-            const res = await getAvailability({ weekId });
-            setSlots(res.data.data || []);
-        } catch {} finally { setLoading(false); }
-    }
+  async function toggleLock() {
+    try {
+      if (isLocked) { await hodApi.unlockAvailability({ weekId }); setIsLocked(false); }
+      else          { await hodApi.lockAvailability({ weekId });   setIsLocked(true); }
+    } catch (e) { alert(e.response?.data?.message || t('common.failedSave','Failed')); }
+  }
 
-    async function loadLockStatus(weekId) {
-        try {
-            const res = await getLockStatus({ weekId });
-            setIsLocked(res.data.data?.isLocked || false);
-        } catch {}
-    }
+  const publishedWeeks = weeks.filter(w => w.status === 'published');
+  const submitted    = status?.trainers?.filter(tr => tr.submitted) || [];
+  const notSubmitted = status?.trainers?.filter(tr => !tr.submitted) || [];
+  const allDone      = status?.trainers?.length > 0 && notSubmitted.length === 0;
 
-    async function toggleLock() {
-        if (!selectedWeekId) return;
-        setLocking(true);
-        try {
-            if (isLocked) {
-                await unlockAvailability(selectedWeekId);
-                setIsLocked(false);
-            } else {
-                await lockAvailability(selectedWeekId);
-                setIsLocked(true);
-            }
-        } catch {} finally { setLocking(false); }
-    }
+  if (loading) return <PageLoader />;
 
-    const trainerCount = [...new Set(slots.map(s => s.trainer_id))].length;
+  return (
+    <div className="space-y-4">
+      <div>
+        <h1 className="page-title">{t('availability.title','Trainer Availability')}</h1>
+        <p className="page-subtitle">{t('availability.subtitle','Monitor who has submitted availability for each published week')}</p>
+      </div>
+      {error && <ErrorAlert message={error} />}
 
-    // Build grid: trainer → day → timeslot lookup
-    function slotsAt(day, timeStart) {
-        return slots.filter(s =>
-            s.day_of_week === day && normalizeTime(s.time_start) === normalizeTime(timeStart)
-        );
-    }
-
-    const currentWeek = weeks.find(w => String(w.id) === selectedWeekId);
-
-    return (
-        <div>
-            <div className="hod-page-head">
-                <div>
-                    <h1 className="hod-title">Trainer Availability</h1>
-                    <p className="hod-sub">
-                        {loading ? '…' : `${trainerCount} trainer(s) · ${slots.length} slot(s)`}
-                    </p>
-                </div>
-                <div className="hod-row" style={{ gap: '0.75rem' }}>
-                    <select
-                        className="hod-select"
-                        value={selectedWeekId}
-                        onChange={e => setSelectedWeekId(e.target.value)}
-                        style={{ minWidth: 220 }}
-                    >
-                        <option value="">— Select Week —</option>
-                        {weeks.map(w => (
-                            <option key={w.id} value={w.id}>
-                                {w.label} ({new Date(w.start_date).toLocaleDateString('en-GB')} – {new Date(w.end_date).toLocaleDateString('en-GB')})
-                            </option>
-                        ))}
-                    </select>
-                    {selectedWeekId && (
-                        <button
-                            className={isLocked ? 'hod-btn hod-btn-danger' : 'hod-btn'}
-                            onClick={toggleLock}
-                            disabled={locking}
-                        >
-                            {isLocked ? '🔒 Unlock Submissions' : '🔓 Lock Submissions'}
-                        </button>
-                    )}
-                </div>
-            </div>
-
-            {isLocked && selectedWeekId && (
-                <div className="hod-notice">
-                    Submissions are locked for this week — trainers cannot add or remove slots.
-                </div>
-            )}
-
-            {!selectedWeekId ? (
-                <p className="hod-msg">Select a week to view trainer availability.</p>
-            ) : loading ? (
-                <p className="hod-msg">Loading…</p>
-            ) : !slots.length ? (
-                <p className="hod-msg">No availability submitted yet by trainers for this week.</p>
-            ) : (
-                <div className="hod-card">
-                    {currentWeek && (
-                        <p style={{ fontSize: '0.82rem', color: '#555', marginBottom: '1rem' }}>
-                            <strong>{currentWeek.label}</strong> — {new Date(currentWeek.start_date).toLocaleDateString('en-GB')} to {new Date(currentWeek.end_date).toLocaleDateString('en-GB')}
-                        </p>
-                    )}
-
-                    {/* Availability grid: days × time slots, cells list trainers */}
-                    <div className="hod-tt-grid">
-                        <div className="hod-tt-timecell hod-tt-header"></div>
-                        {DAYS.map(d => <div key={d} className="hod-tt-header">{d}</div>)}
-
-                        {TIME_SLOTS.map(slot => (
-                            <>
-                                <div key={`t-${slot.start}`} className="hod-tt-timecell">{slot.label}</div>
-                                {DAYS.map(day => {
-                                    const trainersHere = slotsAt(day, slot.start);
-                                    return (
-                                        <div key={`${day}-${slot.start}`} className={`hod-tt-cell ${trainersHere.length ? 'hod-tt-cell-filled' : 'hod-tt-cell-empty'}`}>
-                                            {trainersHere.map(s => (
-                                                <div key={s.id} style={{ fontSize: '0.7rem', fontWeight: 600, color: '#1a1a2e', marginBottom: 1 }}>
-                                                    {s.trainer_name}
-                                                </div>
-                                            ))}
-                                            {!trainersHere.length && <span style={{ color: '#ccc', fontSize: '0.68rem', fontStyle: 'italic' }}>—</span>}
-                                        </div>
-                                    );
-                                })}
-                            </>
-                        ))}
-                    </div>
-                </div>
-            )}
+      {/* Week select + lock */}
+      <div className="card p-4 space-y-3">
+        <div className="flex flex-wrap gap-3 items-end">
+          <div className="flex-1 min-w-[200px]">
+            <label className="label">{t('availability.selectWeek','Select Week')}</label>
+            <select className="select" value={weekId} onChange={e => setWeekId(e.target.value)}>
+              <option value="">{t('availability.choosePublishedWeek','— Choose a published week —')}</option>
+              {publishedWeeks.map(w => <option key={w.id} value={w.id}>{w.label}</option>)}
+            </select>
+          </div>
+          {weekId && (
+            <button className={isLocked ? 'btn-secondary' : 'btn-primary'} onClick={toggleLock}>
+              {isLocked ? <><Unlock size={15}/> {t('availability.unlock','Unlock')}</> : <><Lock size={15}/> {t('availability.lockSubmissions','Lock Submissions')}</>}
+            </button>
+          )}
         </div>
-    );
+
+        {isLocked && weekId && (
+          <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
+            {t('availability.locked','🔒 Locked — trainers cannot edit')}
+          </p>
+        )}
+
+        {!weekId && (
+          <p className="text-sm text-gray-400">{t('availability.selectWeekFirst','Select a published week to see availability status.')}</p>
+        )}
+        {weekId && publishedWeeks.length === 0 && (
+          <p className="text-sm text-gray-400">{t('availability.noPublishedWeeks','No published weeks yet.')}</p>
+        )}
+      </div>
+
+      {/* Status */}
+      {weekId && loadingStatus && <PageLoader />}
+
+      {weekId && !loadingStatus && status && (
+        <>
+          {allDone && (
+            <div className="card p-4 bg-green-50 border border-green-200 text-green-700 text-sm flex items-center gap-2">
+              <CheckCircle size={16}/> {t('availability.allSubmitted','All trainers have submitted! ✓')}
+            </div>
+          )}
+
+          {/* Submitted */}
+          {submitted.length > 0 && (
+            <div className="card overflow-hidden">
+              <div className="px-4 py-3 bg-green-50 border-b border-green-100 flex items-center gap-2">
+                <CheckCircle size={15} className="text-green-600"/>
+                <h3 className="font-semibold text-green-800 text-sm">{t('availability.submitted','Submitted')} ({submitted.length})</h3>
+              </div>
+              <div className="divide-y divide-gray-50">
+                {submitted.map(tr => {
+                  const key = `s-${tr.id}`;
+                  return (
+                    <div key={tr.id}>
+                      <button
+                        className="w-full px-4 py-3 flex items-center justify-between hover:bg-gray-50 transition-colors"
+                        onClick={() => setExpanded(e => ({ ...e, [key]: !e[key] }))}
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="w-8 h-8 rounded-lg bg-green-100 flex items-center justify-center flex-shrink-0 text-green-700 text-xs font-bold">
+                            {tr.user?.fullName?.charAt(0).toUpperCase()}
+                          </div>
+                          <div className="text-left min-w-0">
+                            <p className="text-sm font-medium text-gray-900 truncate">{tr.user?.fullName}</p>
+                            <p className="text-xs text-green-600">{t('availability.slots','{{count}} slot(s)', { count: tr.slotCount })}</p>
+                          </div>
+                        </div>
+                        {expanded[key] ? <ChevronUp size={14} className="text-gray-400"/> : <ChevronDown size={14} className="text-gray-400"/>}
+                      </button>
+                      {expanded[key] && tr.slots?.length > 0 && (
+                        <div className="px-4 pb-3 flex flex-wrap gap-1">
+                          {tr.slots.map((s,i) => (
+                            <span key={i} className="text-xs bg-green-50 border border-green-200 text-green-700 rounded-lg px-2 py-1">
+                              {s.dayOfWeek} {s.timeStart?.slice(0,5)}–{s.timeEnd?.slice(0,5)}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Not submitted */}
+          {notSubmitted.length > 0 && (
+            <div className="card overflow-hidden">
+              <div className="px-4 py-3 bg-red-50 border-b border-red-100 flex items-center gap-2">
+                <XCircle size={15} className="text-red-500"/>
+                <h3 className="font-semibold text-red-700 text-sm">{t('availability.notSubmitted','Not Submitted')} ({notSubmitted.length})</h3>
+              </div>
+              <div className="divide-y divide-gray-50">
+                {notSubmitted.map(tr => (
+                  <div key={tr.id} className="px-4 py-3 flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-red-50 flex items-center justify-center flex-shrink-0 text-red-400 text-xs font-bold">
+                      {tr.user?.fullName?.charAt(0).toUpperCase()}
+                    </div>
+                    <p className="text-sm text-gray-700">{tr.user?.fullName}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
 }

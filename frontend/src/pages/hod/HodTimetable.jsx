@@ -1,327 +1,173 @@
-import { useState, useEffect } from 'react';
-import { useFetch } from '../../hooks/useFetch';
-import {
-    generateTimetable,
-    getTimetables,
-    getTimetableByProgram,
-    getPrograms,
-    publishTimetable,
-    getAcademicWeeks,
-    createAcademicWeek,
-    publishWeek,
-} from '../../api/hodApi';
-import '../../styles/Hod.css';
+import { useEffect, useState } from 'react';
+import { Zap, Send, ChevronDown, ChevronUp } from 'lucide-react';
+import { hodApi } from '../../api';
+import { PageLoader, ErrorAlert, Badge } from '../../components/ui';
+import { useTranslation } from 'react-i18next';
 
-const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-const TIME_SLOTS = [
-    { start: '08:00', end: '10:00', label: '8h–10h' },
-    { start: '10:00', end: '12:00', label: '10h–12h' },
-    { start: '13:00', end: '15:00', label: '13h–15h' },
-    { start: '15:00', end: '17:00', label: '15h–17h' },
-    { start: '17:00', end: '19:00', label: '17h–19h' },
-    { start: '19:00', end: '21:00', label: '19h–21h' },
-];
+const DAYS = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
 
 export default function HodTimetable() {
-    const { data: weeks, loading: weeksLoading, refetch: refetchWeeks } = useFetch(getAcademicWeeks);
-    const { data: timetables, loading: ttLoad, refetch: reTT } = useFetch(getTimetables);
-    const { data: programs, loading: pgLoad } = useFetch(getPrograms);
+  const { t } = useTranslation();
+  const [weeks, setWeeks]           = useState([]);
+  const [timetables, setTimetables] = useState([]);
+  const [selectedWeek, setSelectedWeek] = useState('');
+  const [expandedTT, setExpandedTT]     = useState({});
+  const [selectedProg, setSelectedProg] = useState({});
+  const [loading, setLoading]       = useState(true);
+  const [generating, setGenerating] = useState(false);
+  const [msg, setMsg]               = useState('');
+  const [error, setError]           = useState('');
 
-    const [showWeekForm, setShowWeekForm] = useState(false);
-    const [weekForm, setWeekForm] = useState({ weekNumber: '', label: '', startDate: '', endDate: '', academicYearId: '' });
+  function load() {
+    Promise.all([hodApi.getWeeks(), hodApi.getTimetables()])
+      .then(([w, tt]) => { setWeeks(w.data||[]); setTimetables(tt.data||[]); setLoading(false); })
+      .catch(() => setError(t('common.failedLoad','Failed to load')));
+  }
+  useEffect(load, []);
 
-    const [selectedWeek, setSelectedWeek] = useState('');
-    const [genLabel, setGenLabel] = useState('');
-    const [genMsg, setGenMsg] = useState('');
-    const [genErr, setGenErr] = useState('');
-    const [generating, setGenerating] = useState(false);
+  async function generate() {
+    if (!selectedWeek) return;
+    setGenerating(true); setMsg(''); setError('');
+    try {
+      const r = await hodApi.generateTimetable({ weekId: selectedWeek });
+      setMsg(t('timetable.generated','Generated: {{count}} sessions scheduled ({{skipped}} skipped)', {
+        count: r.data.scheduled, skipped: r.data.skipped,
+      }));
+      load();
+    } catch (e) { setError(e.response?.data?.message || t('timetable.generationFailed','Generation failed')); }
+    finally { setGenerating(false); }
+  }
 
-    // Timetable viewer
-    const [selTT, setSelTT] = useState('');
-    const [selProg, setSelProg] = useState(null);
-    const [slots, setSlots] = useState(null);
-    const [loadingSlots, setLoadingSlots] = useState(false);
-    const [publishMsg, setPublishMsg] = useState('');
+  async function publish(id) { await hodApi.publishTimetable(id); load(); }
 
-    async function handleCreateWeek() {
-        try {
-            await createAcademicWeek(weekForm);
-            setShowWeekForm(false);
-            refetchWeeks();
-            setWeekForm({ weekNumber: '', label: '', startDate: '', endDate: '', academicYearId: '' });
-            setGenErr('');
-        } catch (err) {
-            setGenErr(err.response?.data?.message || 'Failed to create week');
-        }
-    }
+  const publishedWeeks = weeks.filter(w => w.status === 'published');
 
-    async function handleGenerate() {
-        setGenerating(true); setGenMsg(''); setGenErr('');
-        try {
-            const res = await generateTimetable({ weekId: selectedWeek, label: genLabel });
-            setGenMsg(res.data.data.message);
-            reTT();
-        } catch (err) {
-            setGenErr(err.response?.data?.message || 'Generation failed');
-        } finally {
-            setGenerating(false);
-        }
-    }
+  if (loading) return <PageLoader />;
 
-    async function handleViewProgram(prog) {
-        if (!selTT) return;
-        setSelProg(prog);
-        setLoadingSlots(true);
-        setSlots(null);
-        setPublishMsg('');
-        try {
-            const res = await getTimetableByProgram(selTT, prog.id);
-            setSlots(res.data.data);
-        } catch {
-            setSlots([]);
-        } finally {
-            setLoadingSlots(false);
-        }
-    }
+  return (
+    <div className="space-y-4">
+      <div>
+        <h1 className="page-title">{t('timetable.title','Timetable Generator')}</h1>
+        <p className="page-subtitle">{t('timetable.subtitle','Generate academic timetables based on trainer availability')}</p>
+      </div>
 
-    async function handlePublish(id) {
-        await publishTimetable(id);
-        reTT();
-        setPublishMsg('Timetable published successfully. Students and trainers can now see it.');
-        setTimeout(() => setPublishMsg(''), 5000);
-    }
-
-    // Build grid lookup
-    const byDayTime = {};
-    DAYS.forEach(day => {
-        TIME_SLOTS.forEach(slot => {
-            const key = `${day}|${slot.start}`;
-            byDayTime[key] = (slots || []).find(s =>
-                s.day_of_week === day && s.time_start === slot.start
-            );
-        });
-    });
-
-    const currentTT = (timetables || []).find(t => String(t.id) === String(selTT));
-    const weekInfo = currentTT
-        ? `From: ${new Date(currentTT.start_date || currentTT.week_label).toLocaleDateString('en-GB')}  To: ${new Date(currentTT.end_date || '').toLocaleDateString('en-GB')}`
-        : '';
-
-    return (
-        <div>
-            <div className="hod-page-head">
-                <div>
-                    <h1 className="hod-title">Timetable Management</h1>
-                    <p className="hod-sub">Create academic weeks, generate timetables, and publish to students and trainers</p>
-                </div>
-                <button className="hod-btn" onClick={() => setShowWeekForm(!showWeekForm)}>
-                    {showWeekForm ? 'Cancel' : '+ New Academic Week'}
-                </button>
-            </div>
-
-            {genErr && <div className="hod-notice" style={{ background: '#fef2f2', borderColor: '#fca5a5', color: '#991b1b' }}>{genErr}</div>}
-            {genMsg && <div className="hod-notice" style={{ background: '#f0fdf4', borderColor: '#86efac', color: '#166534' }}>{genMsg}</div>}
-
-            {/* ── Create Academic Week ── */}
-            {showWeekForm && (
-                <div className="hod-card">
-                    <h3 className="hod-card-title">Create New Academic Week</h3>
-                    <div className="hod-row">
-                        <input className="hod-input" type="number" placeholder="Week #"
-                            value={weekForm.weekNumber} onChange={e => setWeekForm({ ...weekForm, weekNumber: e.target.value })} />
-                        <input className="hod-input" type="text" placeholder="Label (e.g. Week 3)"
-                            value={weekForm.label} onChange={e => setWeekForm({ ...weekForm, label: e.target.value })} />
-                        <input className="hod-input" type="date"
-                            value={weekForm.startDate} onChange={e => setWeekForm({ ...weekForm, startDate: e.target.value })} />
-                        <input className="hod-input" type="date"
-                            value={weekForm.endDate} onChange={e => setWeekForm({ ...weekForm, endDate: e.target.value })} />
-                        <button className="hod-btn" onClick={handleCreateWeek}>Create Week</button>
-                    </div>
-                </div>
-            )}
-
-            {/* ── Weeks List ── */}
-            {!weeksLoading && weeks?.length > 0 && (
-                <div className="hod-card">
-                    <h3 className="hod-card-title">Academic Weeks</h3>
-                    <div className="hod-table-wrap">
-                        <table className="hod-table">
-                            <thead>
-                                <tr>
-                                    <th>#</th>
-                                    <th>Label</th>
-                                    <th>Start</th>
-                                    <th>End</th>
-                                    <th>Status</th>
-                                    <th></th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {weeks.map(w => (
-                                    <tr key={w.id}>
-                                        <td>{w.week_number}</td>
-                                        <td>{w.label}</td>
-                                        <td>{new Date(w.start_date).toLocaleDateString('en-GB')}</td>
-                                        <td>{new Date(w.end_date).toLocaleDateString('en-GB')}</td>
-                                        <td>
-                                            <span style={{
-                                                padding: '0.2rem 0.6rem',
-                                                borderRadius: 999,
-                                                fontSize: '0.75rem',
-                                                fontWeight: 600,
-                                                background: w.status === 'published' ? '#dcfce7' : '#fef9c3',
-                                                color: w.status === 'published' ? '#166534' : '#92400e'
-                                            }}>{w.status}</span>
-                                        </td>
-                                        <td>
-                                            {w.status === 'draft' && (
-                                                <button className="hod-btn-sm" onClick={async () => { await publishWeek(w.id); refetchWeeks(); }}>
-                                                    Publish Week
-                                                </button>
-                                            )}
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            )}
-
-            {/* ── Generate ── */}
-            <div className="hod-card">
-                <h3 className="hod-card-title">Generate Timetable</h3>
-                <div className="hod-row">
-                    <select className="hod-select" value={selectedWeek} onChange={e => setSelectedWeek(e.target.value)}>
-                        <option value="">-- Select Academic Week --</option>
-                        {weeks?.filter(w => w.status === 'draft').map(w => (
-                            <option key={w.id} value={w.id}>{w.label} ({new Date(w.start_date).toLocaleDateString('en-GB')} – {new Date(w.end_date).toLocaleDateString('en-GB')})</option>
-                        ))}
-                    </select>
-                    <input className="hod-input" type="text" placeholder="Label (optional)"
-                        value={genLabel} onChange={e => setGenLabel(e.target.value)} />
-                    <button className="hod-btn" onClick={handleGenerate} disabled={generating || !selectedWeek}>
-                        {generating ? 'Generating…' : 'Generate'}
-                    </button>
-                </div>
-            </div>
-
-            {/* ── View Timetables ── */}
-            <div className="hod-card">
-                <h3 className="hod-card-title">Timetables</h3>
-                {ttLoad ? (
-                    <p className="hod-msg">Loading…</p>
-                ) : !timetables?.length ? (
-                    <p className="hod-msg">No timetables generated yet.</p>
-                ) : (
-                    <>
-                        <div className="hod-row" style={{ marginBottom: '1rem' }}>
-                            <select className="hod-select" value={selTT} onChange={e => { setSelTT(e.target.value); setSlots(null); setSelProg(null); setPublishMsg(''); }}>
-                                <option value="">-- Select Timetable --</option>
-                                {timetables.map(t => (
-                                    <option key={t.id} value={t.id}>
-                                        {t.label} · {t.status} {t.week_label ? `· ${t.week_label}` : ''}
-                                    </option>
-                                ))}
-                            </select>
-                            {currentTT?.status === 'draft' && selTT && (
-                                <button className="hod-btn" onClick={() => handlePublish(currentTT.id)}>
-                                    Publish Timetable
-                                </button>
-                            )}
-                        </div>
-
-                        {publishMsg && (
-                            <div className="hod-notice" style={{ background: '#f0fdf4', borderColor: '#86efac', color: '#166534', marginBottom: '1rem' }}>
-                                {publishMsg}
-                            </div>
-                        )}
-
-                        {selTT && (
-                            <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start' }}>
-                                {/* Programs sidebar */}
-                                <div style={{ width: 200, flexShrink: 0 }}>
-                                    <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#555', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '0.5rem' }}>
-                                        Programs
-                                    </div>
-                                    {pgLoad ? <p className="hod-msg">…</p> : (programs || []).map(p => (
-                                        <div
-                                            key={p.id}
-                                            onClick={() => handleViewProgram(p)}
-                                            style={{
-                                                padding: '0.55rem 0.75rem',
-                                                borderRadius: 4,
-                                                cursor: 'pointer',
-                                                fontSize: '0.875rem',
-                                                background: selProg?.id === p.id ? '#1a1a2e' : '#f8f9fa',
-                                                color: selProg?.id === p.id ? '#fff' : '#222',
-                                                marginBottom: '0.35rem',
-                                                border: selProg?.id === p.id ? '1px solid #1a1a2e' : '1px solid #e5e5e5',
-                                                fontWeight: selProg?.id === p.id ? 600 : 400,
-                                            }}
-                                        >
-                                            {p.name}
-                                        </div>
-                                    ))}
-                                </div>
-
-                                {/* Timetable grid */}
-                                <div style={{ flex: 1, overflowX: 'auto' }}>
-                                    {loadingSlots ? (
-                                        <p className="hod-msg">Loading timetable…</p>
-                                    ) : !selProg ? (
-                                        <p className="hod-msg" style={{ color: '#999', fontStyle: 'italic' }}>Select a program to view its timetable</p>
-                                    ) : slots !== null && (
-                                        <>
-                                            {currentTT && (
-                                                <p style={{ fontSize: '0.82rem', color: '#555', marginBottom: '0.75rem' }}>
-                                                    <strong>{selProg.name}</strong> —{' '}
-                                                    {currentTT.week_label || currentTT.label}
-                                                    {currentTT.start_date && ` · From: ${new Date(currentTT.start_date).toLocaleDateString('en-GB')} To: ${new Date(currentTT.end_date).toLocaleDateString('en-GB')}`}
-                                                </p>
-                                            )}
-                                            {slots.length === 0 ? (
-                                                <p className="hod-msg">No sessions scheduled for this program in this timetable.</p>
-                                            ) : (
-                                                <div className="hod-tt-grid">
-                                                    {/* Header */}
-                                                    <div className="hod-tt-timecell hod-tt-header"></div>
-                                                    {DAYS.map(d => (
-                                                        <div key={d} className="hod-tt-header">{d}</div>
-                                                    ))}
-                                                    {/* Rows */}
-                                                    {TIME_SLOTS.map(slot => (
-                                                        <>
-                                                            <div key={`t-${slot.start}`} className="hod-tt-timecell">{slot.label}</div>
-                                                            {DAYS.map(day => {
-                                                                const key = `${day}|${slot.start}`;
-                                                                const session = byDayTime[key];
-                                                                return (
-                                                                    <div key={key} className={`hod-tt-cell ${session ? 'hod-tt-cell-filled' : 'hod-tt-cell-empty'}`}>
-                                                                        {session ? (
-                                                                            <>
-                                                                                <div style={{ fontWeight: 600, fontSize: '0.75rem' }}>{session.course_name}</div>
-                                                                                <div style={{ fontSize: '0.68rem', color: '#555', marginTop: 2 }}>{session.trainer_name}</div>
-                                                                                <div style={{ fontSize: '0.65rem', color: '#888' }}>{session.room_name}</div>
-                                                                            </>
-                                                                        ) : (
-                                                                            <span style={{ color: '#ccc', fontSize: '0.7rem', fontStyle: 'italic' }}>—</span>
-                                                                        )}
-                                                                    </div>
-                                                                );
-                                                            })}
-                                                        </>
-                                                    ))}
-                                                </div>
-                                            )}
-                                        </>
-                                    )}
-                                </div>
-                            </div>
-                        )}
-                    </>
-                )}
-            </div>
+      {/* Generation panel */}
+      <div className="card p-4 space-y-3">
+        <div className="flex flex-wrap gap-3 items-end">
+          <div className="flex-1 min-w-[180px]">
+            <label className="label">{t('timetable.selectPublishedWeek','Published Week')}</label>
+            <select className="select" value={selectedWeek} onChange={e => setSelectedWeek(e.target.value)}>
+              <option value="">{t('timetable.selectWeek','— Select week —')}</option>
+              {publishedWeeks.map(w => <option key={w.id} value={w.id}>{w.label}</option>)}
+            </select>
+          </div>
+          <button className="btn-primary" onClick={generate} disabled={generating || !selectedWeek}>
+            <Zap size={16}/> {generating ? t('common.generating','Generating…') : t('timetable.generateTimetable','Generate Timetable')}
+          </button>
         </div>
-    );
+        {msg   && <p className="text-sm text-green-700 bg-green-50 rounded-xl px-4 py-2">{msg}</p>}
+        {error && <p className="text-sm text-red-600 bg-red-50 rounded-xl px-4 py-2">{error}</p>}
+      </div>
+
+      {timetables.length === 0 && (
+        <div className="card p-10 text-center text-gray-400">{t('timetable.noTimetablesYet','No timetables generated yet.')}</div>
+      )}
+
+      {/* Timetable list */}
+      {timetables.map(tt => {
+        const isOpen    = expandedTT[tt.id];
+        const progId    = selectedProg[tt.id];
+        const progGroup = tt.programGroups?.find(g => String(g.program.id) === String(progId));
+        const slots     = progGroup?.slots || [];
+
+        return (
+          <div key={tt.id} className="card overflow-hidden">
+            {/* Header */}
+            <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between gap-3 flex-wrap">
+              <div className="min-w-0">
+                <p className="font-semibold text-gray-900 text-sm truncate">{tt.label}</p>
+                <p className="text-xs text-gray-400">
+                  {tt.academicWeek?.label} · {new Date(tt.generatedAt).toLocaleString()}
+                </p>
+              </div>
+              <div className="flex gap-2 items-center flex-shrink-0">
+                <Badge value={tt.status} />
+                {tt.status === 'draft' && (
+                  <button className="btn-primary btn-sm" onClick={() => publish(tt.id)}>
+                    <Send size={13}/> {t('timetable.publishTimetable','Publish')}
+                  </button>
+                )}
+                <button
+                  className="btn-ghost btn-sm btn-icon"
+                  onClick={() => setExpandedTT(e => ({ ...e, [tt.id]: !e[tt.id] }))}
+                >
+                  {isOpen ? <ChevronUp size={15}/> : <ChevronDown size={15}/>}
+                </button>
+              </div>
+            </div>
+
+            {isOpen && (
+              <>
+                {/* Program selector pills */}
+                {tt.programGroups?.length > 0 && (
+                  <div className="px-4 py-3 border-b border-gray-100 flex flex-wrap gap-2">
+                    {tt.programGroups.map(g => (
+                      <button
+                        key={g.program.id}
+                        onClick={() => setSelectedProg(p => ({ ...p, [tt.id]: String(g.program.id) }))}
+                        className={`text-xs px-3 py-1.5 rounded-full font-medium transition-colors border ${
+                          String(progId) === String(g.program.id)
+                            ? 'bg-primary-600 text-white border-primary-600'
+                            : 'bg-white text-gray-600 border-gray-200 hover:border-primary-400'
+                        }`}
+                      >
+                        {g.program.name} ({g.slots.length})
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {/* Slots for selected program — mobile card list */}
+                {progId && slots.length === 0 && (
+                  <p className="px-4 py-4 text-sm text-gray-400">{t('timetable.noSlotsForProgram','No slots for this program.')}</p>
+                )}
+
+                {progId && slots.length > 0 && (
+                  <div className="divide-y divide-gray-50">
+                    {slots.map(s => (
+                      <div key={s.id} className="px-4 py-3 flex items-start gap-3">
+                        {/* Time badge */}
+                        <div className="bg-blue-50 border border-blue-100 rounded-lg px-2 py-1.5 text-center flex-shrink-0 min-w-[72px]">
+                          <p className="text-xs font-mono font-bold text-blue-800">{s.timeStart?.slice(0,5)}</p>
+                          <p className="text-[10px] text-blue-500">–{s.timeEnd?.slice(0,5)}</p>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold text-gray-900 truncate">{s.course?.name || '—'}</p>
+                          <p className="text-xs text-gray-500 mt-0.5">
+                            {s.dayOfWeek}
+                            {s.trainer?.user?.fullName && ` · ${s.trainer.user.fullName}`}
+                            {s.room?.name && ` · ${s.room.name}`}
+                          </p>
+                          {(s.course?.session?.academicLevel?.name || s.course?.session?.semester?.name) && (
+                            <p className="text-xs text-gray-400 mt-0.5">
+                              {s.course?.session?.academicLevel?.name}
+                              {s.course?.session?.semester?.name && ` · ${s.course.session.semester.name}`}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {!progId && tt.programGroups?.length > 0 && (
+                  <p className="px-4 py-4 text-sm text-gray-400 italic">{t('timetable.selectProgram','Select a program to view its timetable')}</p>
+                )}
+              </>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
 }

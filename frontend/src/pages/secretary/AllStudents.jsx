@@ -1,118 +1,161 @@
-import { useState, useEffect } from 'react';
-import { secretaryApi } from '../../api/secretaryApi';
-import '../../styles/Secretary.css';
+import { useEffect, useState } from 'react';
+import { Search, Filter, Pencil } from 'lucide-react';
+import { secretaryApi } from '../../api';
+import Modal from '../../components/ui/Modal';
+import { PageLoader, SectionHeader, Badge, ErrorAlert } from '../../components/ui';
+import { useTranslation } from 'react-i18next';
 
 export default function AllStudents() {
-    const [students, setStudents] = useState([]);
-    const [programs, setPrograms] = useState([]);
-    const [search, setSearch] = useState('');
-    const [filterProgram, setFilterProgram] = useState('');
-    const [loading, setLoading] = useState(true);
+  const { t } = useTranslation();
+  const [students, setStudents]   = useState([]);
+  const [programs, setPrograms]   = useState([]);
+  const [certs, setCerts]         = useState([]);
+  const [loading, setLoading]     = useState(true);
+  const [search, setSearch]       = useState('');
+  const [filterProgram, setFilterProgram] = useState('');
+  const [filterCert, setFilterCert]       = useState('');
+  const [filterStatus, setFilterStatus]   = useState('');
+  const [editModal, setEditModal] = useState(null);
+  const [editForm, setEditForm]   = useState({});
+  const [saving, setSaving]       = useState(false);
+  const [error, setError]         = useState('');
 
-    useEffect(() => {
-        Promise.all([secretaryApi.getStudents(), secretaryApi.getPrograms()])
-            .then(([sRes, pRes]) => {
-                setStudents(sRes.data.data || []);
-                setPrograms(pRes.data.data || []);
-            })
-            .catch(() => {})
-            .finally(() => setLoading(false));
-    }, []);
+  function load() {
+    const params = {};
+    if (filterProgram) params.programId = filterProgram;
+    if (filterCert)    params.certificationId = filterCert;
+    if (filterStatus)  params.status = filterStatus;
+    Promise.all([
+      secretaryApi.getStudents(params),
+      secretaryApi.getPrograms(),
+      secretaryApi.getCertifications(),
+    ]).then(([s, p, c]) => {
+      setStudents(s.data || []);
+      setPrograms(p.data || []);
+      setCerts(c.data || []);
+      setLoading(false);
+    }).catch(() => setError(t('common.failedLoad','Failed to load students')));
+  }
+  useEffect(() => { setLoading(true); load(); }, [filterProgram, filterCert, filterStatus]);
 
-    const filtered = students.filter(s => {
-        const matchProg = !filterProgram || s.program_name === filterProgram;
-        const q = search.toLowerCase();
-        const matchSearch = !q || s.full_name?.toLowerCase().includes(q) || s.matricule?.toLowerCase().includes(q) || s.email?.toLowerCase().includes(q);
-        return matchProg && matchSearch;
-    });
+  const filtered = search
+    ? students.filter(s =>
+        s.user?.fullName?.toLowerCase().includes(search.toLowerCase()) ||
+        s.matricule?.toLowerCase().includes(search.toLowerCase()))
+    : students;
 
-    return (
-        <div className="secretary-body">
-            <div className="sec-page-head">
-                <div>
-                    <h1 className="sec-title">All Students</h1>
-                    <p className="sec-sub">View and search students across all programs</p>
-                </div>
-                <div style={{ fontSize: '0.82rem', color: '#555', fontWeight: 600, marginTop: 4 }}>
-                    {filtered.length} of {students.length} students
-                </div>
-            </div>
+  async function handleUpdate() {
+    setSaving(true);
+    try {
+      await secretaryApi.updateStudent(editModal.id, editForm);
+      setEditModal(null); load();
+    } catch (e) { alert(e.response?.data?.message || t('common.failedSave','Update failed')); }
+    finally { setSaving(false); }
+  }
 
-            {/* Filters */}
-            <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1.25rem', flexWrap: 'wrap' }}>
-                <input
-                    className="sec-input"
-                    style={{ flex: 1, minWidth: 200 }}
-                    placeholder="Search by name, matricule or email…"
-                    value={search}
-                    onChange={e => setSearch(e.target.value)}
-                />
-                <select className="sec-select" value={filterProgram} onChange={e => setFilterProgram(e.target.value)} style={{ minWidth: 180 }}>
-                    <option value="">All Programs</option>
-                    {programs.map(p => <option key={p.id} value={p.name}>{p.name}</option>)}
-                </select>
-                {(search || filterProgram) && (
-                    <button className="sec-btn-outline" onClick={() => { setSearch(''); setFilterProgram(''); }}>
-                        Clear
-                    </button>
-                )}
-            </div>
+  if (loading) return <PageLoader />;
 
-            {loading ? (
-                <p style={{ textAlign: 'center', color: '#888', padding: '3rem 0' }}>Loading students…</p>
-            ) : (
-                <div className="sec-card" style={{ overflowX: 'auto' }}>
-                    <table className="sec-table">
-                        <thead>
-                            <tr>
-                                <th>#</th>
-                                <th>Matricule</th>
-                                <th>Full Name</th>
-                                <th>Email</th>
-                                <th>Phone</th>
-                                <th>Program</th>
-                                <th>Academic Year</th>
-                                <th>Status</th>
-                                <th>Registered</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {filtered.map((s, i) => (
-                                <tr key={s.id}>
-                                    <td style={{ color: '#888', fontSize: '0.8rem' }}>{i + 1}</td>
-                                    <td>
-                                        <code style={{ fontSize: '0.8rem', background: '#f3f4f6', padding: '0.15rem 0.4rem', borderRadius: 3 }}>
-                                            {s.matricule}
-                                        </code>
-                                    </td>
-                                    <td style={{ fontWeight: 600 }}>{s.full_name}</td>
-                                    <td style={{ fontSize: '0.82rem', color: '#555' }}>{s.email || '—'}</td>
-                                    <td style={{ fontSize: '0.82rem', color: '#555' }}>{s.phone || '—'}</td>
-                                    <td>{s.program_name || '—'}</td>
-                                    <td style={{ fontSize: '0.82rem' }}>{s.academic_year_name || '—'}</td>
-                                    <td>
-                                        <span style={{
-                                            padding: '0.15rem 0.5rem', borderRadius: 999, fontSize: '0.72rem', fontWeight: 600,
-                                            background: s.enrollment_status === 'active' ? '#dcfce7' : '#f3f4f6',
-                                            color: s.enrollment_status === 'active' ? '#166534' : '#555',
-                                        }}>{s.enrollment_status || 'enrolled'}</span>
-                                    </td>
-                                    <td style={{ fontSize: '0.78rem', color: '#888' }}>
-                                        {s.created_at ? new Date(s.created_at).toLocaleDateString() : '—'}
-                                    </td>
-                                </tr>
-                            ))}
-                            {!filtered.length && (
-                                <tr>
-                                    <td colSpan={9} style={{ textAlign: 'center', color: '#888', padding: '2rem' }}>
-                                        No students match your filters
-                                    </td>
-                                </tr>
-                            )}
-                        </tbody>
-                    </table>
-                </div>
-            )}
+  return (
+    <div className="space-y-4">
+      <SectionHeader
+        title={t('secretary.allStudentsTitle','All Students')}
+        subtitle={t('secretary.allStudentsSubtitle','{{filtered}} of {{total}} students', { filtered: filtered.length, total: students.length })}
+      />
+      {error && <ErrorAlert message={error} />}
+
+      {/* Search + Filters */}
+      <div className="card p-4 space-y-3">
+        <div className="relative">
+          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"/>
+          <input
+            className="input pl-9"
+            placeholder={t('secretary.searchPlaceholder','Search name or matricule…')}
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+          />
         </div>
-    );
+        <div className="flex flex-wrap gap-2 items-center">
+          <Filter size={14} className="text-gray-400 flex-shrink-0"/>
+          <select className="select flex-1 min-w-[140px] text-sm" value={filterProgram} onChange={e => { setFilterProgram(e.target.value); setFilterCert(''); }}>
+            <option value="">{t('secretary.allPrograms','All Programs')}</option>
+            {programs.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+          </select>
+          <select className="select flex-1 min-w-[140px] text-sm" value={filterCert} onChange={e => { setFilterCert(e.target.value); setFilterProgram(''); }}>
+            <option value="">{t('secretary.allCerts','All Certs')}</option>
+            {certs.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
+          <select className="select flex-1 min-w-[120px] text-sm" value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
+            <option value="">{t('secretary.allStatus','All Status')}</option>
+            <option value="active">{t('common.active','Active')}</option>
+            <option value="inactive">{t('common.inactive','Inactive')}</option>
+          </select>
+        </div>
+      </div>
+
+      {/* Mobile-friendly card list */}
+      {filtered.length === 0 && (
+        <div className="card p-10 text-center text-gray-400">{t('common.noData','No data available.')}</div>
+      )}
+
+      <div className="space-y-2">
+        {filtered.map(s => (
+          <div key={s.id} className="card px-4 py-3 flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-blue-100 flex items-center justify-center flex-shrink-0 text-blue-700 text-xs font-bold">
+              {s.user?.fullName?.charAt(0).toUpperCase()}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-gray-900 truncate">{s.user?.fullName}</p>
+              <p className="text-xs text-gray-400">{s.matricule} · {s.program?.name || s.enrollments?.find(e=>e.certification)?.certification?.name || '—'}</p>
+            </div>
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <Badge value={s.user?.status || 'active'} />
+              <button
+                className="btn-ghost btn-sm btn-icon"
+                title={t('secretary.editStudent','Edit')}
+                onClick={() => { setEditModal(s); setEditForm({ fullName: s.user?.fullName, phone: s.user?.phone, status: s.user?.status }); }}
+              >
+                <Pencil size={14}/>
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Edit modal */}
+      <Modal
+        open={!!editModal}
+        onClose={() => setEditModal(null)}
+        title={t('secretary.editStudent','Edit Student')}
+        footer={
+          <>
+            <button className="btn-secondary" onClick={() => setEditModal(null)}>{t('common.cancel','Cancel')}</button>
+            <button className="btn-primary" onClick={handleUpdate} disabled={saving}>
+              {saving ? t('common.saving','Saving…') : t('common.save','Save')}
+            </button>
+          </>
+        }
+      >
+        <div className="space-y-4">
+          <p className="text-xs text-amber-600 bg-amber-50 border border-amber-100 rounded-xl px-3 py-2">
+            {t('secretary.editStudentNote','⚠ Secretaries can update student data but cannot delete students.')}
+          </p>
+          <div>
+            <label className="label">{t('userManagement.fullName','Full Name')}</label>
+            <input className="input" value={editForm.fullName||''} onChange={e=>setEditForm(f=>({...f,fullName:e.target.value}))}/>
+          </div>
+          <div>
+            <label className="label">{t('userManagement.phone','Phone')}</label>
+            <input className="input" value={editForm.phone||''} onChange={e=>setEditForm(f=>({...f,phone:e.target.value}))}/>
+          </div>
+          <div>
+            <label className="label">{t('common.status','Status')}</label>
+            <select className="select" value={editForm.status||'active'} onChange={e=>setEditForm(f=>({...f,status:e.target.value}))}>
+              <option value="active">{t('common.active','Active')}</option>
+              <option value="inactive">{t('common.inactive','Inactive')}</option>
+            </select>
+          </div>
+        </div>
+      </Modal>
+    </div>
+  );
 }

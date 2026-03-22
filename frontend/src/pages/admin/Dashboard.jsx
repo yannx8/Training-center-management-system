@@ -1,79 +1,75 @@
-import { useAuth } from '../../context/AuthContext';
-import { useFetch } from '../../hooks/useFetch';
-import { getDashboard } from '../../api/adminApi';
-import StatCard from '../../components/StatCard';
-import Badge from '../../components/Badge';
-import '../../styles/Dashboard.css';
+import { useEffect, useState } from "react";
+import { Users, Building2, BookMarked, DoorOpen, MessageSquare, Award } from "lucide-react";
+import { adminApi } from "../../api";
+import { StatCard, PageLoader, ErrorAlert, Badge } from "../../components/ui";
 
 export default function AdminDashboard() {
-  const { user } = useAuth();
-  const { data, loading } = useFetch(getDashboard);
+  const [data, setData] = useState(null);
+  const [error, setError] = useState("");
 
-  if (loading) return <div className="page-loading">Loading...</div>;
+  useEffect(() => {
+    adminApi.getDashboard()
+      .then(r => setData(r.data))
+      .catch(() => setError("Failed to load dashboard"));
+  }, []);
 
-  const stats = data?.stats || {};
-  const deptOverview = data?.departmentOverview || [];
-  const pendingComplaints = data?.pendingComplaints || [];
+  if (!data && !error) return <PageLoader />;
+  if (error) return <ErrorAlert message={error} />;
 
+  const { stats, recentUsers } = data;
 
   return (
-    <div>
-      <div className="page-topbar">
-        <div className="topbar-user">
-          <div className="topbar-avatar">{user?.fullName?.slice(0,2).toUpperCase()}</div>
-          <div>
-            <div className="topbar-name">{user?.fullName}</div>
-            <div className="topbar-role">Administrator</div>
-          </div>
+    <div className="space-y-6">
+      <div>
+        <h1 className="page-title">Admin Dashboard</h1>
+        <p className="page-subtitle">System overview and recent activity</p>
+      </div>
+
+      {/* Stats */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+        <div className="card p-4 text-center">
+          <p className="text-2xl font-bold text-violet-600">{stats.userCount}</p>
+          <p className="text-xs text-gray-500 mt-1">Total Users</p>
+        </div>
+        <div className="card p-4 text-center">
+          <p className="text-2xl font-bold text-teal-600">{stats.deptCount}</p>
+          <p className="text-xs text-gray-500 mt-1">Departments</p>
+        </div>
+        <div className="card p-4 text-center">
+          <p className="text-2xl font-bold text-blue-600">{stats.programCount}</p>
+          <p className="text-xs text-gray-500 mt-1">Programs</p>
+        </div>
+        <div className="card p-4 text-center">
+          <p className="text-2xl font-bold text-amber-600">{stats.trainerCount}</p>
+          <p className="text-xs text-gray-500 mt-1">Trainers</p>
+        </div>
+        <div className="card p-4 text-center">
+          <p className="text-2xl font-bold text-primary-600">{stats.studentCount}</p>
+          <p className="text-xs text-gray-500 mt-1">Students</p>
+        </div>
+        <div className="card p-4 text-center">
+          <p className="text-2xl font-bold text-red-500">{stats.pendingComplaints}</p>
+          <p className="text-xs text-gray-500 mt-1">Pending Complaints</p>
         </div>
       </div>
 
-      <h1 className="page-title">Dashboard Overview</h1>
-      <p className="page-subtitle">Welcome back! Here's what's happening with the academic system.</p>
-
-      <div className="stats-grid">
-        <StatCard title="Total Users" value={stats.total_users}  />
-        <StatCard title="Departments" value={stats.total_departments}  />
-        <StatCard title="Active Programs" value={stats.active_programs}  />
-        <StatCard title="Available Rooms" value={stats.available_rooms}   />
-      </div>
-
-      <div className="dashboard-grid">
-        <div className="dash-card">
-          <h3 className="dash-card-title"> Pending Complaints</h3>
-          {pendingComplaints.length === 0
-            ? <p className="empty-text">No pending complaints</p>
-            : pendingComplaints.map(c => (
-              <div key={c.id} className="complaint-item">
-                <div>
-                  <strong>{c.subject}</strong>
-                  <div className="complaint-meta">Parent: {c.parent_name} | Student: {c.student_name}</div>
-                </div>
-                <Badge label={c.priority} type="status" />
-              </div>
-            ))
-          }
+      {/* Recent users */}
+      <div className="card">
+        <div className="px-6 py-4 border-b border-gray-100">
+          <h2 className="font-semibold text-gray-900">Recently Added Users</h2>
         </div>
-      </div>
-
-      <div className="dashboard-grid" style={{ marginTop: '1.5rem' }}>
-        <div className="dash-card">
-          <h3 className="dash-card-title">Department Overview</h3>
-          {deptOverview.length === 0
-            ? <p className="empty-text">No departments</p>
-            : deptOverview.map(d => (
-              <div key={d.code} className="dept-row">
-                <div>
-                  <div className="dept-name">{d.name}</div>
-                  <div className="dept-code">{d.code}</div>
-                </div>
-                <div className="dept-count">
-                  <span>{d.student_count}</span>
-                  <span className="dept-label">students</span>
-                </div>
+        <div className="divide-y divide-gray-50">
+          {recentUsers.map(u => (
+            <div key={u.id} className="px-6 py-3 flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-900">{u.fullName}</p>
+                <p className="text-xs text-gray-400">{u.email}</p>
               </div>
-            ))
-          }
+              <div className="flex gap-1 flex-wrap justify-end">
+                {u.roles.map(r => <Badge key={r} value={r} label={r} />)}
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     </div>

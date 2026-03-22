@@ -1,25 +1,35 @@
-// frontend/src/pages/trainer/TrainerLayout.jsx
+// ── TrainerLayout.jsx ──────────────────────────────────────
 import { Outlet } from 'react-router-dom';
-import Sidebar from '../../components/Sidebar';
-
-const NAV = [
-    { to: '/trainer',               label: 'Dashboard',       icon: 'dashboard',     end: true  },
-    { to: '/trainer/courses',       label: 'Courses',         icon: 'courses',       end: false },
-    { to: '/trainer/certifications',label: 'Certifications',  icon: 'certification', end: false },
-    { to: '/trainer/cert-weeks',    label: 'Cert Scheduling', icon: 'weeks',         end: false },
-    { to: '/trainer/timetable',     label: 'Timetable',       icon: 'timetable',     end: false },
-    { to: '/trainer/availability',  label: 'Availability',    icon: 'availability',  end: false },
-    { to: '/trainer/complaints',    label: 'Complaints',      icon: 'complaint',     end: false },
-    { to: '/trainer/announcements', label: 'Announcements',   icon: 'announcement',  end: false },
-];
+import { useEffect, useState } from 'react';
+import Sidebar from '../../components/layout/Sidebar';
+import TopBar  from '../../components/layout/TopBar';
+import { LayoutDashboard, BookOpen, Award, ClipboardList, Table2, BarChart2, MessageCircle, Megaphone } from 'lucide-react';
+import { trainerApi } from '../../api';
+import { useTranslation } from 'react-i18next';
 
 export default function TrainerLayout() {
-    return (
-        <div style={{ display: 'flex', minHeight: '100vh', background: '#f0f2f5' }}>
-            <Sidebar title="TCMS — Trainer" items={NAV} />
-            <main style={{ flex: 1, padding: '2rem', overflowY: 'auto' }}>
-                <Outlet />
-            </main>
-        </div>
-    );
+  const { t } = useTranslation();
+  const [hasCerts, setHasCerts] = useState(false);
+  useEffect(() => { trainerApi.getCertifications().then(r => setHasCerts((r.data?.length||0)>0)).catch(()=>{}); }, []);
+  const NAV = [
+    { to: '/trainer',               label: 'Dashboard',     icon: <LayoutDashboard size={18}/> },
+    { to: '/trainer/courses',       label: 'My Courses',    icon: <BookOpen size={18}/> },
+    ...(hasCerts ? [{ to: '/trainer/certifications', label: 'Certifications', icon: <Award size={18}/> }] : []),
+    { to: '/trainer/availability',  label: 'Availability',  icon: <ClipboardList size={18}/> },
+    { to: '/trainer/timetable',     label: 'Timetable',     icon: <Table2 size={18}/> },
+    { to: '/trainer/grades',        label: 'Grades',        icon: <BarChart2 size={18}/> },
+    { to: '/trainer/complaints',    label: 'Complaints',    icon: <MessageCircle size={18}/> },
+    { to: '/trainer/announcements', label: 'Announcements', icon: <Megaphone size={18}/> },
+  ];
+  return (
+    <div className="flex h-screen overflow-hidden bg-gray-50">
+      <Sidebar navItems={NAV} roleLabel={t('roles.trainer','Trainer')} roleColor="bg-amber-600" />
+      <div className="flex-1 flex flex-col overflow-hidden min-w-0">
+        <TopBar roleLabel={t('roles.trainer','Trainer')} roleColor="bg-amber-600" />
+        <main className="flex-1 overflow-y-auto">
+          <div className="max-w-7xl mx-auto px-4 py-4 lg:px-6 lg:py-6 pt-16 lg:pt-4"><Outlet /></div>
+        </main>
+      </div>
+    </div>
+  );
 }

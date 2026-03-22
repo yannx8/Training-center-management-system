@@ -1,113 +1,173 @@
-// FILE: /backend/controllers/parentController.js
-const pool = require('../config/db');
-const { createComplaint } = require('../queries/complaints');
-const { getStudentTimetable, getAllStudentWeeks } = require('../queries/timetables');
+// FILE: backend/controllers/parentController.js
+const prisma = require('../lib/prisma');
+const { asyncHandler } = require('../middleware/errorHandler');
 
-async function getMyStudents(req, res) {
-    const result = await pool.query(`
-        SELECT s.id, s.matricule, u.full_name, u.email,
-               p.name AS program_name, e.status AS enrollment_status
-        FROM parent_student_links psl
-        JOIN parents par ON psl.parent_id = par.id
-        JOIN students s ON psl.student_id = s.id
-        JOIN users u ON s.user_id = u.id
-        LEFT JOIN programs p ON s.program_id = p.id
-        LEFT JOIN enrollments e ON e.student_id = s.id
-        WHERE par.user_id=$1
-    `, [req.user.userId]);
-    return res.json({ success: true, data: result.rows });
+async function getParent(userId) {
+  return prisma.parent.findUnique({
+    where: { userId },
+    include: {
+      studentLinks: {
+        include: {
+          student: {
+            include: {
+              user: { select: { fullName: true, email: true } },
+              program: { include: { department: true } },
+            },
+          },
+        },
+      },
+    },
+  });
 }
 
-async function getStudentProfile(req, res) {
-    const { id } = req.params;
-    const access = await pool.query(`
-        SELECT psl.id FROM parent_student_links psl
-        JOIN parents p ON psl.parent_id = p.id
-        WHERE p.user_id=$1 AND psl.student_id=$2
-    `, [req.user.userId, id]);
-    if (!access.rows.length)
-        return res.status(403).json({ success: false, message: 'Access denied', code: 'FORBIDDEN' });
+// ─── DASHBOARD ────────────────────────────────────────────────
+const getDashboard = asyncHandler(async (req, res) => {
+  const parent = await getParent(req.user.userId);
+  if (!parent) return res.status(404).json({ success: false, message: 'Parent profile not found', code: 'NOT_FOUND' });
 
-    const result = await pool.query(`
-        SELECT s.*, u.full_name, u.email, u.phone,
-               p.name AS program_name, p.code AS program_code
-        FROM students s
-        JOIN users u ON s.user_id = u.id
-        LEFT JOIN programs p ON s.program_id = p.id
-        WHERE s.id=$1
-    `, [id]);
-    return res.json({ success: true, data: result.rows[0] });
-}
+  const children = parent.studentLinks.map(l => l.student);
+  const deptIds = [...new Set(children.map(c => c.program?.departmentId).filter(Boolean))];
 
-async function getStudentGrades(req, res) {
-    const { id } = req.params;
-    const access = await pool.query(`
-        SELECT psl.id FROM parent_student_links psl
-        JOIN parents p ON psl.parent_id = p.id
-        WHERE p.user_id=$1 AND psl.student_id=$2
-    `, [req.user.userId, id]);
-    if (!access.rows.length)
-        return res.status(403).json({ success: false, message: 'Access denied', code: 'FORBIDDEN' });
+  // Latest announcements for all children's departments
+  const announcements = await prisma.announcement.findMany({
+    where: {
+      departmentId: { in: deptIds },
+      targetRole: { in: ['parent', 'all'] },
+    },
+    include: {
+      creator: { select: { fullName: true } },
+      department: { select: { name: true } },
+    },
+    orderBy: { createdAt: 'desc' },
+    take: 5,
+  });
 
-    const result = await pool.query(`
-        SELECT g.*, c.name AS course_name, cert.name AS certification_name,
-               u.full_name AS trainer_name, ay.name AS academic_year
-        FROM grades g
-        LEFT JOIN courses c ON g.course_id = c.id
-        LEFT JOIN certifications cert ON g.certification_id = cert.id
-        LEFT JOIN trainers t ON g.trainer_id = t.id
-        LEFT JOIN users u ON t.user_id = u.id
-        LEFT JOIN academic_years ay ON g.academic_year_id = ay.id
-        WHERE g.student_id=$1
-        ORDER BY g.submitted_at DESC
-    `, [id]);
-    return res.json({ success: true, data: result.rows });
-}
+  // Pending complaints
+  const pendingComplaints = await prisma.complaint.count({
+    where: { parentId: parent.id, status: 'pending' },
+  });
 
-async function getStudentTimetableHandler(req, res) {
-    const { id } = req.params;
-    const { weekId } = req.query;
+  return res.json({
+    success: true,
+    data: { children, latestAnnouncements: announcements, pendingComplaints },
+  });
+});
 
-    const access = await pool.query(`
-        SELECT psl.id FROM parent_student_links psl
-        JOIN parents p ON psl.parent_id = p.id
-        WHERE p.user_id=$1 AND psl.student_id=$2
-    `, [req.user.userId, id]);
-    if (!access.rows.length)
-        return res.status(403).json({ success: false, message: 'Access denied', code: 'FORBIDDEN' });
+// ─── CHILDREN ─────────────────────────────────────────────────
+const getChildrenHandler = asyncHandler(async (req, res) => {
+  const parent = await getParent(req.user.userId);
+  if (!parent) return res.status(404).json({ success: false, message: 'Parent not found', code: 'NOT_FOUND' });
+  return res.json({ success: true, data: parent.studentLinks.map(l => l.student) });
+});
 
-    const [sql, params] = getStudentTimetable(id, weekId ? parseInt(weekId) : null);
-    const result = await pool.query(sql, params);
-    return res.json({ success: true, data: result.rows });
-}
+// ─── CHILD TIMETABLE ──────────────────────────────────────────
+const getChildTimetableHandler = asyncHandler(async (req, res) => {
+  const parent = await getParent(req.user.userId);
+  if (!parent) return res.status(404).json({ success: false, message: 'Parent not found', code: 'NOT_FOUND' });
 
-async function getStudentWeeks(req, res) {
-    const { id } = req.params;
-    const access = await pool.query(`
-        SELECT psl.id FROM parent_student_links psl
-        JOIN parents p ON psl.parent_id = p.id
-        WHERE p.user_id=$1 AND psl.student_id=$2
-    `, [req.user.userId, id]);
-    if (!access.rows.length)
-        return res.status(403).json({ success: false, message: 'Access denied', code: 'FORBIDDEN' });
+  const { childId } = req.params;
+  const { weekId } = req.query;
 
-    const [sql, params] = getAllStudentWeeks(id);
-    const result = await pool.query(sql, params);
-    return res.json({ success: true, data: result.rows });
-}
+  // Verify parent has access to this child
+  const link = parent.studentLinks.find(l => l.studentId === Number(childId));
+  if (!link) return res.status(403).json({ success: false, message: 'Access denied', code: 'FORBIDDEN' });
 
-async function submitComplaint(req, res) {
-    const { studentId, subject, description, priority } = req.body;
-    if (!studentId || !subject)
-        return res.status(400).json({ success: false, message: 'studentId and subject required', code: 'MISSING_FIELDS' });
+  const child = link.student;
 
-    const parentResult = await pool.query('SELECT id FROM parents WHERE user_id=$1', [req.user.userId]);
-    if (!parentResult.rows.length)
-        return res.status(404).json({ success: false, message: 'Parent profile not found', code: 'NOT_FOUND' });
+  const slots = await prisma.timetableSlot.findMany({
+    where: {
+      course: { session: { programId: child.programId ?? undefined } },
+      timetable: { status: 'published' },
+      ...(weekId ? { academicWeekId: Number(weekId) } : {}),
+    },
+    include: {
+      room: true,
+      trainer: { include: { user: { select: { fullName: true } } } },
+      course: true,
+      timetable: { include: { academicWeek: true } },
+    },
+    orderBy: [{ dayOfWeek: 'asc' }, { timeStart: 'asc' }],
+  });
 
-    const [sql, params] = createComplaint(parentResult.rows[0].id, studentId, subject, description, priority || 'medium');
-    const result = await pool.query(sql, params);
-    return res.status(201).json({ success: true, data: result.rows[0] });
-}
+  return res.json({ success: true, data: { child, slots } });
+});
 
-module.exports = { getMyStudents, getStudentProfile, getStudentGrades, getStudentTimetableHandler, getStudentWeeks, submitComplaint };
+// ─── CHILD GRADES ─────────────────────────────────────────────
+const getChildGradesHandler = asyncHandler(async (req, res) => {
+  const parent = await getParent(req.user.userId);
+  if (!parent) return res.status(404).json({ success: false, message: 'Parent not found', code: 'NOT_FOUND' });
+
+  const { childId } = req.params;
+  const link = parent.studentLinks.find(l => l.studentId === Number(childId));
+  if (!link) return res.status(403).json({ success: false, message: 'Access denied', code: 'FORBIDDEN' });
+
+  const grades = await prisma.grade.findMany({
+    where: { studentId: Number(childId) },
+    include: { course: true, certification: true, academicYear: true },
+    orderBy: { submittedAt: 'desc' },
+  });
+  return res.json({ success: true, data: { child: link.student, grades } });
+});
+
+// ─── COMPLAINTS ───────────────────────────────────────────────
+const getComplaintsHandler = asyncHandler(async (req, res) => {
+  const parent = await getParent(req.user.userId);
+  if (!parent) return res.status(404).json({ success: false, message: 'Parent not found', code: 'NOT_FOUND' });
+
+  const complaints = await prisma.complaint.findMany({
+    where: { parentId: parent.id },
+    orderBy: { createdAt: 'desc' },
+  });
+  return res.json({ success: true, data: complaints });
+});
+
+const createComplaintHandler = asyncHandler(async (req, res) => {
+  const parent = await getParent(req.user.userId);
+  if (!parent) return res.status(404).json({ success: false, message: 'Parent not found', code: 'NOT_FOUND' });
+
+  const { studentId, subject, description, priority } = req.body;
+  if (!subject) return res.status(400).json({ success: false, message: 'subject required', code: 'MISSING_FIELDS' });
+
+  const complaint = await prisma.complaint.create({
+    data: {
+      parentId: parent.id,
+      studentId: studentId ? Number(studentId) : null,
+      subject, description,
+      priority: priority || 'medium',
+    },
+  });
+  return res.status(201).json({ success: true, data: complaint });
+});
+
+// ─── ANNOUNCEMENTS ────────────────────────────────────────────
+const getAnnouncementsHandler = asyncHandler(async (req, res) => {
+  const parent = await getParent(req.user.userId);
+  if (!parent) return res.status(404).json({ success: false, message: 'Parent not found', code: 'NOT_FOUND' });
+
+  const deptIds = [...new Set(
+    parent.studentLinks.map(l => l.student.program?.departmentId).filter(Boolean)
+  )];
+
+  const announcements = await prisma.announcement.findMany({
+    where: {
+      departmentId: { in: deptIds },
+      targetRole: { in: ['parent', 'all'] },
+    },
+    include: {
+      creator: { select: { fullName: true } },
+      department: { select: { name: true } },
+    },
+    orderBy: { createdAt: 'desc' },
+  });
+  return res.json({ success: true, data: announcements });
+});
+
+module.exports = {
+  getDashboard,
+  getChildrenHandler,
+  getChildTimetableHandler,
+  getChildGradesHandler,
+  getComplaintsHandler,
+  createComplaintHandler,
+  getAnnouncementsHandler,
+};

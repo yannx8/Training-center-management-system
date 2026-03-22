@@ -1,263 +1,154 @@
-import { useState } from 'react';
-import { useFetch } from '../../hooks/useFetch';
-import { getCertifications, getCertificationStudents, submitGrades } from '../../api/trainerApi';
-import '../../styles/Trainer.css';
-
-function gradeToLetter(n) {
-    if (n >= 90) return 'A+';
-    if (n >= 85) return 'A';
-    if (n >= 80) return 'A-';
-    if (n >= 75) return 'B+';
-    if (n >= 70) return 'B';
-    if (n >= 65) return 'B-';
-    if (n >= 60) return 'C+';
-    if (n >= 55) return 'C';
-    if (n >= 50) return 'D';
-    return 'F';
-}
+import { useEffect, useState } from 'react';
+import { Award, Zap, Users, CheckCircle, XCircle, ChevronDown, ChevronUp } from 'lucide-react';
+import { trainerApi } from '../../api';
+import { PageLoader, ErrorAlert } from '../../components/ui';
+import { useTranslation } from 'react-i18next';
 
 export default function TrainerCertifications() {
-    const { data: certs, loading } = useFetch(getCertifications);
-    const [selectedCert, setSelectedCert] = useState(null);
-    const [students, setStudents] = useState([]);
-    const [studentsLoading, setStudentsLoading] = useState(false);
-    const [gradeInputs, setGradeInputs] = useState({});
-    const [savingId, setSavingId] = useState(null);
-    const [messages, setMessages] = useState({});
-    const [globalMsg, setGlobalMsg] = useState('');
-    const [globalErr, setGlobalErr] = useState('');
+  const { t } = useTranslation();
+  const [certs, setCerts]       = useState([]);
+  const [weeks, setWeeks]       = useState([]);
+  const [loading, setLoading]   = useState(true);
+  const [error, setError]       = useState('');
+  const [expanded, setExpanded] = useState({});
+  const [selectedWeek, setSelectedWeek]   = useState({});
+  const [studentStatus, setStudentStatus] = useState({});
+  const [generating, setGenerating]       = useState({});
+  const [genMsg, setGenMsg]               = useState({});
 
-    async function selectCert(cert) {
-        setSelectedCert(cert);
-        setStudents([]);
-        setGradeInputs({});
-        setMessages({});
-        setGlobalMsg('');
-        setGlobalErr('');
-        setStudentsLoading(true);
-        try {
-            const res = await getCertificationStudents(cert.id);
-            const studs = res.data.data || [];
-            setStudents(studs);
-            const inputs = {};
-            studs.forEach(s => { inputs[s.student_id] = s.grade !== null && s.grade !== undefined ? String(s.grade) : ''; });
-            setGradeInputs(inputs);
-        } catch {
-            setGlobalErr('Failed to load students');
-        } finally {
-            setStudentsLoading(false);
-        }
+  useEffect(() => {
+    Promise.all([trainerApi.getCertifications(), trainerApi.getPublishedWeeks()])
+      .then(([c, w]) => { setCerts(c.data||[]); setWeeks(w.data||[]); setLoading(false); })
+      .catch(() => setError(t('common.failedLoad','Failed to load')));
+  }, []);
+
+  async function loadStudentStatus(certId, weekId) {
+    if (!weekId) return;
+    try {
+      const r = await trainerApi.getCertStudentStatus({ weekId, certificationId: certId });
+      setStudentStatus(s => ({ ...s, [`${certId}-${weekId}`]: r.data||[] }));
+    } catch {}
+  }
+
+  async function generateTimetable(certId) {
+    const weekId = selectedWeek[certId];
+    if (!weekId) return alert(t('trainerCerts.selectWeek','Select a week first'));
+    setGenerating(g => ({ ...g, [certId]: true }));
+    setGenMsg(m => ({ ...m, [certId]: '' }));
+    try {
+      const r = await trainerApi.generateCertTimetable({ certificationId: certId, weekId });
+      setGenMsg(m => ({ ...m, [certId]: `✅ ${r.data.scheduled} ${t('common.sessions','session(s)')} scheduled (${r.data.skipped} skipped)` }));
+    } catch (e) {
+      setGenMsg(m => ({ ...m, [certId]: `❌ ${e.response?.data?.message || t('timetable.generationFailed','Generation failed')}` }));
+    } finally {
+      setGenerating(g => ({ ...g, [certId]: false }));
     }
+  }
 
-    async function handleSaveOne(studentId) {
-        const grade = parseFloat(gradeInputs[studentId]);
-        if (isNaN(grade) || grade < 0 || grade > 100) {
-            setMessages(prev => ({ ...prev, [studentId]: { type: 'error', text: 'Enter 0–100' } }));
-            return;
-        }
-        setSavingId(studentId);
-        setMessages(prev => ({ ...prev, [studentId]: null }));
-        try {
-            await submitGrades({
-                studentId: parseInt(studentId),
-                certificationId: selectedCert.id,
-                grade,
-            });
-            setMessages(prev => ({ ...prev, [studentId]: { type: 'ok', text: '✓ Saved' } }));
-            const res = await getCertificationStudents(selectedCert.id);
-            setStudents(res.data.data || []);
-        } catch (err) {
-            setMessages(prev => ({ ...prev, [studentId]: { type: 'error', text: err.response?.data?.message || 'Save failed' } }));
-        } finally {
-            setSavingId(null);
-        }
-    }
+  if (loading) return <PageLoader />;
+  if (error)   return <ErrorAlert message={error} />;
 
-    async function handleSaveAll() {
-        setGlobalMsg('');
-        setGlobalErr('');
-        const entries = Object.entries(gradeInputs).filter(([, v]) => v !== '');
-        if (!entries.length) { setGlobalErr('No grades entered.'); return; }
-        let ok = 0, fail = 0;
-        for (const [studentId, gradeStr] of entries) {
-            const grade = parseFloat(gradeStr);
-            if (isNaN(grade)) { fail++; continue; }
-            try {
-                await submitGrades({ studentId: parseInt(studentId), certificationId: selectedCert.id, grade });
-                ok++;
-            } catch { fail++; }
-        }
-        if (ok > 0) {
-            setGlobalMsg(`${ok} grade(s) saved${fail > 0 ? `, ${fail} failed` : ''}.`);
-            const res = await getCertificationStudents(selectedCert.id);
-            setStudents(res.data.data || []);
-        } else {
-            setGlobalErr(`All ${fail} grade(s) failed.`);
-        }
-    }
+  return (
+    <div className="space-y-4">
+      <div>
+        <h1 className="page-title">{t('trainerCerts.title','My Certifications')}</h1>
+        <p className="page-subtitle">{t('trainerCerts.subtitle','Manage your certification sessions and generate timetables')}</p>
+      </div>
 
-    // Certification list view
-    if (!selectedCert) {
-        return (
-            <div>
-                <div className="trainer-page-head">
-                    <div>
-                        <h1 className="trainer-title">Certifications</h1>
-                        <p className="trainer-sub">Select a certification to  enter grades</p>
-                    </div>
-                </div>
-                {loading ? (
-                    <div className="trainer-msg">Loading…</div>
-                ) : !certs?.length ? (
-                    <div className="trainer-card">
-                        <div style={{ textAlign: 'center', padding: '3rem 0', color: '#94a3b8' }}>
-                            <div style={{ fontSize: '3rem', marginBottom: '0.75rem' }}></div>
-                            <div style={{ fontWeight: 600 }}>No certifications assigned to you yet</div>
-                        </div>
-                    </div>
-                ) : (
-                    <div className="trainer-card">
-                        <div style={{ display: 'grid', gap: '0.75rem' }}>
-                            {certs.map(c => (
-                                <div
-                                    key={c.id}
-                                    onClick={() => selectCert(c)}
-                                    style={{
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'space-between',
-                                        padding: '1rem 1.25rem',
-                                        borderRadius: 8,
-                                        border: '1px solid #e5e7eb',
-                                        cursor: 'pointer',
-                                        background: '#fff',
-                                        transition: 'all 0.15s',
-                                    }}
-                                    onMouseEnter={e => e.currentTarget.style.background = '#f0f4ff'}
-                                    onMouseLeave={e => e.currentTarget.style.background = '#fff'}
-                                >
-                                    <div>
-                                        <div style={{ fontWeight: 700, color: '#1a1a2e', fontSize: '0.95rem' }}>{c.name}</div>
-                                        <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: 3 }}>
-                                            {c.code} · {c.duration_hours}h total
-                                        </div>
-                                    </div>
-                                    <span style={{ color: '#3b5be8', fontSize: '1.1rem' }}>›</span>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                )}
-            </div>
-        );
-    }
-
-    // Student detail view 
-    return (
-        <div>
-            <div className="trainer-page-head">
-                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                    <button
-                        onClick={() => setSelectedCert(null)}
-                        style={{
-                            background: 'none', border: '1.5px solid #cbd5e1', borderRadius: 6,
-                            padding: '0.35rem 0.75rem', cursor: 'pointer', fontSize: '0.85rem', color: '#475569',
-                        }}
-                    >
-                        ← Back
-                    </button>
-                    <div>
-                        <h1 className="trainer-title">{selectedCert.name}</h1>
-                        <p className="trainer-sub">{selectedCert.code} · {selectedCert.duration_hours}h</p>
-                    </div>
-                </div>
-                {students.length > 0 && (
-                    <button className="trainer-btn" onClick={handleSaveAll}>Save All Grades</button>
-                )}
-            </div>
-
-            {globalMsg && <div className="trainer-notice" style={{ background: '#f0fdf4', borderColor: '#86efac', color: '#166534' }}>{globalMsg}</div>}
-            {globalErr && <div className="trainer-notice" style={{ background: '#fef2f2', borderColor: '#fca5a5', color: '#991b1b' }}>{globalErr}</div>}
-
-            <div className="trainer-card">
-                {studentsLoading ? (
-                    <div className="trainer-msg">Loading students…</div>
-                ) : students.length === 0 ? (
-                    <div style={{ textAlign: 'center', padding: '3rem 0', color: '#94a3b8' }}>
-                        <div style={{ fontSize: '3rem', marginBottom: '0.75rem' }}>👤</div>
-                        <div style={{ fontWeight: 600 }}>No students enrolled to this certification</div>
-                    </div>
-                ) : (
-                    <>
-                        <div style={{ marginBottom: '1rem', fontSize: '0.85rem', color: '#64748b', fontWeight: 500 }}>
-                            {students.length} student{students.length !== 1 ? 's' : ''} enrolled
-                        </div>
-                        <div className="hod-table-wrap">
-                            <table className="hod-table" style={{ width: '100%' }}>
-                                <thead>
-                                    <tr>
-                                        <th style={{ textAlign: 'left' }}>Student Name</th>
-                                        <th style={{ textAlign: 'left' }}>Matricule</th>
-                                        <th>Current Grade</th>
-                                        <th>Letter</th>
-                                        <th>New Grade (/100)</th>
-                                        <th>Preview</th>
-                                        <th>Action</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {students.map(s => {
-                                        const inputVal = gradeInputs[s.student_id] ?? '';
-                                        const preview = inputVal !== '' && !isNaN(parseFloat(inputVal))
-                                            ? gradeToLetter(parseFloat(inputVal)) : '—';
-                                        const msg = messages[s.student_id];
-                                        const isSaving = savingId === s.student_id;
-                                        return (
-                                            <tr key={s.student_id}>
-                                                <td style={{ fontWeight: 600 }}>{s.full_name}</td>
-                                                <td style={{ color: '#64748b', fontSize: '0.85rem' }}>{s.matricule}</td>
-                                                <td style={{ textAlign: 'center' }}>
-                                                    {s.grade !== null && s.grade !== undefined ? <span style={{ fontWeight: 700 }}>{s.grade}</span> : <span style={{ color: '#cbd5e1' }}>—</span>}
-                                                </td>
-                                                <td style={{ textAlign: 'center' }}>
-                                                    {s.grade_letter ? (
-                                                        <span style={{ padding: '2px 8px', borderRadius: 999, fontSize: '0.78rem', fontWeight: 700, background: '#e0e7ff', color: '#3730a3' }}>{s.grade_letter}</span>
-                                                    ) : <span style={{ color: '#cbd5e1' }}>—</span>}
-                                                </td>
-                                                <td style={{ textAlign: 'center' }}>
-                                                    <input
-                                                        type="number" min="0" max="100" step="0.5"
-                                                        value={inputVal}
-                                                        onChange={e => {
-                                                            setGradeInputs(prev => ({ ...prev, [s.student_id]: e.target.value }));
-                                                            setMessages(prev => ({ ...prev, [s.student_id]: null }));
-                                                        }}
-                                                        style={{ width: 80, padding: '4px 8px', border: '1.5px solid #cbd5e1', borderRadius: 5, textAlign: 'center' }}
-                                                    />
-                                                </td>
-                                                <td style={{ textAlign: 'center', fontWeight: 600, color: '#3b5be8' }}>{preview}</td>
-                                                <td style={{ textAlign: 'center' }}>
-                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', justifyContent: 'center' }}>
-                                                        <button
-                                                            className="trainer-btn"
-                                                            style={{ padding: '4px 14px', fontSize: '0.8rem' }}
-                                                            onClick={() => handleSaveOne(s.student_id)}
-                                                            disabled={isSaving || inputVal === ''}
-                                                        >
-                                                            {isSaving ? '…' : 'Save'}
-                                                        </button>
-                                                        {msg && <span style={{ fontSize: '0.78rem', color: msg.type === 'ok' ? '#16a34a' : '#dc2626', fontWeight: 600 }}>{msg.text}</span>}
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        );
-                                    })}
-                                </tbody>
-                            </table>
-                        </div>
-                    </>
-                )}
-            </div>
+      {certs.length === 0 && (
+        <div className="card p-10 text-center">
+          <Award size={36} className="mx-auto text-gray-300 mb-3"/>
+          <p className="text-gray-500">{t('trainerCerts.noAssigned','No certifications assigned to you yet.')}</p>
         </div>
-    );
+      )}
+
+      {certs.map(cert => {
+        const isOpen       = expanded[cert.id];
+        const weekId       = selectedWeek[cert.id];
+        const status       = studentStatus[`${cert.id}-${weekId}`] || [];
+        const allSubmitted = status.length > 0 && status.every(s => s.hasSubmitted);
+
+        return (
+          <div key={cert.id} className="card overflow-hidden">
+            {/* Header — tap to expand */}
+            <button
+              className="w-full px-4 py-4 flex items-center justify-between hover:bg-gray-50 active:bg-gray-100 transition-colors"
+              onClick={() => setExpanded(e => ({ ...e, [cert.id]: !e[cert.id] }))}
+            >
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-9 h-9 bg-violet-100 rounded-xl flex items-center justify-center flex-shrink-0">
+                  <Award size={16} className="text-violet-600"/>
+                </div>
+                <div className="text-left min-w-0">
+                  <p className="font-semibold text-gray-900 text-sm truncate">{cert.name}</p>
+                  <p className="text-xs text-gray-400">{cert.code} · {cert.durationHours}h</p>
+                </div>
+              </div>
+              {isOpen ? <ChevronUp size={15} className="text-gray-400 flex-shrink-0"/> : <ChevronDown size={15} className="text-gray-400 flex-shrink-0"/>}
+            </button>
+
+            {isOpen && (
+              <div className="border-t border-gray-100 p-4 space-y-4">
+                {/* Generate panel */}
+                <div className="rounded-xl p-4 bg-amber-50 border border-amber-200 space-y-3">
+                  <p className="text-sm font-semibold text-amber-800">{t('trainerCerts.generateTitle','Generate Certification Timetable')}</p>
+                  <p className="text-xs text-amber-700">{t('trainerCerts.generateHint','Before generating: you must have submitted your availability, and all enrolled students must have submitted theirs.')}</p>
+
+                  <div className="flex flex-wrap gap-3 items-end">
+                    <div className="flex-1 min-w-[180px]">
+                      <label className="label">{t('trainerCerts.selectWeek','Select Week')}</label>
+                      <select className="select" value={weekId||''}
+                        onChange={e => {
+                          const wid = e.target.value;
+                          setSelectedWeek(s => ({ ...s, [cert.id]: wid }));
+                          loadStudentStatus(cert.id, wid);
+                        }}>
+                        <option value="">{t('trainerCerts.chooseWeek','— Choose a published week —')}</option>
+                        {weeks.map(w => <option key={w.id} value={w.id}>{w.label}{w.department?.name ? ` (${w.department.name})` : ''}</option>)}
+                      </select>
+                    </div>
+                    <button
+                      className="btn-primary"
+                      onClick={() => generateTimetable(cert.id)}
+                      disabled={!weekId || generating[cert.id] || !allSubmitted}
+                    >
+                      <Zap size={15}/> {generating[cert.id] ? t('common.generating','Generating…') : t('trainerCerts.generate','Generate')}
+                    </button>
+                  </div>
+
+                  {genMsg[cert.id] && <p className="text-sm">{genMsg[cert.id]}</p>}
+                </div>
+
+                {/* Student availability status */}
+                {weekId && status.length > 0 && (
+                  <div>
+                    <p className="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
+                      <Users size={14}/> {t('trainerCerts.studentStatusTitle','Enrolled Students — Availability Status')}
+                    </p>
+                    <div className="space-y-1">
+                      {status.map(s => (
+                        <div key={s.studentId} className="flex items-center justify-between px-3 py-2.5 rounded-xl bg-gray-50 text-sm">
+                          <span className="text-gray-800 truncate">{s.studentName} <span className="text-gray-400 text-xs">({s.matricule})</span></span>
+                          {s.hasSubmitted
+                            ? <span className="flex items-center gap-1 text-green-600 text-xs flex-shrink-0"><CheckCircle size={13}/> {t('trainerCerts.slots','{{count}} slot(s)',{count:s.slotCount})}</span>
+                            : <span className="flex items-center gap-1 text-red-500 text-xs flex-shrink-0"><XCircle size={13}/> {t('trainerCerts.notSubmitted','Not submitted')}</span>}
+                        </div>
+                      ))}
+                    </div>
+                    {!allSubmitted && (
+                      <p className="text-xs text-amber-600 mt-2">{t('trainerCerts.cannotGenerate','⚠ Cannot generate until all students have submitted availability.')}</p>
+                    )}
+                  </div>
+                )}
+
+                {weekId && status.length === 0 && (
+                  <p className="text-sm text-gray-400">{t('trainerCerts.noStudentsEnrolled','No students enrolled in this certification yet.')}</p>
+                )}
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
 }

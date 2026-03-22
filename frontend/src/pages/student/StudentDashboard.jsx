@@ -1,44 +1,90 @@
-// frontend/src/pages/student/StudentDashboard.jsx
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { CalendarDays, BarChart2 } from 'lucide-react';
+import { studentApi } from '../../api';
+import { PageLoader, ErrorAlert } from '../../components/ui';
+import AnnouncementBanner from '../../components/ui/AnnouncementBanner';
 import { useAuth } from '../../context/AuthContext';
-import { Icon } from '../../components/Icons';
-import '../../styles/Dashboard.css';
-
-const CARDS = [
-    { to: '/student/timetable',         icon: 'timetable',    title: 'Academic Timetable',       desc: 'View your academic program class schedule' },
-    { to: '/student/cert-timetable',    icon: 'history',      title: 'Certification Sessions',   desc: 'All scheduled certification sessions from first to last' },
-    { to: '/student/cert-availability', icon: 'availability', title: 'Certification Availability', desc: 'Submit your available time slots for certification scheduling' },
-    { to: '/student/grades',            icon: 'grades',       title: 'Grades & Progress',        desc: 'View your course grades and academic performance' },
-    { to: '/student/complaints',        icon: 'complaint',    title: 'Grade Complaints',         desc: 'Submit and track mark complaints to your trainer' },
-    { to: '/student/announcements',     icon: 'announcement', title: 'Announcements',            desc: 'Read department and institution announcements' },
-];
+import { useTranslation } from 'react-i18next';
 
 export default function StudentDashboard() {
-    const { user } = useAuth();
-    const navigate = useNavigate();
+  const { t } = useTranslation();
+  const { user } = useAuth();
+  const [data, setData]                   = useState(null);
+  const [announcements, setAnnouncements] = useState([]);
+  const [error, setError]                 = useState('');
 
-    return (
-        <div>
-            <h1 className="page-title">Welcome, {user?.fullName}</h1>
-            <p className="page-subtitle" style={{ marginBottom: '2rem' }}>Student Portal</p>
-            <div className="stats-grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '1rem' }}>
-                {CARDS.map(c => (
-                    <div
-                        key={c.to}
-                        className="stat-card"
-                        onClick={() => navigate(c.to)}
-                        style={{ cursor: 'pointer', padding: '1.25rem' }}
-                    >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.75rem' }}>
-                            <div style={{ width: 36, height: 36, background: '#dbeafe', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                <Icon name={c.icon} size={18} color="#1d4ed8" />
-                            </div>
-                            <div className="stat-card-title" style={{ margin: 0, fontSize: '0.9rem' }}>{c.title}</div>
-                        </div>
-                        <div style={{ color: '#64748b', fontSize: '0.82rem', lineHeight: 1.5 }}>{c.desc}</div>
-                    </div>
-                ))}
-            </div>
+  useEffect(() => {
+    studentApi.getDashboard()
+      .then(r => setData(r.data))
+      .catch(() => setError(t('common.failedLoad','Failed to load dashboard')));
+    studentApi.getAnnouncements()
+      .then(r => setAnnouncements((r.data||[]).slice(0,5)))
+      .catch(() => {});
+  }, []);
+
+  if (!data && !error) return <PageLoader />;
+  if (error) return <ErrorAlert message={error} />;
+
+  const { student, recentGrades, upcomingSlots } = data || {};
+  const firstName = user?.fullName?.split(' ')[0] || 'Student';
+
+  return (
+    <div className="space-y-5">
+      <div>
+        <h1 className="page-title">{t('dashboard.studentTitle','Welcome, {{name}}!', { name: firstName })}</h1>
+        <p className="page-subtitle">
+          {student?.program?.name ? `${student.program.name} · ` : ''}
+          {student?.matricule || ''}
+        </p>
+      </div>
+
+      {/* Announcement banner */}
+      <AnnouncementBanner announcements={announcements} accentColor="blue" />
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Upcoming sessions */}
+        <div className="card overflow-hidden">
+          <div className="px-4 py-3 border-b border-gray-100 flex items-center gap-2">
+            <CalendarDays size={16} className="text-blue-500 flex-shrink-0" />
+            <h2 className="font-semibold text-gray-900 text-sm">{t('dashboard.upcomingSessions','Upcoming Sessions')}</h2>
+          </div>
+          <div className="divide-y divide-gray-50">
+            {upcomingSlots?.slice(0,5).map(s => (
+              <div key={s.id} className="px-4 py-3">
+                <p className="text-sm font-medium text-gray-800 truncate">{s.course?.name}</p>
+                <p className="text-xs text-gray-400 mt-0.5">
+                  {s.dayOfWeek} · {s.timeStart?.slice(0,5)} – {s.timeEnd?.slice(0,5)}
+                  {s.room?.name ? ` · ${s.room.name}` : ''}
+                </p>
+              </div>
+            ))}
+            {!upcomingSlots?.length && (
+              <p className="px-4 py-4 text-sm text-gray-400">{t('dashboard.noSessionsYet','No sessions scheduled yet.')}</p>
+            )}
+          </div>
         </div>
-    );
+
+        {/* Recent grades */}
+        <div className="card overflow-hidden">
+          <div className="px-4 py-3 border-b border-gray-100 flex items-center gap-2">
+            <BarChart2 size={16} className="text-green-500 flex-shrink-0" />
+            <h2 className="font-semibold text-gray-900 text-sm">{t('dashboard.recentGrades','Recent Grades')}</h2>
+          </div>
+          <div className="divide-y divide-gray-50">
+            {recentGrades?.slice(0,5).map(g => (
+              <div key={g.id} className="px-4 py-3 flex items-center justify-between gap-2">
+                <p className="text-sm text-gray-700 truncate">{g.course?.name || g.certification?.name}</p>
+                <span className={`font-bold text-base flex-shrink-0 ${+g.grade >= 50 ? 'text-green-600' : 'text-red-600'}`}>
+                  {g.gradeLetter || '—'}
+                </span>
+              </div>
+            ))}
+            {!recentGrades?.length && (
+              <p className="px-4 py-4 text-sm text-gray-400">{t('dashboard.noGradesYet','No grades recorded yet.')}</p>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 }

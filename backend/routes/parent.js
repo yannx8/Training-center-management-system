@@ -1,15 +1,20 @@
+// FILE: backend/routes/parent.js
 const router = require('express').Router();
-const ctrl = require('../controllers/parentController');
-const { authenticate } = require('../middleware/auth');
-const { roleCheck } = require('../middleware/roleCheck');
+const { authenticate, authorize } = require('../middleware/auth');
+const p = require('../controllers/parentController');
 
-const guard = [authenticate, roleCheck('parent')];
+router.use(authenticate, authorize('parent'));
 
-router.get('/students', ...guard, ctrl.getMyStudents);
-router.get('/students/:id/profile', ...guard, ctrl.getStudentProfile);
-router.get('/students/:id/grades', ...guard, ctrl.getStudentGrades);
-router.get('/students/:id/timetable', ...guard, ctrl.getStudentTimetableHandler);
-router.get('/students/:id/weeks', ...guard, ctrl.getStudentWeeks);
-router.post('/complaints', ...guard, ctrl.submitComplaint);
+router.get('/dashboard',                    p.getDashboard);
+router.get('/children',                     p.getChildrenHandler);
+router.get('/children/:childId/timetable',  p.getChildTimetableHandler);
+router.get('/children/:childId/grades',     p.getChildGradesHandler);
+router.get('/complaints',                   p.getComplaintsHandler);
+router.post('/complaints',                  p.createComplaintHandler);
+router.get('/announcements',                p.getAnnouncementsHandler);
 
 module.exports = router;
+
+// ─────────────────────────────────────────────────────────────────
+// FILE: backend/routes/secretary.js
+// ─────────────────────────────────────────────────────────────────

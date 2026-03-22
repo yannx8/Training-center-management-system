@@ -1,14 +1,12 @@
-const router = require('express').Router();
-const ctrl = require('../controllers/secretaryController');
-const { authenticate } = require('../middleware/auth');
-const { roleCheck } = require('../middleware/roleCheck');
-
-const guard = [authenticate, roleCheck('secretary')];
-
-router.post('/register-student', ...guard, ctrl.registerStudent);
-router.get('/students', ...guard, ctrl.getStudentsHandler);
-router.get('/parents', ...guard, ctrl.getParentsHandler);
-router.get('/programs', ...guard, ctrl.getProgramsForSecretary);
-router.get('/certifications', ...guard, ctrl.getCertificationsForSecretary);
-
+const router = require("express").Router();
+const { authenticate, authorize } = require("../middleware/auth");
+const s = require("../controllers/secretaryController");
+router.use(authenticate, authorize("secretary"));
+router.get("/dashboard",      s.getDashboard);
+router.get("/students",       s.getAllStudentsHandler);
+router.post("/students",      s.registerStudentHandler);
+router.put("/students/:id",   s.updateStudentHandler);
+router.get("/programs",       s.getProgramsHandler);       // ?departmentId=
+router.get("/certifications", s.getCertificationsHandler);
+router.get("/departments",    s.getDepartmentsHandler);
 module.exports = router;

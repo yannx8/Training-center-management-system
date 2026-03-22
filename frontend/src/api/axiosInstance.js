@@ -1,25 +1,29 @@
 import axios from 'axios';
 
-const api = axios.create({ baseURL: 'http://localhost:5000/api' });
+const axiosInstance = axios.create({
+    baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5000/api',
+    timeout: 15000,
+});
 
-api.interceptors.request.use((config) => {
-    const token = sessionStorage.getItem('token');
-    if (token) {
-        config.headers.Authorization = `Bearer ${token}`;
-    }
+// Attach JWT
+axiosInstance.interceptors.request.use(config => {
+    const token = localStorage.getItem('token');
+    if (token) config.headers.Authorization = `Bearer ${token}`;
     return config;
 });
 
-api.interceptors.response.use(
-    (res) => res,
-    (err) => {
-       
+// Handle 401 errors
+axiosInstance.interceptors.response.use(
+    res => res,
+    err => {
         if (err.response && err.response.status === 401) {
-            sessionStorage.clear();
+            localStorage.removeItem('token');
+            localStorage.removeItem('role');
+            localStorage.removeItem('user');
             window.location.href = '/login';
         }
         return Promise.reject(err);
     }
 );
 
-export default api;
+export default axiosInstance;

@@ -1,272 +1,146 @@
-import { useState, useEffect } from 'react';
-import {
-    getCourseDetails,
-    submitMarkComplaint,
-    getMarkComplaintsHistory,
-} from '../../api/studentApi';
-import '../../styles/Student.css';
+import { useEffect, useState } from 'react';
+import { MessageCircle, Plus } from 'lucide-react';
+import { studentApi } from '../../api';
+import Modal from '../../components/ui/Modal';
+import { PageLoader, ErrorAlert, SectionHeader, Badge } from '../../components/ui';
+import { useTranslation } from 'react-i18next';
+
+const EMPTY = { subject: '', description: '', courseId: '', certificationId: '' };
 
 export default function StudentComplaints() {
-    const [activeTab, setActiveTab] = useState('submit');
+  const { t } = useTranslation();
+  const [complaints, setComplaints] = useState([]);
+  const [grades, setGrades]         = useState([]);
+  const [loading, setLoading]       = useState(true);
+  const [modal, setModal]           = useState(false);
+  const [form, setForm]             = useState(EMPTY);
+  const [saving, setSaving]         = useState(false);
+  const [error, setError]           = useState('');
 
-    // Form state
-    const [courses, setCourses] = useState([]);
-    const [coursesLoading, setCoursesLoading] = useState(true);
-    const [selectedCourseId, setSelectedCourseId] = useState('');
-    const [courseDetails, setCourseDetails] = useState(null);
-    const [subject, setSubject] = useState('');
-    const [description, setDescription] = useState('');
-    const [submitError, setSubmitError] = useState('');
-    const [submitSuccess, setSubmitSuccess] = useState('');
-    const [submitting, setSubmitting] = useState(false);
+  function load() {
+    Promise.all([studentApi.getComplaints(), studentApi.getGrades()])
+      .then(([c, g]) => { setComplaints(c.data || []); setGrades(g.data || []); setLoading(false); })
+      .catch(() => setError(t('common.failedLoad','Failed to load data')));
+  }
+  useEffect(load, []);
 
-    // History state
-    const [history, setHistory] = useState([]);
-    const [historyLoading, setHistoryLoading] = useState(false);
-
-    useEffect(() => {
-        getAppealCourses()
-            .then(res => {
-                setCourses(res.data.data || []);
-                setCoursesLoading(false);
-            })
-            .catch(() => setCoursesLoading(false));
-    }, []);
-
-    useEffect(() => {
-        if (activeTab === 'history') {
-            setHistoryLoading(true);
-            getMarkComplaintsHistory()
-                .then(res => setHistory(res.data.data || []))
-                .catch(() => setHistory([]))
-                .finally(() => setHistoryLoading(false));
-        }
-    }, [activeTab]);
-
-    
-    useEffect(() => {
-        if (!selectedCourseId) { setCourseDetails(null); return; }
-        getCourseDetails(selectedCourseId)
-            .then(res => setCourseDetails(res.data.data))
-            .catch(() => setCourseDetails(null));
-    }, [selectedCourseId]);
-
-    async function handleSubmit() {
-        if (!selectedCourseId || !subject.trim()) {
-            setSubmitError('Please select a course and enter a subject.');
-            return;
-        }
-        setSubmitting(true);
-        setSubmitError('');
-        setSubmitSuccess('');
-        try {
-            await submitMarkComplaint({ courseId: parseInt(selectedCourseId), subject, description });
-            setSubmitSuccess('Grade appeal submitted successfully!');
-            setSelectedCourseId('');
-            setCourseDetails(null);
-            setSubject('');
-            setDescription('');
-            // Refresh courses list (submitted course should no longer appear)
-            const res = await getAppealCourses();
-            setCourses(res.data.data || []);
-            setTimeout(() => setSubmitSuccess(''), 5000);
-        } catch (err) {
-            const msg = err.response?.data?.message || 'Submission failed';
-            setSubmitError(msg);
-        } finally {
-            setSubmitting(false);
-        }
-    }
-
-    return (
-        <div>
-            <div className="student-page-head">
-                <h1 className="student-title">Grade Appeals</h1>
-            </div>
-
-            {/* Tabs */}
-            <div style={{ display: 'flex', gap: 0, marginBottom: '1.25rem', borderBottom: '2px solid #e5e5e5' }}>
-                {['submit', 'history'].map(tab => (
-                    <button
-                        key={tab}
-                        onClick={() => setActiveTab(tab)}
-                        style={{
-                            padding: '0.6rem 1.25rem',
-                            background: 'none',
-                            border: 'none',
-                            borderBottom: activeTab === tab ? '2px solid #0f4c3a' : '2px solid transparent',
-                            marginBottom: -2,
-                            fontWeight: activeTab === tab ? 700 : 400,
-                            color: activeTab === tab ? '#0f4c3a' : '#666',
-                            cursor: 'pointer',
-                            fontSize: '0.875rem',
-                            textTransform: 'capitalize',
-                        }}
-                    >
-                        {tab === 'submit' ? 'Submit Appeal' : 'My Appeals History'}
-                    </button>
-                ))}
-            </div>
-
-            {activeTab === 'submit' && (
-                <div className="student-card">
-                    <h3 className="student-card-title">Submit Grade Appeal</h3>
-                    <p style={{ fontSize: '0.85rem', color: '#666', marginBottom: '1.25rem' }}>
-                        You can submit only one appeal per course. Select the course the complaint is about.
-                    </p>
-
-                    {submitError && (
-                        <div className="student-notice" style={{ background: '#fef2f2', borderColor: '#fca5a5', color: '#991b1b' }}>
-                            {submitError}
-                        </div>
-                    )}
-                    {submitSuccess && (
-                        <div className="student-notice" style={{ background: '#f0fdf4', borderColor: '#86efac', color: '#166534' }}>
-                            {submitSuccess}
-                        </div>
-                    )}
-
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', maxWidth: 560 }}>
-                        {/* Course selector */}
-                        <div>
-                            <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: '#333', marginBottom: '0.4rem' }}>
-                                Course *
-                            </label>
-                            {coursesLoading ? (
-                                <div className="student-msg" style={{ textAlign: 'left', padding: '0.5rem 0' }}>Loading courses…</div>
-                            ) : !courses.length ? (
-                                <div style={{ fontSize: '0.875rem', color: '#888' }}>No courses with grades available for appeal.</div>
-                            ) : (
-                                <select
-                                    className="student-select"
-                                    value={selectedCourseId}
-                                    onChange={e => setSelectedCourseId(e.target.value)}
-                                    style={{ width: '100%' }}
-                                >
-                                    <option value="">— Select a course —</option>
-                                    {courses.map(c => (
-                                        <option key={c.id} value={c.id}>
-                                            {c.name} ({c.code}) — Grade: {c.grade} {c.grade_letter}
-                                        </option>
-                                    ))}
-                                </select>
-                            )}
-                        </div>
-
-                        {/* Auto-filled: Trainer name */}
-                        <div>
-                            <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: '#333', marginBottom: '0.4rem' }}>
-                                Trainer in charge
-                            </label>
-                            <input
-                                className="student-input"
-                                style={{ width: '100%', background: '#f0f2f5', cursor: 'not-allowed' }}
-                                value={courseDetails?.trainer_name || (selectedCourseId ? 'No trainer assigned' : '')}
-                                readOnly
-                                placeholder="Select a course first"
-                            />
-                        </div>
-
-                        {/* Auto-filled: School period */}
-                        <div>
-                            <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: '#333', marginBottom: '0.4rem' }}>
-                                School Period 
-                            </label>
-                            <input
-                                className="student-input"
-                                style={{ width: '100%', background: '#f0f2f5', cursor: 'not-allowed' }}
-                                value={courseDetails?.school_period_label || (selectedCourseId ? 'Not assigned' : '')}
-                                readOnly
-                                placeholder="Select a course first"
-                            />
-                        </div>
-
-                        {/* Subject */}
-                        <div>
-                            <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: '#333', marginBottom: '0.4rem' }}>
-                                Subject *
-                            </label>
-                            <input
-                                className="student-input"
-                                style={{ width: '100%' }}
-                                value={subject}
-                                onChange={e => setSubject(e.target.value)}
-                                placeholder="Brief subject of your appeal"
-                            />
-                        </div>
-
-                        {/* Description */}
-                        <div>
-                            <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: '#333', marginBottom: '0.4rem' }}>
-                                Description
-                            </label>
-                            <textarea
-                                className="student-textarea"
-                                rows={4}
-                                value={description}
-                                onChange={e => setDescription(e.target.value)}
-                                placeholder="Describe your grade appeal in detail…"
-                            />
-                        </div>
-
-                        <button
-                            className="student-btn"
-                            onClick={handleSubmit}
-                            disabled={submitting || !selectedCourseId || !subject.trim()}
-                            style={{ alignSelf: 'flex-start' }}
-                        >
-                            {submitting ? 'Submitting…' : 'Submit Appeal'}
-                        </button>
-                    </div>
-                </div>
-            )}
-
-            {activeTab === 'history' && (
-                <div className="student-card">
-                    <h3 className="student-card-title">My Grade Appeals History</h3>
-                    {historyLoading ? (
-                        <div className="student-msg">Loading…</div>
-                    ) : !history.length ? (
-                        <div className="student-msg">You have not submitted any grade appeals yet.</div>
-                    ) : (
-                        <div style={{ overflowX: 'auto' }}>
-                            <table className="student-table">
-                                <thead>
-                                    <tr>
-                                        <th>Course</th>
-                                        <th>School Period</th>
-                                        <th>Trainer</th>
-                                        <th>Subject</th>
-                                        <th>Status</th>
-                                        <th>Date</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {history.map(h => (
-                                        <tr key={h.id}>
-                                            <td>
-                                                <strong>{h.course_name || '—'}</strong>
-                                                {h.course_code && <div style={{ fontSize: '0.75rem', color: '#888' }}>{h.course_code}</div>}
-                                            </td>
-                                            <td style={{ fontSize: '0.82rem', color: '#666' }}>{h.school_period_label || '—'}</td>
-                                            <td style={{ fontSize: '0.875rem' }}>{h.trainer_name || '—'}</td>
-                                            <td>{h.subject}</td>
-                                            <td>
-                                                <span className={`status-badge status-${h.status}`}>
-                                                    {h.status}
-                                                </span>
-                                            </td>
-                                            <td style={{ fontSize: '0.82rem', color: '#666' }}>
-                                                {new Date(h.created_at).toLocaleDateString('en-GB')}
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    )}
-                </div>
-            )}
-        </div>
+  // Only graded subjects, exclude ones already complained about
+  const subjectOptions = grades.map(g => ({
+    id:              g.courseId ? `c-${g.courseId}` : `cert-${g.certificationId}`,
+    name:            g.course?.name || g.certification?.name || 'Unknown',
+    courseId:        g.courseId,
+    certificationId: g.certificationId,
+  })).filter(opt => {
+    // enforce one complaint max per subject
+    return !complaints.some(c =>
+      (opt.courseId        && c.courseId        === opt.courseId) ||
+      (opt.certificationId && c.certificationId === opt.certificationId)
     );
+  });
+
+  async function handleSubmit() {
+    if (!form.subject.trim()) return alert(t('complaints.subjectLabel','Subject is required'));
+    setSaving(true);
+    try {
+      await studentApi.createComplaint({
+        subject:         form.subject,
+        description:     form.description,
+        courseId:        form.courseId        || undefined,
+        certificationId: form.certificationId || undefined,
+      });
+      setModal(false);
+      setForm(EMPTY);
+      load();
+    } catch (e) { alert(e.response?.data?.message || t('common.failedSave','Failed to submit')); }
+    finally { setSaving(false); }
+  }
+
+  if (loading) return <PageLoader />;
+  if (error)   return <ErrorAlert message={error} />;
+
+  return (
+    <div className="space-y-4">
+      <SectionHeader title={t('complaints.gradeComplaintTitle','Grade Complaints')} subtitle={t('complaints.gradeComplaintSubtitle','Dispute a grade or request a review')}>
+        {subjectOptions.length > 0 && (
+          <button className="btn-primary" onClick={() => { setForm(EMPTY); setModal(true); }}>
+            <Plus size={16}/> {t('complaints.newComplaint','New Complaint')}
+          </button>
+        )}
+      </SectionHeader>
+
+      {complaints.length === 0 && (
+        <div className="card p-10 text-center">
+          <MessageCircle size={36} className="mx-auto text-gray-300 mb-3" />
+          <p className="text-gray-500">{t('complaints.noPendingComplaints','No complaints submitted yet.')}</p>
+        </div>
+      )}
+
+      <div className="space-y-3">
+        {complaints.map(c => (
+          <div key={c.id} className="card p-4 space-y-2">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <p className="font-semibold text-sm text-gray-900">{c.subject}</p>
+                  <Badge value={c.status} />
+                </div>
+                <p className="text-xs text-gray-400 mt-1">
+                  {c.course?.name || c.certification?.name || 'General'} · {new Date(c.createdAt).toLocaleDateString()}
+                </p>
+              </div>
+            </div>
+            {c.description && <p className="text-sm text-gray-600">{c.description}</p>}
+            {c.trainerResponse && (
+              <div className="bg-blue-50 border border-blue-100 rounded-xl px-3 py-2">
+                <p className="text-xs font-semibold text-blue-700 mb-1">{t('complaints.trainerResponse',"Trainer's response")}</p>
+                <p className="text-sm text-blue-800">{c.trainerResponse}</p>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+
+      <Modal
+        open={modal}
+        onClose={() => setModal(false)}
+        title={t('complaints.newComplaint','Submit Grade Complaint')}
+        footer={
+          <>
+            <button className="btn-secondary" onClick={() => setModal(false)}>{t('common.cancel','Cancel')}</button>
+            <button className="btn-primary" onClick={handleSubmit} disabled={saving}>
+              {saving ? t('common.submitting','Submitting…') : t('common.submit','Submit')}
+            </button>
+          </>
+        }
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="label">{t('complaints.courseOrCert','Subject (Course / Certification)')}</label>
+            <select
+              className="select"
+              value={form.courseId ? `c-${form.courseId}` : form.certificationId ? `cert-${form.certificationId}` : ''}
+              onChange={e => {
+                const opt = subjectOptions.find(s => s.id === e.target.value);
+                setForm(f => ({ ...f, courseId: opt?.courseId || '', certificationId: opt?.certificationId || '' }));
+              }}
+            >
+              <option value="">{t('complaints.selectSubject','— Select a subject —')}</option>
+              {subjectOptions.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="label">{t('complaints.subjectLabel','Subject / Title *')}</label>
+            <input className="input" placeholder={t('complaints.subjectPlaceholder','Brief description of your complaint')}
+              value={form.subject} onChange={e => setForm(f => ({ ...f, subject: e.target.value }))} />
+          </div>
+          <div>
+            <label className="label">{t('complaints.details','Details')}</label>
+            <textarea rows={4} className="input"
+              placeholder={t('complaints.explainGrade','Explain why you believe the grade is incorrect…')}
+              value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} />
+          </div>
+        </div>
+      </Modal>
+    </div>
+  );
 }
