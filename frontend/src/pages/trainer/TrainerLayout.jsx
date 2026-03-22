@@ -2,7 +2,7 @@
 import { Outlet } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import Sidebar from '../../components/layout/Sidebar';
-import TopBar  from '../../components/layout/TopBar';
+import TopBar  from '../../components/layout/Topbar';
 import { LayoutDashboard, BookOpen, Award, ClipboardList, Table2, BarChart2, MessageCircle, Megaphone } from 'lucide-react';
 import { trainerApi } from '../../api';
 import { useTranslation } from 'react-i18next';

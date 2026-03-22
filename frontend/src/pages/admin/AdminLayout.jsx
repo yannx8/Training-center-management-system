@@ -1,6 +1,6 @@
 import { Outlet } from 'react-router-dom';
 import Sidebar from '../../components/layout/Sidebar';
-import TopBar  from '../../components/layout/TopBar';
+import TopBar  from '../../components/layout/Topbar';
 import { LayoutDashboard, Users, Building2, BookOpen, Award, DoorOpen, CalendarRange, MessageCircle } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
