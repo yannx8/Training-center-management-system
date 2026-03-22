@@ -26,7 +26,6 @@
     "signOut": "Déconnexion",
     "semesters": "Semestres"
   },
-
   "roles": {
     "admin": "Administrateur",
     "secretary": "Secrétaire",
@@ -35,7 +34,6 @@
     "student": "Étudiant",
     "parent": "Parent"
   },
-
   "common": {
     "save": "Enregistrer",
     "saving": "Enregistrement…",
@@ -49,6 +47,7 @@
     "confirm": "Confirmer",
     "close": "Fermer",
     "back": "Retour",
+    "next": "Suivant",
     "yes": "Oui",
     "no": "Non",
     "active": "Actif",
@@ -57,6 +56,7 @@
     "actions": "Actions",
     "noData": "Aucune donnée disponible.",
     "search": "Rechercher",
+    "searchPlaceholder": "Rechercher…",
     "filter": "Filtrer",
     "all": "Tous",
     "name": "Nom",
@@ -71,9 +71,6 @@
     "resolved": "Résolu",
     "reviewed": "Examiné",
     "in_progress": "En cours",
-    "noSessions": "Aucune session",
-    "session": "session",
-    "sessions": "sessions",
     "failedLoad": "Échec du chargement.",
     "failedSave": "Échec de l'enregistrement.",
     "noRoom": "Aucune salle assignée",
@@ -87,9 +84,19 @@
     "response": "Réponse",
     "high": "Haute",
     "medium": "Moyenne",
-    "low": "Basse"
+    "low": "Basse",
+    "assign": "Assigner",
+    "unassigned": "Non assigné",
+    "none": "Aucun",
+    "order": "Ordre",
+    "noLimit": "Sans limite",
+    "clear": "Effacer",
+    "viewSemesters": "Voir les semestres",
+    "manageCourses": "Gérer les cours",
+    "sessions": "sessions",
+    "course": "Cours",
+    "certification": "Certification"
   },
-
   "auth": {
     "welcome": "Bon retour",
     "signInToContinue": "Connectez-vous à votre compte pour continuer",
@@ -106,7 +113,6 @@
     "continueAs": "Continuer en tant que {{role}}",
     "role": "Rôle"
   },
-
   "profile": {
     "title": "Mon profil",
     "subtitle": "Gérez vos informations personnelles et votre mot de passe",
@@ -129,16 +135,15 @@
     "passwordMismatch": "Les mots de passe ne correspondent pas.",
     "passwordTooShort": "Le mot de passe doit contenir au moins 6 caractères.",
     "matriculeHint": "(ne peut pas être modifié)",
-    "account": "Compte {{role}}",
     "academicInfo": "Informations académiques",
     "program": "Programme",
     "matricule": "Matricule",
     "weak": "Faible",
     "fair": "Moyen",
     "good": "Bon",
-    "strong": "Fort"
+    "strong": "Fort",
+    "passwordsNoMatch": "Les mots de passe ne correspondent pas."
   },
-
   "dashboard": {
     "title": "Tableau de bord Admin",
     "subtitle": "Vue d'ensemble du système et activité récente",
@@ -174,13 +179,11 @@
     "myAvailability": "Ma disponibilité",
     "weeklySlots": "Créneaux hebdomadaires",
     "pendingGradeComplaints": "Réclamations de notes en attente",
-    "submittedAvailability": "Disponibilité soumise pour cette semaine",
     "noCourses": "Aucun cours assigné.",
-    "pendingChildren": "Réclamations en attente",
     "childrenCount": "{{count}} enfant lié",
-    "childrenCount_plural": "{{count}} enfants liés"
+    "childrenCount_plural": "{{count}} enfants liés",
+    "noAnnouncementsYet": "Aucune annonce pour l'instant."
   },
-
   "userManagement": {
     "title": "Gestion des utilisateurs",
     "subtitle": "{{filtered}} sur {{total}} utilisateurs",
@@ -203,9 +206,8 @@
     "deactivate": "Désactiver",
     "password": "Mot de passe",
     "passwordHint": "Laisser vide pour conserver le mot de passe actuel",
-    "phoneHint": "(utilisé comme mot de passe initial si aucun mot de passe défini)"
+    "noneOption": "— Aucun —"
   },
-
   "departments": {
     "title": "Départements",
     "subtitle": "{{count}} départements",
@@ -217,12 +219,12 @@
     "deleteDepartment": "Supprimer le département",
     "deleteConfirm": "Tous les programmes de ce département seront déliés.",
     "department": "Département",
-    "programs": "Programmes"
+    "programs": "Programmes",
+    "noDepts": "Aucun département pour l'instant."
   },
-
   "programs": {
     "title": "Programmes académiques",
-    "subtitle": "Cliquez sur Gérer les cours pour explorer la structure d'un programme",
+    "subtitle": "Gérer les programmes, niveaux, semestres et cours",
     "addProgram": "Ajouter un programme",
     "editProgram": "Modifier le programme",
     "manageCourses": "Gérer les cours",
@@ -251,19 +253,22 @@
     "deleteSemesterConfirm": "Ce semestre est partagé globalement. Le supprimer supprimera tous les cours de ce semestre dans tous les programmes.",
     "deleteCourse": "Supprimer le cours",
     "deleteCourseConfirm": "Cela supprimera définitivement le cours et toutes les notes associées.",
-    "assignTrainer": "Assigner un formateur au cours",
+    "assignTrainer": "Assigner un formateur",
     "selectTrainer": "Sélectionner un formateur",
     "removeTrainer": "— Retirer le formateur —",
     "noTrainer": "Aucun formateur",
-    "noEnrolled": "{{count}}/{{capacity}} inscrits",
     "backToPrograms": "Retour aux programmes",
     "noSessions": "Aucune session configurée pour ce programme pour l'instant.",
     "noSessionsHint": "Les sessions (Année/Semestre) doivent être créées avant d'ajouter des cours.",
-    "noCoursesInSession": "Aucun cours dans cette session pour l'instant.",
-    "programName": "Nom du programme",
-    "department": "Département"
+    "noCoursesYet": "Aucun cours pour l'instant.",
+    "noLevelsYet": "Aucun niveau pour l'instant. Ajoutez Année 1, Année 2…",
+    "noSemestersYet": "Aucun semestre configuré pour l'instant.",
+    "noProgramsFound": "Aucun programme trouvé.",
+    "levelSubtitle": "Chaque niveau est une année académique du programme",
+    "semesterSubtitle": "Semestres globaux — les modifications affectent tous les programmes qui les utilisent",
+    "viewSemesters": "Voir les semestres",
+    "programName": "Nom du programme"
   },
-
   "certifications": {
     "title": "Certifications",
     "subtitle": "Certifications autonomes",
@@ -279,9 +284,9 @@
     "deleteCertification": "Supprimer la certification",
     "deleteConfirm": "Toutes les inscriptions et notes seront également supprimées.",
     "certName": "Nom de la certification",
-    "certCode": "Code"
+    "certCode": "Code",
+    "noCerts": "Aucune certification pour l'instant."
   },
-
   "rooms": {
     "title": "Salles de classe",
     "subtitle": "Salles de classe et laboratoires",
@@ -292,11 +297,10 @@
     "roomType": "Type",
     "roomName": "Nom de la salle",
     "codeHint": "Code (auto-rempli depuis le nom, modifiable)",
-    "codeHint2": "Laissez vide pour générer automatiquement",
     "deleteRoom": "Supprimer la salle",
-    "deleteConfirm": "Supprimer cette salle définitivement ?"
+    "deleteConfirm": "Supprimer cette salle définitivement ?",
+    "noRooms": "Aucune salle pour l'instant."
   },
-
   "academicYears": {
     "title": "Années académiques",
     "subtitle": "{{count}} années académiques configurées",
@@ -313,12 +317,14 @@
     "total": "Total",
     "active": "Actif",
     "forPrograms": "Pour les programmes",
-    "forCertifications": "Pour les certifications"
+    "forCertifications": "Pour les certifications",
+    "noYears": "Aucune année académique configurée pour l'instant."
   },
-
   "complaints": {
-    "title": "Réclamations des parents",
-    "subtitle": "Voir et résoudre les réclamations et préoccupations des parents",
+    "title": "Réclamations",
+    "subtitle": "Voir et résoudre les réclamations",
+    "parentComplaintsTitle": "Réclamations des parents",
+    "parentComplaintsSubtitle": "Voir et résoudre les réclamations et préoccupations des parents",
     "markTitle": "Réclamations de notes",
     "pending": "En attente",
     "inProgress": "En cours",
@@ -329,8 +335,8 @@
     "response": "Message de réponse",
     "responsePlaceholder": "Rédigez votre réponse…",
     "saveResponse": "Enregistrer la réponse",
-    "parentName": "Nom du parent",
-    "studentName": "Nom de l'étudiant",
+    "parentName": "Parent",
+    "studentName": "Étudiant",
     "subject": "Sujet",
     "priority": "Priorité",
     "high": "Haute",
@@ -339,14 +345,14 @@
     "adminResponse": "Réponse de l'administration",
     "trainerResponse": "Réponse du formateur",
     "yourResponse": "Votre réponse",
-    "noComplaints": "Aucune réclamation dans cette catégorie.",
+    "noComplaints": "Aucune réclamation pour l'instant.",
     "submitComplaint": "Soumettre une réclamation",
     "newComplaint": "Nouvelle réclamation",
     "subjectLabel": "Sujet *",
     "subjectPlaceholder": "Titre bref pour votre réclamation",
     "details": "Détails",
     "detailsPlaceholder": "Décrivez votre préoccupation en détail…",
-    "regardingChild": "Concernant l'enfant (optionnel)",
+    "regardingChild": "Concernant l'enfant",
     "generalComplaint": "— Réclamation générale —",
     "noPendingComplaints": "Aucune réclamation soumise pour l'instant.",
     "gradeComplaintTitle": "Réclamations de notes",
@@ -360,9 +366,10 @@
     "fromStudent": "De {{name}} ({{matricule}}) · {{subject}}",
     "deleteAnnouncement": "Supprimer cette annonce ?",
     "alreadyComplained": "Vous avez déjà soumis une réclamation pour ce sujet.",
-    "myComplaints": "Mes réclamations"
+    "all": "Tous",
+    "date": "Date",
+    "from": "De"
   },
-
   "weeks": {
     "title": "Semaines académiques",
     "subtitle": "Créez des semaines et publiez-les pour que les formateurs puissent soumettre leur disponibilité",
@@ -381,13 +388,8 @@
     "publishedWeek": "Semaine publiée",
     "chooseWeek": "— Choisir une semaine —",
     "noWeeksYet": "Aucune semaine académique créée pour l'instant.",
-    "status": "Statut",
-    "weekLabel": "Libellé de semaine",
-    "certWeekTitle": "Semaines de certification",
-    "certWeekSubtitle": "Créez et publiez des semaines pour la planification des certifications",
-    "createCertWeek": "Créer une semaine cert."
+    "status": "Statut"
   },
-
   "availability": {
     "title": "Disponibilité des formateurs",
     "subtitle": "Surveillez qui a soumis sa disponibilité pour chaque semaine publiée",
@@ -401,7 +403,7 @@
     "submitted": "Soumis",
     "notSubmitted": "Non soumis",
     "submittedHint": "Ces formateurs ont soumis leur disponibilité pour la semaine sélectionnée.",
-    "notSubmittedHint": "Ces formateurs n'ont PAS encore soumis leur disponibilité. Pensez à les relancer.",
+    "notSubmittedHint": "Ces formateurs n'ont PAS encore soumis leur disponibilité.",
     "allSubmitted": "Tous les formateurs ont soumis ! ✓",
     "clickToView": "Cliquez pour voir",
     "slots": "{{count}} créneau(x)",
@@ -422,17 +424,16 @@
     "chooseWeekCert": "— Sélectionner une semaine —",
     "notEnrolledCerts": "Vous n'êtes inscrit à aucune certification.",
     "certSaved": "Disponibilité enregistrée !",
-    "howToUse": "Cliquez sur une cellule pour la marquer disponible. Bleu = disponible. Cliquez à nouveau pour retirer. Puis cliquez Enregistrer.",
+    "howToUse": "Cliquez sur une cellule pour la marquer disponible. Cliquez à nouveau pour retirer. Puis cliquez Enregistrer.",
     "lockedNote": "Verrouillé par le chef de département — modification désactivée.",
     "dayCovered": "jour couvert",
     "daysCovered": "jours couverts",
     "available": "Disponible",
     "notAvailable": "Non disponible",
     "selectBothFirst": "Veuillez sélectionner une certification et une semaine pour afficher la grille.",
-    "instructionGrid": "Cliquez sur une cellule pour basculer votre disponibilité. Cellules bleues = vous êtes disponible ce créneau.",
+    "instructionGrid": "Cliquez sur une cellule pour basculer votre disponibilité.",
     "noTrainersYet": "Aucun formateur trouvé dans ce département."
   },
-
   "timetable": {
     "title": "Générateur d'emploi du temps",
     "subtitle": "Générez des emplois du temps académiques basés sur la disponibilité des formateurs",
@@ -471,21 +472,19 @@
     "generated": "Généré : {{count}} sessions planifiées ({{skipped}} ignorées)",
     "generationFailed": "Échec de la génération",
     "selectWeekFirst": "Sélectionnez d'abord une semaine publiée",
-    "noPrograms": "Aucun programme trouvé pour ce département.",
     "selectProgram": "Sélectionnez un programme pour voir son emploi du temps",
     "noSessionsOnDay": "Pas de sessions :",
     "sessionCount": "{{count}} session",
     "sessionCount_plural": "{{count}} sessions"
   },
-
   "grades": {
     "title": "Saisie des notes",
-    "subtitle": "Enregistrez les notes de vos étudiants. Cliquez sur une matière pour l'expandre.",
+    "subtitle": "Cliquez sur un cours pour le développer et saisir les notes",
     "studentTitle": "Mes notes",
     "noGradesYet": "Aucune note enregistrée pour l'instant.",
-    "noCoursesAssigned": "Aucun cours ou certification assigné. Demandez à votre administrateur de vous en assigner.",
+    "noCoursesAssigned": "Aucun cours ou certification assigné pour l'instant.",
     "noStudentsEnrolled": "Aucun étudiant inscrit à cette matière pour l'instant.",
-    "overall": "Moyenne générale",
+    "overall": "Moyenne",
     "passed": "Réussi",
     "failed": "Échoué",
     "academicCourses": "Cours académiques",
@@ -499,9 +498,10 @@
     "filterBySemester": "Filtrer par semestre",
     "allSemesters": "Tous les semestres",
     "graded": "{{graded}}/{{total}} notés",
-    "saveGrade": "Enregistrer la note"
+    "saveGrade": "Enregistrer",
+    "searchStudents": "Rechercher des étudiants par nom…",
+    "studentsCount": "{{count}} étudiant(s)"
   },
-
   "announcements": {
     "title": "Annonces",
     "subtitle": "Publiez des messages aux parties prenantes de votre département",
@@ -525,10 +525,9 @@
     "dismiss": "Fermer",
     "more": "+{{count}} de plus",
     "less": "Moins",
-    "postedBy": "{{name}} · {{dept}} · {{date}}",
-    "deleteConfirm": "Supprimer cette annonce ?"
+    "deleteConfirm": "Supprimer cette annonce ?",
+    "publishing": "Publication…"
   },
-
   "secretary": {
     "dashboardTitle": "Tableau de bord Secrétaire",
     "activeYear": "Année académique active : {{name}}",
@@ -592,17 +591,12 @@
     "allStatus": "Tous les statuts",
     "editStudent": "Modifier l'étudiant",
     "full": "(COMPLET)",
-    "enrollStudent": "Inscrire l'étudiant",
-    "enrollmentSection": "Inscription",
-    "selectAcademicYear": "Année académique",
-    "viewEnrollments": "Voir les inscriptions",
-    "noCertsAvailable": "Aucune certification active disponible.",
-    "noProgramsAvailable": "Aucun programme actif disponible.",
-    "noStudentsYet": "Aucun étudiant inscrit pour l'instant.",
     "activePrograms": "Programmes actifs",
-    "activeCertifications": "Certifications actives"
+    "activeCertifications": "Certifications actives",
+    "noStudentsYet": "Aucun étudiant inscrit pour l'instant.",
+    "noProgramsAvailable": "Aucun programme actif disponible.",
+    "noCertsAvailable": "Aucune certification active disponible."
   },
-
   "trainerCerts": {
     "title": "Mes certifications",
     "subtitle": "Gérez vos sessions de certification et générez des emplois du temps",
@@ -616,12 +610,8 @@
     "slots": "{{count}} créneau(x)",
     "notSubmitted": "Non soumis",
     "cannotGenerate": "⚠ Impossible de générer tant que tous les étudiants n'ont pas soumis leur disponibilité.",
-    "noStudentsEnrolled": "Aucun étudiant inscrit à cette certification pour l'instant.",
-    "certCode": "Code",
-    "certHours": "Heures",
-    "manageTimetable": "Gérer l'emploi du temps"
+    "noStudentsEnrolled": "Aucun étudiant inscrit à cette certification pour l'instant."
   },
-
   "trainerCourses": {
     "title": "Mes cours",
     "subtitle": "Cours académiques qui vous sont assignés",
@@ -630,10 +620,8 @@
     "level": "Niveau",
     "semester": "Semestre",
     "credits": "Crédits",
-    "hoursPerWeek": "Heures/semaine",
-    "students": "Étudiants"
+    "hoursPerWeek": "Heures/semaine"
   },
-
   "parentChildren": {
     "title": "Mes enfants",
     "subtitle": "{{count}} enfant lié à votre compte",
@@ -647,7 +635,6 @@
     "department": "Département",
     "matricule": "Matricule"
   },
-
   "days": {
     "Monday": "Lundi",
     "Tuesday": "Mardi",
@@ -657,11 +644,9 @@
     "Saturday": "Samedi",
     "Sunday": "Dimanche"
   },
-
   "time": {
     "timeSlot": "Créneau horaire",
     "from": "De",
-    "to": "À",
-    "duration": "Durée"
+    "to": "À"
   }
 }

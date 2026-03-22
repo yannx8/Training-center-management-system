@@ -1,20 +1,23 @@
+// ════════════════════════════════════════════════════════════════
+//  AdminLayout.jsx
+// ════════════════════════════════════════════════════════════════
 import { Outlet } from 'react-router-dom';
 import Sidebar from '../../components/layout/Sidebar';
 import TopBar  from '../../components/layout/Topbar';
 import { LayoutDashboard, Users, Building2, BookOpen, Award, DoorOpen, CalendarRange, MessageCircle } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
-export default function AdminLayout() {
+export function AdminLayout() {
   const { t } = useTranslation();
   const NAV = [
-    { to: '/admin',                label: 'Dashboard',       icon: <LayoutDashboard size={18}/> },
-    { to: '/admin/users',          label: 'User Management', icon: <Users size={18}/> },
-    { to: '/admin/departments',    label: 'Departments',     icon: <Building2 size={18}/> },
-    { to: '/admin/programs',       label: 'Programs',        icon: <BookOpen size={18}/> },
-    { to: '/admin/certifications', label: 'Certifications',  icon: <Award size={18}/> },
-    { to: '/admin/rooms',          label: 'Rooms',           icon: <DoorOpen size={18}/> },
-    { to: '/admin/academic-years', label: 'Academic Years',  icon: <CalendarRange size={18}/> },
-    { to: '/admin/complaints',     label: 'Complaints',      icon: <MessageCircle size={18}/> },
+    { to: '/admin',                label: t('nav.dashboard',    'Dashboard'),      icon: <LayoutDashboard size={18}/> },
+    { to: '/admin/users',          label: t('nav.users',        'Users'),           icon: <Users size={18}/> },
+    { to: '/admin/departments',    label: t('nav.departments',  'Departments'),     icon: <Building2 size={18}/> },
+    { to: '/admin/programs',       label: t('nav.programs',     'Programs'),        icon: <BookOpen size={18}/> },
+    { to: '/admin/certifications', label: t('nav.certifications','Certifications'), icon: <Award size={18}/> },
+    { to: '/admin/rooms',          label: t('nav.rooms',        'Rooms'),           icon: <DoorOpen size={18}/> },
+    { to: '/admin/academic-years', label: t('nav.academicYears','Academic Years'),  icon: <CalendarRange size={18}/> },
+    { to: '/admin/complaints',     label: t('nav.complaints',   'Complaints'),      icon: <MessageCircle size={18}/> },
   ];
   return (
     <div className="flex h-screen overflow-hidden bg-gray-50">
@@ -28,3 +31,4 @@ export default function AdminLayout() {
     </div>
   );
 }
+export default AdminLayout;

@@ -26,7 +26,6 @@
     "signOut": "Sign out",
     "semesters": "Semesters"
   },
-
   "roles": {
     "admin": "Administrator",
     "secretary": "Secretary",
@@ -35,7 +34,6 @@
     "student": "Student",
     "parent": "Parent"
   },
-
   "common": {
     "save": "Save",
     "saving": "Saving…",
@@ -49,6 +47,7 @@
     "confirm": "Confirm",
     "close": "Close",
     "back": "Back",
+    "next": "Next",
     "yes": "Yes",
     "no": "No",
     "active": "Active",
@@ -57,6 +56,7 @@
     "actions": "Actions",
     "noData": "No data available.",
     "search": "Search",
+    "searchPlaceholder": "Search…",
     "filter": "Filter",
     "all": "All",
     "name": "Name",
@@ -71,9 +71,6 @@
     "resolved": "Resolved",
     "reviewed": "Reviewed",
     "in_progress": "In Progress",
-    "noSessions": "No sessions yet",
-    "session": "session",
-    "sessions": "sessions",
     "failedLoad": "Failed to load data.",
     "failedSave": "Failed to save.",
     "noRoom": "No room assigned",
@@ -87,9 +84,19 @@
     "response": "Response",
     "high": "High",
     "medium": "Medium",
-    "low": "Low"
+    "low": "Low",
+    "assign": "Assign",
+    "unassigned": "Unassigned",
+    "none": "None",
+    "order": "Order",
+    "noLimit": "No limit",
+    "clear": "Clear",
+    "viewSemesters": "View Semesters",
+    "manageCourses": "Manage Courses",
+    "sessions": "sessions",
+    "course": "Course",
+    "certification": "Certification"
   },
-
   "auth": {
     "welcome": "Welcome back",
     "signInToContinue": "Sign in to your account to continue",
@@ -106,7 +113,6 @@
     "continueAs": "Continue as {{role}}",
     "role": "Role"
   },
-
   "profile": {
     "title": "My Profile",
     "subtitle": "Manage your personal information and password",
@@ -129,16 +135,15 @@
     "passwordMismatch": "Passwords do not match.",
     "passwordTooShort": "Password must be at least 6 characters.",
     "matriculeHint": "(cannot be changed)",
-    "account": "{{role}} account",
     "academicInfo": "Academic Info",
     "program": "Program",
     "matricule": "Matricule",
     "weak": "Weak",
     "fair": "Fair",
     "good": "Good",
-    "strong": "Strong"
+    "strong": "Strong",
+    "passwordsNoMatch": "Passwords do not match."
   },
-
   "dashboard": {
     "title": "Admin Dashboard",
     "subtitle": "System overview and recent activity",
@@ -174,13 +179,11 @@
     "myAvailability": "My Availability",
     "weeklySlots": "Weekly Slots",
     "pendingGradeComplaints": "Pending Grade Complaints",
-    "submittedAvailability": "Availability submitted for this week",
     "noCourses": "No courses assigned.",
-    "pendingChildren": "Pending Complaints",
     "childrenCount": "{{count}} child linked",
-    "childrenCount_plural": "{{count}} children linked"
+    "childrenCount_plural": "{{count}} children linked",
+    "noAnnouncementsYet": "No announcements yet."
   },
-
   "userManagement": {
     "title": "User Management",
     "subtitle": "{{filtered}} of {{total}} users",
@@ -203,9 +206,8 @@
     "deactivate": "Deactivate",
     "password": "Password",
     "passwordHint": "Leave blank to keep current password",
-    "phoneHint": "(used as initial password if no password set)"
+    "noneOption": "— None —"
   },
-
   "departments": {
     "title": "Departments",
     "subtitle": "{{count}} departments",
@@ -217,12 +219,12 @@
     "deleteDepartment": "Delete Department",
     "deleteConfirm": "All programs in this department will be unlinked.",
     "department": "Department",
-    "programs": "Programs"
+    "programs": "Programs",
+    "noDepts": "No departments yet."
   },
-
   "programs": {
     "title": "Academic Programs",
-    "subtitle": "Click Manage Courses to explore a program's structure",
+    "subtitle": "Manage programs, levels, semesters and courses",
     "addProgram": "Add Program",
     "editProgram": "Edit Program",
     "manageCourses": "Manage Courses",
@@ -251,19 +253,22 @@
     "deleteSemesterConfirm": "This semester is shared globally. Deleting it will remove all courses in this semester across all programs.",
     "deleteCourse": "Delete Course",
     "deleteCourseConfirm": "This will permanently remove the course and all related grades.",
-    "assignTrainer": "Assign Trainer to Course",
+    "assignTrainer": "Assign Trainer",
     "selectTrainer": "Select Trainer",
     "removeTrainer": "— Remove trainer —",
     "noTrainer": "No trainer",
-    "noEnrolled": "{{count}}/{{capacity}} enrolled",
     "backToPrograms": "Back to Programs",
     "noSessions": "No sessions configured for this program yet.",
     "noSessionsHint": "Sessions (Year/Semester) must be created before adding courses.",
-    "noCoursesInSession": "No courses in this session yet.",
-    "programName": "Program Name",
-    "department": "Department"
+    "noCoursesYet": "No courses yet.",
+    "noLevelsYet": "No levels yet. Add Year 1, Year 2…",
+    "noSemestersYet": "No semesters configured yet.",
+    "noProgramsFound": "No programs found.",
+    "levelSubtitle": "Each level is one academic year of this program",
+    "semesterSubtitle": "Global semesters — changes affect all programs using them",
+    "viewSemesters": "View Semesters",
+    "programName": "Program Name"
   },
-
   "certifications": {
     "title": "Certifications",
     "subtitle": "Standalone certifications",
@@ -279,9 +284,9 @@
     "deleteCertification": "Delete Certification",
     "deleteConfirm": "All enrollments and grades will also be removed.",
     "certName": "Certification Name",
-    "certCode": "Code"
+    "certCode": "Code",
+    "noCerts": "No certifications yet."
   },
-
   "rooms": {
     "title": "Classrooms",
     "subtitle": "Classrooms and labs",
@@ -292,11 +297,10 @@
     "roomType": "Type",
     "roomName": "Room Name",
     "codeHint": "Code (auto-filled from name, editable)",
-    "codeHint2": "Leave blank to auto-generate",
     "deleteRoom": "Delete Room",
-    "deleteConfirm": "Remove this room permanently?"
+    "deleteConfirm": "Remove this room permanently?",
+    "noRooms": "No rooms yet."
   },
-
   "academicYears": {
     "title": "Academic Years",
     "subtitle": "{{count}} academic years configured",
@@ -313,12 +317,14 @@
     "total": "Total",
     "active": "Active",
     "forPrograms": "For Programs",
-    "forCertifications": "For Certifications"
+    "forCertifications": "For Certifications",
+    "noYears": "No academic years configured yet."
   },
-
   "complaints": {
-    "title": "Parent Complaints",
-    "subtitle": "View and resolve parent complaints and concerns",
+    "title": "Complaints",
+    "subtitle": "View and resolve complaints",
+    "parentComplaintsTitle": "Parent Complaints",
+    "parentComplaintsSubtitle": "View and respond to parent complaints and concerns",
     "markTitle": "Grade Complaints",
     "pending": "Pending",
     "inProgress": "In Progress",
@@ -329,8 +335,8 @@
     "response": "Response Message",
     "responsePlaceholder": "Write your response…",
     "saveResponse": "Save Response",
-    "parentName": "Parent Name",
-    "studentName": "Student Name",
+    "parentName": "Parent",
+    "studentName": "Student",
     "subject": "Subject",
     "priority": "Priority",
     "high": "High",
@@ -339,14 +345,14 @@
     "adminResponse": "Administration response",
     "trainerResponse": "Trainer's response",
     "yourResponse": "Your response",
-    "noComplaints": "No complaints in this category.",
+    "noComplaints": "No complaints yet.",
     "submitComplaint": "Submit Complaint",
     "newComplaint": "New Complaint",
     "subjectLabel": "Subject *",
     "subjectPlaceholder": "Brief title for your complaint",
     "details": "Details",
     "detailsPlaceholder": "Describe your concern in detail…",
-    "regardingChild": "Regarding Child (optional)",
+    "regardingChild": "Regarding Child",
     "generalComplaint": "— General complaint —",
     "noPendingComplaints": "No complaints submitted yet.",
     "gradeComplaintTitle": "Grade Complaints",
@@ -360,9 +366,10 @@
     "fromStudent": "From {{name}} ({{matricule}}) · {{subject}}",
     "deleteAnnouncement": "Remove this announcement?",
     "alreadyComplained": "You have already submitted a complaint for this subject.",
-    "myComplaints": "My Complaints"
+    "all": "All",
+    "date": "Date",
+    "from": "From"
   },
-
   "weeks": {
     "title": "Academic Weeks",
     "subtitle": "Create weeks and publish them so trainers can submit availability",
@@ -381,13 +388,8 @@
     "publishedWeek": "Published Week",
     "chooseWeek": "— Choose a week —",
     "noWeeksYet": "No academic weeks created yet.",
-    "status": "Status",
-    "weekLabel": "Week Label",
-    "certWeekTitle": "Certification Weeks",
-    "certWeekSubtitle": "Create and publish weeks for certification scheduling",
-    "createCertWeek": "Create Cert. Week"
+    "status": "Status"
   },
-
   "availability": {
     "title": "Trainer Availability",
     "subtitle": "Monitor who has submitted availability for each published week",
@@ -401,7 +403,7 @@
     "submitted": "Submitted",
     "notSubmitted": "Not Submitted",
     "submittedHint": "These trainers have submitted their availability for the selected week.",
-    "notSubmittedHint": "These trainers have NOT yet submitted availability. Consider reminding them.",
+    "notSubmittedHint": "These trainers have NOT yet submitted availability.",
     "allSubmitted": "All trainers have submitted! ✓",
     "clickToView": "Click to view",
     "slots": "{{count}} slot(s)",
@@ -422,7 +424,7 @@
     "chooseWeekCert": "— Select week —",
     "notEnrolledCerts": "You are not enrolled in any certifications.",
     "certSaved": "Availability saved!",
-    "howToUse": "Click a cell to mark that time as available. Blue = available. Click again to remove. Then click Save.",
+    "howToUse": "Click a cell to mark that time as available. Click again to remove. Then click Save.",
     "lockedNote": "Locked by HOD — editing disabled.",
     "dayCovered": "day covered",
     "daysCovered": "days covered",
@@ -432,7 +434,6 @@
     "instructionGrid": "Click any cell to toggle availability. Blue cells = you are available that slot.",
     "noTrainersYet": "No trainers found in this department."
   },
-
   "timetable": {
     "title": "Timetable Generator",
     "subtitle": "Generate academic timetables based on trainer availability",
@@ -471,21 +472,19 @@
     "generated": "Generated: {{count}} sessions scheduled ({{skipped}} skipped)",
     "generationFailed": "Generation failed",
     "selectWeekFirst": "Select a published week first",
-    "noPrograms": "No programs found for this department.",
     "selectProgram": "Select a program to view its timetable",
     "noSessionsOnDay": "No sessions on:",
     "sessionCount": "{{count}} session",
     "sessionCount_plural": "{{count}} sessions"
   },
-
   "grades": {
     "title": "Grade Entry",
-    "subtitle": "Record grades for your students. Click a subject to expand it.",
+    "subtitle": "Click a course to expand it and enter grades",
     "studentTitle": "My Grades",
     "noGradesYet": "No grades recorded yet.",
-    "noCoursesAssigned": "No courses or certifications assigned yet. Ask your administrator to assign you courses.",
+    "noCoursesAssigned": "No courses or certifications assigned yet.",
     "noStudentsEnrolled": "No students enrolled in this subject yet.",
-    "overall": "Overall Average",
+    "overall": "Average",
     "passed": "Passed",
     "failed": "Failed",
     "academicCourses": "Academic Courses",
@@ -499,9 +498,10 @@
     "filterBySemester": "Filter by Semester",
     "allSemesters": "All Semesters",
     "graded": "{{graded}}/{{total}} graded",
-    "saveGrade": "Save Grade"
+    "saveGrade": "Save",
+    "searchStudents": "Search students by name…",
+    "studentsCount": "{{count}} student(s)"
   },
-
   "announcements": {
     "title": "Announcements",
     "subtitle": "Publish messages to your department stakeholders",
@@ -525,10 +525,9 @@
     "dismiss": "Dismiss",
     "more": "+{{count}} more",
     "less": "Less",
-    "postedBy": "{{name}} · {{dept}} · {{date}}",
-    "deleteConfirm": "Remove this announcement?"
+    "deleteConfirm": "Remove this announcement?",
+    "publishing": "Publishing…"
   },
-
   "secretary": {
     "dashboardTitle": "Secretary Dashboard",
     "activeYear": "Active Academic Year: {{name}}",
@@ -592,23 +591,18 @@
     "allStatus": "All Status",
     "editStudent": "Edit Student",
     "full": "(FULL)",
-    "enrollStudent": "Enroll Student",
-    "enrollmentSection": "Enrollment",
-    "selectAcademicYear": "Academic Year",
-    "viewEnrollments": "View Enrollments",
-    "noCertsAvailable": "No active certifications available.",
-    "noProgramsAvailable": "No active programs available.",
-    "noStudentsYet": "No students registered yet.",
     "activePrograms": "Active Programs",
-    "activeCertifications": "Active Certifications"
+    "activeCertifications": "Active Certifications",
+    "noStudentsYet": "No students registered yet.",
+    "noProgramsAvailable": "No active programs available.",
+    "noCertsAvailable": "No active certifications available."
   },
-
   "trainerCerts": {
     "title": "My Certifications",
-    "subtitle": "Manage your certification sessions and generate timetables",
+    "subtitle": "Manage certification sessions and generate timetables",
     "noAssigned": "No certifications assigned to you yet.",
     "generateTitle": "Generate Certification Timetable",
-    "generateHint": "Before generating: you must have submitted your availability for the week, and all enrolled students must have submitted their availability.",
+    "generateHint": "Before generating: you must have submitted your availability for the week, and all enrolled students must have submitted theirs.",
     "selectWeek": "Select Week",
     "chooseWeek": "— Choose a published week —",
     "generate": "Generate",
@@ -616,12 +610,8 @@
     "slots": "{{count}} slot(s)",
     "notSubmitted": "Not submitted",
     "cannotGenerate": "⚠ Cannot generate until all students have submitted availability.",
-    "noStudentsEnrolled": "No students enrolled in this certification yet.",
-    "certCode": "Code",
-    "certHours": "Hours",
-    "manageTimetable": "Manage Timetable"
+    "noStudentsEnrolled": "No students enrolled in this certification yet."
   },
-
   "trainerCourses": {
     "title": "My Courses",
     "subtitle": "Academic courses assigned to you",
@@ -630,10 +620,8 @@
     "level": "Level",
     "semester": "Semester",
     "credits": "Credits",
-    "hoursPerWeek": "Hours/week",
-    "students": "Students"
+    "hoursPerWeek": "Hours/week"
   },
-
   "parentChildren": {
     "title": "My Children",
     "subtitle": "{{count}} child linked to your account",
@@ -647,7 +635,6 @@
     "department": "Department",
     "matricule": "Matricule"
   },
-
   "days": {
     "Monday": "Monday",
     "Tuesday": "Tuesday",
@@ -657,11 +644,9 @@
     "Saturday": "Saturday",
     "Sunday": "Sunday"
   },
-
   "time": {
     "timeSlot": "Time Slot",
     "from": "From",
-    "to": "To",
-    "duration": "Duration"
+    "to": "To"
   }
 }

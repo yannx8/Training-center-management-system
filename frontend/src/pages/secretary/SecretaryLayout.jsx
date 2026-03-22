@@ -3,13 +3,13 @@ import Sidebar from '../../components/layout/Sidebar';
 import TopBar  from '../../components/layout/Topbar';
 import { LayoutDashboard, Users, UserPlus } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-//Default export here
+
 export default function SecretaryLayout() {
   const { t } = useTranslation();
   const NAV = [
-    { to: '/secretary',          label: 'Dashboard', icon: <LayoutDashboard size={18}/> },
-    { to: '/secretary/students', label: 'Students',  icon: <Users size={18}/> },
-    { to: '/secretary/register', label: 'Register',  icon: <UserPlus size={18}/> },
+    { to: '/secretary',          label: t('nav.dashboard','Dashboard'), icon: <LayoutDashboard size={18}/> },
+    { to: '/secretary/students', label: t('nav.students', 'Students'),  icon: <Users size={18}/> },
+    { to: '/secretary/register', label: t('nav.register', 'Register'),  icon: <UserPlus size={18}/> },
   ];
   return (
     <div className="flex h-screen overflow-hidden bg-gray-50">

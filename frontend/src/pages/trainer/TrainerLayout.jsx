@@ -1,4 +1,3 @@
-// ── TrainerLayout.jsx ──────────────────────────────────────
 import { Outlet } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import Sidebar from '../../components/layout/Sidebar';
@@ -10,17 +9,21 @@ import { useTranslation } from 'react-i18next';
 export default function TrainerLayout() {
   const { t } = useTranslation();
   const [hasCerts, setHasCerts] = useState(false);
-  useEffect(() => { trainerApi.getCertifications().then(r => setHasCerts((r.data?.length||0)>0)).catch(()=>{}); }, []);
+  useEffect(() => {
+    trainerApi.getCertifications().then(r => setHasCerts((r.data?.length||0) > 0)).catch(()=>{});
+  }, []);
+
   const NAV = [
-    { to: '/trainer',               label: 'Dashboard',     icon: <LayoutDashboard size={18}/> },
-    { to: '/trainer/courses',       label: 'My Courses',    icon: <BookOpen size={18}/> },
-    ...(hasCerts ? [{ to: '/trainer/certifications', label: 'Certifications', icon: <Award size={18}/> }] : []),
-    { to: '/trainer/availability',  label: 'Availability',  icon: <ClipboardList size={18}/> },
-    { to: '/trainer/timetable',     label: 'Timetable',     icon: <Table2 size={18}/> },
-    { to: '/trainer/grades',        label: 'Grades',        icon: <BarChart2 size={18}/> },
-    { to: '/trainer/complaints',    label: 'Complaints',    icon: <MessageCircle size={18}/> },
-    { to: '/trainer/announcements', label: 'Announcements', icon: <Megaphone size={18}/> },
+    { to: '/trainer',               label: t('nav.dashboard',    'Dashboard'),    icon: <LayoutDashboard size={18}/> },
+    { to: '/trainer/courses',       label: t('nav.courses',      'My Courses'),   icon: <BookOpen size={18}/> },
+    ...(hasCerts ? [{ to: '/trainer/certifications', label: t('nav.certifications','Certifications'), icon: <Award size={18}/> }] : []),
+    { to: '/trainer/availability',  label: t('nav.availability', 'Availability'), icon: <ClipboardList size={18}/> },
+    { to: '/trainer/timetable',     label: t('nav.timetable',    'Timetable'),    icon: <Table2 size={18}/> },
+    { to: '/trainer/grades',        label: t('nav.grades',       'Grades'),       icon: <BarChart2 size={18}/> },
+    { to: '/trainer/complaints',    label: t('nav.complaints',   'Complaints'),   icon: <MessageCircle size={18}/> },
+    { to: '/trainer/announcements', label: t('nav.announcements','Announcements'),icon: <Megaphone size={18}/> },
   ];
+
   return (
     <div className="flex h-screen overflow-hidden bg-gray-50">
       <Sidebar navItems={NAV} roleLabel={t('roles.trainer','Trainer')} roleColor="bg-amber-600" />
