@@ -6,7 +6,6 @@ import Modal from '../../components/ui/Modal';
 import { PageLoader, ErrorAlert, SectionHeader, ConfirmModal, Badge } from '../../components/ui';
 import { useTranslation } from 'react-i18next';
 
-
 const ASSIGNABLE_ROLES = ['hod', 'trainer', 'secretary'];
 const EMPTY = { fullName: '', email: '', phone: '', roleName: 'trainer', department: '', status: 'active' };
 
@@ -85,25 +84,24 @@ export default function UserManagement() {
       </SectionHeader>
       {error && <ErrorAlert message={error} />}
 
-      {/* Search + filters */}
-      <div className={cn('card', 'p-3', 'space-y-2')}>
+      <div className="card p-3 space-y-2">
         <div className="relative">
-          <Search size={15} className={cn('absolute', 'left-3', 'top-1/2', '-translate-y-1/2', 'text-gray-400', 'pointer-events-none')}/>
+          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"/>
           <input
-            className={cn('input', 'pl-9')}
+            className="input pl-9"
             placeholder={t('userManagement.searchPlaceholder', 'Search by name or email…')}
             value={search}
             onChange={e => setSearch(e.target.value)}
           />
         </div>
-        <div className={cn('flex', 'gap-2')}>
-          <select className={cn('select', 'flex-1', 'text-sm')} value={roleFilter} onChange={e => setRoleFilter(e.target.value)}>
+        <div className="flex gap-2">
+          <select className="select flex-1 text-sm" value={roleFilter} onChange={e => setRoleFilter(e.target.value)}>
             <option value="">{t('userManagement.allRoles', 'All Roles')}</option>
             {['admin','hod','trainer','secretary','student','parent'].map(r => (
               <option key={r} value={r}>{t(`roles.${r}`, r)}</option>
             ))}
           </select>
-          <select className={cn('select', 'flex-1', 'text-sm')} value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
+          <select className="select flex-1 text-sm" value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
             <option value="">{t('userManagement.allStatus', 'All Status')}</option>
             <option value="active">{t('common.active', 'Active')}</option>
             <option value="inactive">{t('common.inactive', 'Inactive')}</option>
@@ -112,22 +110,20 @@ export default function UserManagement() {
       </div>
 
       {filtered.length === 0 && (
-        <div className={cn('card', 'p-10', 'text-center', 'text-gray-400')}>{t('common.noData', 'No data available.')}</div>
+        <div className="card p-10 text-center text-gray-400">{t('common.noData', 'No data available.')}</div>
       )}
 
       <div className="space-y-2">
         {filtered.map(u => (
-          <div key={u.id} className={cn('card', 'px-4', 'py-3', 'flex', 'items-center', 'gap-3')}>
-            {/* Info — no avatar circle, no role badges */}
-            <div className={cn('flex-1', 'min-w-0')}>
-              <p className={cn('text-sm', 'font-semibold', 'text-gray-900', 'truncate')}>{u.fullName}</p>
-              <p className={cn('text-xs', 'text-gray-400', 'truncate')}>{u.email}</p>
+          <div key={u.id} className="card px-4 py-3 flex items-center gap-3">
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-gray-900 truncate">{u.fullName}</p>
+              <p className="text-xs text-gray-400 truncate">{u.email}</p>
             </div>
-            {/* Status + actions */}
-            <div className={cn('flex', 'items-center', 'gap-1', 'flex-shrink-0')}>
+            <div className="flex items-center gap-1 flex-shrink-0">
               <Badge value={u.status} />
               <button
-                className={cn('btn-ghost', 'btn-sm', 'btn-icon')}
+                className="btn-ghost btn-sm btn-icon"
                 title={u.status === 'active' ? t('userManagement.deactivate','Deactivate') : t('userManagement.activate','Activate')}
                 onClick={() => toggleStatus(u)}
               >
@@ -135,10 +131,10 @@ export default function UserManagement() {
                   ? <UserX size={14} className="text-amber-500"/>
                   : <UserCheck size={14} className="text-green-500"/>}
               </button>
-              <button className={cn('btn-ghost', 'btn-sm', 'btn-icon')} onClick={() => openEdit(u)}>
+              <button className="btn-ghost btn-sm btn-icon" onClick={() => openEdit(u)}>
                 <Pencil size={14}/>
               </button>
-              <button className={cn('btn-ghost', 'btn-sm', 'btn-icon', 'text-red-500', 'hover:bg-red-50')} onClick={() => setDeleteId(u.id)}>
+              <button className="btn-ghost btn-sm btn-icon text-red-500 hover:bg-red-50" onClick={() => setDeleteId(u.id)}>
                 <Trash2 size={14}/>
               </button>
             </div>
@@ -146,7 +142,6 @@ export default function UserManagement() {
         ))}
       </div>
 
-      {/* Add/Edit Modal */}
       <Modal
         open={modal} onClose={() => setModal(false)}
         title={editing ? t('userManagement.editUser','Edit User') : t('userManagement.addUser','Add User')}
@@ -171,14 +166,14 @@ export default function UserManagement() {
           <div>
             <label className="label">{t('common.phone','Phone')}</label>
             <input className="input" value={form.phone} onChange={e => setForm(f=>({...f,phone:e.target.value}))}/>
-            {!editing && <p className={cn('text-xs', 'text-gray-400', 'mt-1')}>{t('userManagement.phoneNote','Phone number becomes the initial password.')}</p>}
+            {!editing && <p className="text-xs text-gray-400 mt-1">{t('userManagement.phoneNote','Phone number becomes the initial password.')}</p>}
           </div>
           <div>
             <label className="label">{t('userManagement.role','Role')}</label>
             <select className="select" value={form.roleName} onChange={e => setForm(f=>({...f,roleName:e.target.value}))}>
               {ASSIGNABLE_ROLES.map(r => <option key={r} value={r}>{t(`roles.${r}`, r)}</option>)}
             </select>
-            <p className={cn('text-xs', 'text-gray-400', 'mt-1')}>{t('userManagement.roleNote','Only HOD, Trainer and Secretary roles can be assigned here.')}</p>
+            <p className="text-xs text-gray-400 mt-1">{t('userManagement.roleNote','Only HOD, Trainer and Secretary roles can be assigned here.')}</p>
           </div>
           {(form.roleName === 'hod' || form.roleName === 'trainer') && (
             <div>
@@ -187,7 +182,7 @@ export default function UserManagement() {
                 <option value="">{t('userManagement.noneOption','— None —')}</option>
                 {depts.map(d => <option key={d.id} value={d.name}>{d.name}</option>)}
               </select>
-              {hodWarning && <p className={cn('text-xs', 'text-amber-600', 'mt-1')}>{hodWarning}</p>}
+              {hodWarning && <p className="text-xs text-amber-600 mt-1">{hodWarning}</p>}
             </div>
           )}
           <div>
