@@ -4,17 +4,26 @@ const prisma = require("../lib/prisma");
 const { asyncHandler } = require("../middleware/errorHandler");
 
 const getDashboard = asyncHandler(async(req, res) => {
-    const [userCount, deptCount, programCount, trainerCount, studentCount, pendingComplaints] = await Promise.all([
-        prisma.user.count(), prisma.department.count(), prisma.program.count(),
-        prisma.trainer.count(), prisma.student.count(),
+    const [totalUsers, departments, programs, certifications, trainers, students, pendingComplaints] = await Promise.all([
+        prisma.user.count(),
+        prisma.department.count(),
+        prisma.program.count(),
+        prisma.certification.count(),
+        prisma.trainer.count(),
+        prisma.student.count(),
         prisma.complaint.count({ where: { status: "pending" } }),
     ]);
-    const recentUsers = await prisma.user.findMany({ orderBy: { createdAt: "desc" }, take: 5, include: { userRoles: { include: { role: true } } } });
-    const deptOverview = await prisma.department.findMany({ include: { _count: { select: { programs: true } } } });
+    const recentUsers = await prisma.user.findMany({
+        orderBy: { createdAt: "desc" }, take: 5,
+        include: { userRoles: { include: { role: true } } }
+    });
+    const deptOverview = await prisma.department.findMany({
+        include: { _count: { select: { programs: true } } }
+    });
     return res.json({
         success: true,
         data: {
-            stats: { userCount, deptCount, programCount, trainerCount, studentCount, pendingComplaints },
+            stats: { totalUsers, departments, programs, certifications, trainers, students, pendingComplaints },
             recentUsers: recentUsers.map(u => ({...u, passwordHash: undefined, roles: u.userRoles.map(ur => ur.role.name) })),
             deptOverview,
         }
