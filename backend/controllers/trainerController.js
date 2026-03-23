@@ -146,7 +146,7 @@ const getPublishedWeeksHandler = asyncHandler(async(req, res) => {
         where: { trainerId: trainer.id, courseId: { not: null } },
         include: { course: { include: { session: { include: { program: { include: { department: true } } } } } } },
     });
-    
+
     // Fixed: Replaced optional chaining
     tcs.forEach(tc => {
         const d = tc.course && tc.course.session && tc.course.session.program && tc.course.session.program.department ? tc.course.session.program.department.name : null;
@@ -435,11 +435,33 @@ const upsertGradeHandler = asyncHandler(async(req, res) => {
 const getComplaintsHandler = asyncHandler(async(req, res) => {
     const trainer = await getTrainer(req.user.userId);
     if (!trainer) return res.status(404).json({ success: false, message: 'Trainer not found' });
-    const complaints = await prisma.markComplaint.findMany({
+
+    // Get all courseIds and certificationIds this trainer teaches
+    const trainerCourses = await prisma.trainerCourse.findMany({
         where: { trainerId: trainer.id },
-        include: { student: { include: { user: true } }, course: true, certification: true },
+        select: { courseId: true, certificationId: true },
+    });
+
+    const courseIds = trainerCourses.map(tc => tc.courseId).filter(Boolean);
+    const certIds = trainerCourses.map(tc => tc.certificationId).filter(Boolean);
+
+    // Find complaints related to trainer directly OR to their courses/certs
+    const complaints = await prisma.markComplaint.findMany({
+        where: {
+            OR: [
+                { trainerId: trainer.id },
+                ...(courseIds.length > 0 ? [{ courseId: { in: courseIds } }] : []),
+                ...(certIds.length > 0 ? [{ certificationId: { in: certIds } }] : []),
+            ],
+        },
+        include: {
+            student: { include: { user: { select: { fullName: true } } } },
+            course: true,
+            certification: true,
+        },
         orderBy: { createdAt: 'desc' },
     });
+
     return res.json({ success: true, data: complaints });
 });
 

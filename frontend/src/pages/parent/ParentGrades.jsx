@@ -1,6 +1,7 @@
+// FILE: frontend/src/pages/parent/ParentGrades.jsx
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { BarChart2, ChevronDown } from 'lucide-react';
+import { BarChart2 } from 'lucide-react';
 import { parentApi } from '../../api';
 import { PageLoader, ErrorAlert } from '../../components/ui';
 import { useTranslation } from 'react-i18next';
@@ -25,33 +26,36 @@ export default function ParentGrades() {
   const [gradesLoading, setGradesLoading] = useState(false);
   const [error, setError]       = useState('');
 
-  // Load children list
   useEffect(() => {
     parentApi.getChildren().then(r => {
       const kids = r.data || [];
       setChildren(kids);
       if (!childId && kids.length > 0) setChildId(String(kids[0].id));
       setLoading(false);
-    }).catch(() => setError(t('common.failedLoad','Failed to load children')));
+    }).catch(() => setError(t('common.failedLoad', 'Failed to load children')));
   }, []);
 
-  // Load grades when child changes
   useEffect(() => {
     if (!childId) { setGrades([]); return; }
     setGradesLoading(true);
     parentApi.getChildGrades(childId)
-      .then(r => { setGrades(r.data || []); setGradesLoading(false); })
-      .catch(() => { setGradesLoading(false); });
+      .then(r => {
+        // Backend returns { child, grades } — extract grades array
+        const data = r.data;
+        setGrades(Array.isArray(data) ? data : (data?.grades || []));
+        setGradesLoading(false);
+      })
+      .catch(() => { setGrades([]); setGradesLoading(false); });
   }, [childId]);
 
-  const child = children.find(c => String(c.id) === String(childId));
+  const child     = children.find(c => String(c.id) === String(childId));
   const academic  = grades.filter(g => g.courseId);
   const certGrades = grades.filter(g => g.certificationId);
 
   const numericGrades = grades.filter(g => g.grade !== null).map(g => parseFloat(g.grade));
-  const avg    = numericGrades.length ? (numericGrades.reduce((a,b)=>a+b,0)/numericGrades.length).toFixed(1) : null;
+  const avg    = numericGrades.length ? (numericGrades.reduce((a,b) => a+b, 0) / numericGrades.length).toFixed(1) : null;
   const passed = numericGrades.filter(n => n >= 50).length;
-  const failed  = numericGrades.filter(n => n <  50).length;
+  const failed  = numericGrades.filter(n => n < 50).length;
 
   if (loading) return <PageLoader/>;
   if (error)   return <ErrorAlert message={error}/>;
@@ -59,16 +63,13 @@ export default function ParentGrades() {
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="page-title">{t('grades.parentGradesTitle',"Child's Grades")}</h1>
-        {child && (
-          <p className="page-subtitle">{child.user?.fullName} · {child.matricule}</p>
-        )}
+        <h1 className="page-title">{t('grades.parentGradesTitle', "Child's Grades")}</h1>
+        {child && <p className="page-subtitle">{child.user?.fullName} · {child.matricule}</p>}
       </div>
 
-      {/* Child selector */}
       {children.length > 1 && (
         <div>
-          <label className="label">{t('grades.selectChild','Select Child')}</label>
+          <label className="label">{t('grades.selectChild', 'Select Child')}</label>
           <select className="select" value={childId} onChange={e => setChildId(e.target.value)}>
             {children.map(c => (
               <option key={c.id} value={c.id}>{c.user?.fullName} · {c.matricule}</option>
@@ -77,32 +78,30 @@ export default function ParentGrades() {
         </div>
       )}
 
-      {/* Loading grades */}
       {gradesLoading && <PageLoader/>}
 
-      {/* Empty state */}
       {!gradesLoading && childId && grades.length === 0 && (
         <div className="card p-10 text-center">
           <BarChart2 size={36} className="mx-auto text-gray-300 mb-3"/>
-          <p className="text-gray-500">{t('grades.noGradesYet','No grades recorded yet.')}</p>
+          <p className="text-gray-500">{t('grades.noGradesYet', 'No grades recorded yet.')}</p>
         </div>
       )}
 
-      {/* Stats */}
       {!gradesLoading && grades.length > 0 && (
         <>
+          {/* Stats */}
           <div className="grid grid-cols-3 gap-3">
             <div className="card p-3 text-center">
               <p className="text-xl font-bold text-primary-600">{avg || '—'}</p>
-              <p className="text-xs text-gray-500 mt-0.5">{t('grades.overall','Average')}</p>
+              <p className="text-xs text-gray-500 mt-0.5">{t('grades.overall', 'Average')}</p>
             </div>
             <div className="card p-3 text-center">
               <p className="text-xl font-bold text-green-600">{passed}</p>
-              <p className="text-xs text-gray-500 mt-0.5">{t('grades.passed','Passed')}</p>
+              <p className="text-xs text-gray-500 mt-0.5">{t('grades.passed', 'Passed')}</p>
             </div>
             <div className="card p-3 text-center">
               <p className="text-xl font-bold text-red-500">{failed}</p>
-              <p className="text-xs text-gray-500 mt-0.5">{t('grades.failed','Failed')}</p>
+              <p className="text-xs text-gray-500 mt-0.5">{t('grades.failed', 'Failed')}</p>
             </div>
           </div>
 
@@ -110,7 +109,7 @@ export default function ParentGrades() {
           {academic.length > 0 && (
             <div className="card overflow-hidden">
               <div className="px-4 py-3 border-b border-gray-100 bg-gray-50">
-                <h2 className="font-semibold text-gray-900 text-sm">{t('grades.academicCourses','Academic Courses')}</h2>
+                <h2 className="font-semibold text-gray-900 text-sm">{t('grades.academicCourses', 'Academic Courses')}</h2>
               </div>
               <div className="divide-y divide-gray-50">
                 {academic.map(g => (
@@ -135,7 +134,7 @@ export default function ParentGrades() {
           {certGrades.length > 0 && (
             <div className="card overflow-hidden">
               <div className="px-4 py-3 border-b border-violet-100 bg-violet-50">
-                <h2 className="font-semibold text-violet-900 text-sm">{t('grades.certificationGrades','Certifications')}</h2>
+                <h2 className="font-semibold text-violet-900 text-sm">{t('grades.certificationGrades', 'Certifications')}</h2>
               </div>
               <div className="divide-y divide-gray-50">
                 {certGrades.map(g => (
@@ -153,10 +152,9 @@ export default function ParentGrades() {
         </>
       )}
 
-      {/* No child selected */}
       {!childId && (
         <div className="card p-10 text-center text-gray-400">
-          <p>{t('grades.selectChild','Select a child to view their grades')}</p>
+          <p>{t('grades.selectChild', 'Select a child to view their grades')}</p>
         </div>
       )}
     </div>

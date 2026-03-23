@@ -1,20 +1,21 @@
+// FILE: frontend/src/pages/student/StudentTimetable.jsx
 import { useEffect, useState } from 'react';
-import { Award } from 'lucide-react';
 import { studentApi } from '../../api';
 import { PageLoader, ErrorAlert } from '../../components/ui';
 import TimetableGrid from '../../components/ui/TimetableGrid';
 import { useTranslation } from 'react-i18next';
 
-export default function StudentCertTimetable() {
+export default function StudentTimetable() {
   const { t } = useTranslation();
-  const [slots, setSlots]     = useState([]);
+  const [slots, setSlots]   = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError]     = useState('');
+  const [error, setError]   = useState('');
 
   useEffect(() => {
-    studentApi.getCertTimetable()
-      .then(r => { setSlots(r.data||[]); setLoading(false); })
-      .catch(() => setError(t('common.failedLoad','Failed to load certification timetable')));
+    // Only fetch timetable — auto-uses latest published academic week on backend
+    studentApi.getTimetable()
+      .then(r => { setSlots(r.data || []); setLoading(false); })
+      .catch(() => { setError(t('common.failedLoad', 'Failed to load timetable')); setLoading(false); });
   }, []);
 
   if (loading) return <PageLoader />;
@@ -24,34 +25,42 @@ export default function StudentCertTimetable() {
     return (
       <div className="space-y-4">
         <div>
-          <h1 className="page-title">{t('timetable.certTimetableTitle','Certification Timetable')}</h1>
-          <p className="page-subtitle">{t('timetable.certTimetableSubtitle','Your scheduled certification sessions')}</p>
+          <h1 className="page-title">{t('timetable.studentTimetableTitle', 'Academic Timetable')}</h1>
+          <p className="page-subtitle">{t('timetable.studentTimetableSubtitle', 'Your scheduled class sessions')}</p>
         </div>
-        <div className="card p-10 text-center">
-          <Award size={36} className="mx-auto text-gray-300 mb-3"/>
-          <p className="text-gray-500 font-medium">{t('timetable.noTimetableYet','No certification sessions scheduled')}</p>
-          <p className="text-sm text-gray-400 mt-1">{t('timetable.certNoSessionHint','Submit your availability in the Cert Availability tab so your trainer can generate your schedule.')}</p>
+        <div className="card p-12 text-center text-gray-400">
+          <p className="font-medium">{t('timetable.noTimetableYet', 'No timetable published yet')}</p>
+          <p className="text-sm mt-1">{t('timetable.noTimetableYetHint', 'Your timetable will appear here once your HOD generates and publishes it.')}</p>
         </div>
       </div>
     );
   }
 
+  // Get the week label from the first slot for display
+  const weekLabel = slots[0]?.timetable?.academicWeek?.label;
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       <div>
-        <h1 className="page-title">{t('timetable.certTimetableTitle','Certification Timetable')}</h1>
-        <p className="page-subtitle">{t('timetable.certTimetableSubtitle','Your scheduled certification sessions')}</p>
+        <h1 className="page-title">{t('timetable.studentTimetableTitle', 'Academic Timetable')}</h1>
+        <p className="page-subtitle">
+          {weekLabel
+            ? `${t('timetable.activeWeek', 'Active week')}: ${weekLabel}`
+            : t('timetable.studentTimetableSubtitle', 'Your scheduled class sessions')}
+        </p>
       </div>
 
       <TimetableGrid
         sessions={slots.map(s => ({
           ...s,
-          subject:   s.certification?.name,
-          weekLabel: s.academicWeek?.label,
+          subject:      s.course?.name,
+          weekLabel:    s.timetable?.academicWeek?.label,
+          levelName:    s.course?.session?.academicLevel?.name,
+          semesterName: s.course?.session?.semester?.name,
         }))}
         getDay={s => s.dayOfWeek}
-        getType={() => 'certification'}
-        emptyMessage={t('timetable.noTimetableYet','No sessions scheduled yet.')}
+        getType={() => 'academic'}
+        emptyMessage={t('timetable.noTimetableYet', 'No sessions scheduled yet.')}
       />
     </div>
   );
