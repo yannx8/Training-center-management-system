@@ -5,7 +5,7 @@ import { adminApi } from '../../api';
 import Modal from '../../components/ui/Modal';
 import { PageLoader, ErrorAlert, SectionHeader, ConfirmModal, Badge } from '../../components/ui';
 import { useTranslation } from 'react-i18next';
-import { cn } from "@/lib/utils";
+
 
 const ASSIGNABLE_ROLES = ['hod', 'trainer', 'secretary'];
 const EMPTY = { fullName: '', email: '', phone: '', roleName: 'trainer', department: '', status: 'active' };
