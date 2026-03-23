@@ -1,3 +1,4 @@
+// FILE: frontend/src/pages/admin/ProgramCourses.jsx
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, Plus, Pencil, Trash2, UserCheck } from "lucide-react";
@@ -11,7 +12,7 @@ export default function ProgramCourses() {
   const { id }                  = useParams();
   const navigate                = useNavigate();
   const [data, setData]         = useState(null);
-  const [trainers, setTrainers] = useState([]);
+  const [trainers, setTrainers] = useState([]); // trainer profiles {id, user:{fullName}}
   const [loading, setLoading]   = useState(true);
   const [error, setError]       = useState("");
   const [modal, setModal]       = useState(false);
@@ -19,14 +20,14 @@ export default function ProgramCourses() {
   const [form, setForm]         = useState(EMPTY_COURSE);
   const [saving, setSaving]     = useState(false);
   const [deleteId, setDeleteId] = useState(null);
-  const [assignModal, setAssignModal] = useState(null); // { courseId, current }
+  const [assignModal, setAssignModal]   = useState(null);
   const [selectedTrainer, setSelectedTrainer] = useState("");
 
   function load() {
-    Promise.all([adminApi.getProgramCourses(id), adminApi.getUsers()])
-      .then(([pd, ud]) => {
+    Promise.all([adminApi.getProgramCourses(id), adminApi.getAllTrainers()])
+      .then(([pd, tr]) => {
         setData(pd.data);
-        setTrainers(ud.data.filter(u => u.roles?.includes("trainer")));
+        setTrainers(tr.data || []);
         setLoading(false);
       })
       .catch(() => setError("Failed to load program data"));
@@ -49,6 +50,7 @@ export default function ProgramCourses() {
   }
 
   async function handleAssign() {
+    // selectedTrainer is trainers.id (trainer profile id)
     await adminApi.assignTrainer(assignModal.courseId, { trainerId: selectedTrainer || null });
     setAssignModal(null); load();
   }
@@ -60,7 +62,6 @@ export default function ProgramCourses() {
 
   return (
     <div className="space-y-5">
-      {/* Back + Header */}
       <div>
         <button className="btn-ghost btn-sm mb-3" onClick={() => navigate("/admin/programs")}>
           <ArrowLeft size={15} /> Back to Programs
@@ -85,8 +86,10 @@ export default function ProgramCourses() {
               </p>
               <p className="text-xs text-gray-400">{session.academicYear?.name}</p>
             </div>
-            <button className="btn-primary btn-sm"
-              onClick={() => { setForm({...EMPTY_COURSE, sessionId: session.id}); setEditCourse(null); setModal(true); }}>
+            <button
+              className="btn-primary btn-sm"
+              onClick={() => { setForm({...EMPTY_COURSE, sessionId: session.id}); setEditCourse(null); setModal(true); }}
+            >
               <Plus size={14} /> Add Course
             </button>
           </div>
@@ -96,7 +99,7 @@ export default function ProgramCourses() {
           ) : (
             <div className="divide-y divide-gray-50">
               {session.courses.map(course => {
-                const trainer = course.trainerCourses?.[0]?.trainer?.user;
+                const assignedTrainer = course.trainerCourses?.[0]?.trainer;
                 return (
                   <div key={course.id} className="px-6 py-3 flex items-center gap-4">
                     <div className="flex-1 min-w-0">
@@ -104,22 +107,37 @@ export default function ProgramCourses() {
                       <p className="text-xs text-gray-400">{course.code} · {course.credits} cr · {course.hoursPerWeek}h/wk</p>
                     </div>
                     <div className="text-xs text-gray-500">
-                      {trainer ? (
-                        <span className="badge-green">{trainer.fullName}</span>
+                      {assignedTrainer ? (
+                        <span className="badge-green">{assignedTrainer.user?.fullName}</span>
                       ) : (
                         <span className="badge-yellow">No trainer</span>
                       )}
                     </div>
                     <div className="flex gap-1">
-                      <button title="Assign trainer" className="btn-ghost btn-sm btn-icon text-blue-500"
-                        onClick={() => { setAssignModal({ courseId: course.id }); setSelectedTrainer(course.trainerCourses?.[0]?.trainer?.id || ""); }}>
+                      <button
+                        title="Assign trainer"
+                        className="btn-ghost btn-sm btn-icon text-blue-500"
+                        onClick={() => {
+                          setAssignModal({ courseId: course.id });
+                          // Use trainer.id (trainers table id), NOT user.id
+                          setSelectedTrainer(String(course.trainerCourses?.[0]?.trainer?.id || ""));
+                        }}
+                      >
                         <UserCheck size={14} />
                       </button>
-                      <button className="btn-ghost btn-sm btn-icon"
-                        onClick={() => { setForm({name:course.name,code:course.code,credits:course.credits,hoursPerWeek:course.hoursPerWeek,sessionId:session.id}); setEditCourse(course); setModal(true); }}>
+                      <button
+                        className="btn-ghost btn-sm btn-icon"
+                        onClick={() => {
+                          setForm({ name: course.name, code: course.code, credits: course.credits, hoursPerWeek: course.hoursPerWeek, sessionId: session.id });
+                          setEditCourse(course); setModal(true);
+                        }}
+                      >
                         <Pencil size={14} />
                       </button>
-                      <button className="btn-ghost btn-sm btn-icon text-red-500 hover:bg-red-50" onClick={() => setDeleteId(course.id)}>
+                      <button
+                        className="btn-ghost btn-sm btn-icon text-red-500 hover:bg-red-50"
+                        onClick={() => setDeleteId(course.id)}
+                      >
                         <Trash2 size={14} />
                       </button>
                     </div>
@@ -132,32 +150,60 @@ export default function ProgramCourses() {
       ))}
 
       {/* Course Modal */}
-      <Modal open={modal} onClose={() => setModal(false)} title={editCourse ? "Edit Course" : "Add Course"}
-        footer={<><button className="btn-secondary" onClick={() => setModal(false)}>Cancel</button><button className="btn-primary" onClick={handleSaveCourse} disabled={saving}>{saving?"Saving…":"Save"}</button></>}>
+      <Modal
+        open={modal} onClose={() => setModal(false)}
+        title={editCourse ? "Edit Course" : "Add Course"}
+        footer={
+          <>
+            <button className="btn-secondary" onClick={() => setModal(false)}>Cancel</button>
+            <button className="btn-primary" onClick={handleSaveCourse} disabled={saving}>{saving ? "Saving…" : "Save"}</button>
+          </>
+        }
+      >
         <div className="space-y-4">
-          <div><label className="label">Course Name</label><input className="input" value={form.name} onChange={e=>setForm(p=>({...p,name:e.target.value}))} /></div>
-          <div><label className="label">Code</label><input className="input" value={form.code} onChange={e=>setForm(p=>({...p,code:e.target.value}))} /></div>
+          <div><label className="label">Course Name</label>
+            <input className="input" value={form.name} onChange={e => setForm(p => ({...p, name: e.target.value}))}/>
+          </div>
+          <div><label className="label">Code</label>
+            <input className="input" value={form.code} onChange={e => setForm(p => ({...p, code: e.target.value}))}/>
+          </div>
           <div className="grid grid-cols-2 gap-3">
-            <div><label className="label">Credits</label><input type="number" min={1} className="input" value={form.credits} onChange={e=>setForm(p=>({...p,credits:+e.target.value}))} /></div>
-            <div><label className="label">Hours/Week</label><input type="number" min={1} className="input" value={form.hoursPerWeek} onChange={e=>setForm(p=>({...p,hoursPerWeek:+e.target.value}))} /></div>
+            <div><label className="label">Credits</label>
+              <input type="number" min={1} className="input" value={form.credits} onChange={e => setForm(p => ({...p, credits: +e.target.value}))}/>
+            </div>
+            <div><label className="label">Hours/Week</label>
+              <input type="number" min={1} className="input" value={form.hoursPerWeek} onChange={e => setForm(p => ({...p, hoursPerWeek: +e.target.value}))}/>
+            </div>
           </div>
         </div>
       </Modal>
 
       {/* Assign Trainer Modal */}
-      <Modal open={!!assignModal} onClose={() => setAssignModal(null)} title="Assign Trainer to Course"
-        footer={<><button className="btn-secondary" onClick={() => setAssignModal(null)}>Cancel</button><button className="btn-primary" onClick={handleAssign}>Assign</button></>}>
+      <Modal
+        open={!!assignModal} onClose={() => setAssignModal(null)}
+        title="Assign Trainer to Course"
+        footer={
+          <>
+            <button className="btn-secondary" onClick={() => setAssignModal(null)}>Cancel</button>
+            <button className="btn-primary" onClick={handleAssign}>Assign</button>
+          </>
+        }
+      >
         <div>
           <label className="label">Select Trainer</label>
           <select className="select" value={selectedTrainer} onChange={e => setSelectedTrainer(e.target.value)}>
             <option value="">— Remove trainer —</option>
-            {trainers.map(t => <option key={t.id} value={t.id}>{t.fullName}</option>)}
+            {trainers.map(tr => (
+              <option key={tr.id} value={tr.id}>{tr.user?.fullName}</option>
+            ))}
           </select>
         </div>
       </Modal>
 
-      <ConfirmModal open={!!deleteId} onClose={() => setDeleteId(null)} onConfirm={handleDelete}
-        title="Delete Course" message="This will permanently remove the course and all related grades." />
+      <ConfirmModal
+        open={!!deleteId} onClose={() => setDeleteId(null)} onConfirm={handleDelete}
+        title="Delete Course" message="This will permanently remove the course and all related grades."
+      />
     </div>
   );
 }

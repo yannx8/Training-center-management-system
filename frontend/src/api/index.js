@@ -1,3 +1,4 @@
+// FILE: frontend/src/api/index.js
 import api from './axiosInstance';
 
 export const authApi = {
@@ -80,6 +81,13 @@ export const trainerApi = {
     getDashboard: () => api.get('/trainer/dashboard').then(r => r.data),
     getCourses: () => api.get('/trainer/courses').then(r => r.data),
     getCertifications: () => api.get('/trainer/certifications').then(r => r.data),
+    // Cert-specific weeks
+    getCertWeeks: p => api.get('/trainer/cert-weeks', { params: p }).then(r => r.data),
+    createCertWeek: b => api.post('/trainer/cert-weeks', b).then(r => r.data),
+    publishCertWeek: id => api.put(`/trainer/cert-weeks/${id}/publish`).then(r => r.data),
+    unpublishCertWeek: id => api.put(`/trainer/cert-weeks/${id}/unpublish`).then(r => r.data),
+    deleteCertWeek: id => api.delete(`/trainer/cert-weeks/${id}`).then(r => r.data),
+    // HOD academic weeks (for trainer availability)
     getPublishedWeeks: () => api.get('/trainer/weeks/published').then(r => r.data),
     getAvailability: p => api.get('/trainer/availability', { params: p }).then(r => r.data),
     submitAvailability: b => api.post('/trainer/availability', b).then(r => r.data),
@@ -100,7 +108,7 @@ export const studentApi = {
     getTimetable: p => api.get('/student/timetable', { params: p }).then(r => r.data),
     getCertTimetable: p => api.get('/student/cert-timetable', { params: p }).then(r => r.data),
     getCertEnrollments: () => api.get('/student/cert-enrollments').then(r => r.data),
-    getPublishedWeeks: () => api.get('/student/weeks/published').then(r => r.data),
+    getPublishedWeeks: p => api.get('/student/weeks/published', { params: p }).then(r => r.data),
     getCertAvailability: p => api.get('/student/cert-availability', { params: p }).then(r => r.data),
     submitCertAvailability: b => api.post('/student/cert-availability', b).then(r => r.data),
     getGrades: () => api.get('/student/grades').then(r => r.data),
