@@ -139,13 +139,19 @@ const getPublishedWeeksHandler = asyncHandler(async(req, res) => {
 
     const trainerUser = await prisma.user.findUnique({ where: { id: req.user.userId } });
     const deptNames = new Set();
-    if (trainerUser ? .department) deptNames.add(trainerUser.department);
+    // Fixed: Replaced optional chaining
+    if (trainerUser && trainerUser.department) deptNames.add(trainerUser.department);
 
     const tcs = await prisma.trainerCourse.findMany({
         where: { trainerId: trainer.id, courseId: { not: null } },
         include: { course: { include: { session: { include: { program: { include: { department: true } } } } } } },
     });
-    tcs.forEach(tc => { const d = tc.course ? .session ? .program ? .department ? .name; if (d) deptNames.add(d); });
+    
+    // Fixed: Replaced optional chaining
+    tcs.forEach(tc => {
+        const d = tc.course && tc.course.session && tc.course.session.program && tc.course.session.program.department ? tc.course.session.program.department.name : null;
+        if (d) deptNames.add(d);
+    });
 
     if (!deptNames.size) return res.json({ success: true, data: [] });
 
@@ -201,7 +207,8 @@ const clearAvailabilityHandler = asyncHandler(async(req, res) => {
     const trainer = await getTrainer(req.user.userId);
     if (!trainer) return res.status(404).json({ success: false, message: 'Trainer not found' });
     const week = await prisma.academicWeek.findUnique({ where: { id: Number(req.params.weekId) } });
-    if (!week ? .certificationId) {
+    // Fixed: Replaced optional chaining
+    if (!week || !week.certificationId) {
         const lock = await prisma.availabilityLock.findFirst({ where: { academicWeekId: Number(req.params.weekId), isLocked: true } });
         if (lock) return res.status(403).json({ success: false, message: 'Availability locked' });
     }
@@ -226,7 +233,8 @@ const getStudentsForGradingHandler = asyncHandler(async(req, res) => {
     const result = [];
     for (const tc of trainerCourses) {
         const course = tc.course;
-        if (!course ? .session ? .programId) continue;
+        // Fixed: Replaced optional chaining
+        if (!course || !course.session || !course.session.programId) continue;
         const enrollments = await prisma.enrollment.findMany({
             where: { programId: course.session.programId, status: 'active' },
             include: { student: { include: { user: { select: { fullName: true } } } } },
@@ -238,16 +246,19 @@ const getStudentsForGradingHandler = asyncHandler(async(req, res) => {
             subjectId: course.id,
             subjectName: course.name,
             subjectCode: course.code,
-            programName: course.session ? .program ? .name,
-            levelName: course.session ? .academicLevel ? .name,
-            semesterName: course.session ? .semester ? .name,
+            // Fixed: Replaced optional chaining
+            programName: course.session && course.session.program ? course.session.program.name : null,
+            levelName: course.session && course.session.academicLevel ? course.session.academicLevel.name : null,
+            semesterName: course.session && course.session.semester ? course.session.semester.name : null,
             students: enrollments.map(e => ({
                 studentId: e.studentId,
-                fullName: e.student ? .user ? .fullName || 'Unknown',
-                matricule: e.student ? .matricule || '',
-                existingGrade: gradeMap[e.studentId] ? .grade ? ? null,
-                existingLetter: gradeMap[e.studentId] ? .gradeLetter ? ? null,
-                gradeId: gradeMap[e.studentId] ? .id ? ? null,
+                // Fixed: Replaced optional chaining
+                fullName: (e.student && e.student.user && e.student.user.fullName) || 'Unknown',
+                matricule: (e.student && e.student.matricule) || '',
+                // Fixed: Replaced optional chaining and nullish coalescing
+                existingGrade: gradeMap[e.studentId] ? gradeMap[e.studentId].grade : null,
+                existingLetter: gradeMap[e.studentId] ? gradeMap[e.studentId].gradeLetter : null,
+                gradeId: gradeMap[e.studentId] ? gradeMap[e.studentId].id : null,
             })),
         });
     }
@@ -269,11 +280,13 @@ const getStudentsForGradingHandler = asyncHandler(async(req, res) => {
             semesterName: null,
             students: enrollments.map(e => ({
                 studentId: e.studentId,
-                fullName: e.student ? .user ? .fullName || 'Unknown',
-                matricule: e.student ? .matricule || '',
-                existingGrade: gradeMap[e.studentId] ? .grade ? ? null,
-                existingLetter: gradeMap[e.studentId] ? .gradeLetter ? ? null,
-                gradeId: gradeMap[e.studentId] ? .id ? ? null,
+                // Fixed: Replaced optional chaining
+                fullName: (e.student && e.student.user && e.student.user.fullName) || 'Unknown',
+                matricule: (e.student && e.student.matricule) || '',
+                // Fixed: Replaced optional chaining and nullish coalescing
+                existingGrade: gradeMap[e.studentId] ? gradeMap[e.studentId].grade : null,
+                existingLetter: gradeMap[e.studentId] ? gradeMap[e.studentId].gradeLetter : null,
+                gradeId: gradeMap[e.studentId] ? gradeMap[e.studentId].id : null,
             })),
         });
     }
@@ -330,7 +343,8 @@ const generateCertTimetableHandler = asyncHandler(async(req, res) => {
             if (!ra && !rc) { room = r; break; }
         }
         await prisma.certTimetableSlot.create({
-            data: { certificationId: Number(certificationId), trainerId: trainer.id, academicWeekId: Number(weekId), dayOfWeek: slot.dayOfWeek, timeStart: slot.timeStart, timeEnd: slot.timeEnd, roomId: room ? .id ? ? null, status: 'scheduled' },
+            // Fixed: Replaced optional chaining and nullish coalescing
+            data: { certificationId: Number(certificationId), trainerId: trainer.id, academicWeekId: Number(weekId), dayOfWeek: slot.dayOfWeek, timeStart: slot.timeStart, timeEnd: slot.timeEnd, roomId: room ? room.id : null, status: 'scheduled' },
         });
         scheduled++;
     }
@@ -348,7 +362,14 @@ const getCertStudentAvailabilityStatusHandler = asyncHandler(async(req, res) => 
     });
     const result = await Promise.all(enrollments.map(async e => {
         const count = await prisma.studentAvailability.count({ where: { studentId: e.studentId, certificationId: Number(certificationId), academicWeekId: Number(weekId) } });
-        return { studentId: e.studentId, studentName: e.student ? .user ? .fullName || 'Unknown', matricule: e.student ? .matricule, hasSubmitted: count > 0, slotCount: count };
+        return {
+            studentId: e.studentId,
+            // Fixed: Replaced optional chaining
+            studentName: (e.student && e.student.user && e.student.user.fullName) || 'Unknown',
+            matricule: e.student ? e.student.matricule : null,
+            hasSubmitted: count > 0,
+            slotCount: count
+        };
     }));
     return res.json({ success: true, data: result });
 });
@@ -398,13 +419,13 @@ const upsertGradeHandler = asyncHandler(async(req, res) => {
     else if (num >= 70) letter = 'B';
     else if (num >= 60) letter = 'C';
     else if (num >= 50) letter = 'D';
+    // Fixed: Replaced nullish coalescing
     const data = { grade: num, gradeLetter: letter, trainerId: trainer.id, academicYearId: academicYearId ? Number(academicYearId) : null };
-    const where = courseId ?
-        { studentId_courseId: { studentId: Number(studentId), courseId: Number(courseId) } } :
-        { studentId_certificationId: { studentId: Number(studentId), certificationId: Number(certificationId) } };
+    const where = courseId ? { studentId_courseId: { studentId: Number(studentId), courseId: Number(courseId) } } : { studentId_certificationId: { studentId: Number(studentId), certificationId: Number(certificationId) } };
     const result = await prisma.grade.upsert({
         where,
         update: data,
+        // Fixed: Replaced nullish coalescing
         create: {...data, studentId: Number(studentId), courseId: courseId ? Number(courseId) : null, certificationId: certificationId ? Number(certificationId) : null },
     });
     return res.json({ success: true, data: result });
@@ -436,20 +457,23 @@ const getAnnouncementsHandler = asyncHandler(async(req, res) => {
     const trainer = await getTrainer(req.user.userId);
     const trainerUser = await prisma.user.findUnique({ where: { id: req.user.userId } });
     const names = new Set();
-    if (trainerUser ? .department) names.add(trainerUser.department);
+    // Fixed: Replaced optional chaining
+    if (trainerUser && trainerUser.department) names.add(trainerUser.department);
     if (trainer) {
         const tcs = await prisma.trainerCourse.findMany({
             where: { trainerId: trainer.id, courseId: { not: null } },
             include: { course: { include: { session: { include: { program: { include: { department: true } } } } } } },
         });
-        tcs.forEach(tc => { const d = tc.course ? .session ? .program ? .department ? .name; if (d) names.add(d); });
+        // Fixed: Replaced optional chaining
+        tcs.forEach(tc => {
+            const d = tc.course && tc.course.session && tc.course.session.program && tc.course.session.program.department ? tc.course.session.program.department.name : null;
+            if (d) names.add(d);
+        });
     }
     const depts = names.size > 0 ? await prisma.department.findMany({ where: { name: { in: [...names] } } }) : [];
     const deptIds = depts.map(d => d.id);
     const announcements = await prisma.announcement.findMany({
-        where: deptIds.length > 0 ?
-            { departmentId: { in: deptIds }, targetRole: { in: ['trainer', 'all'] } } :
-            { targetRole: { in: ['trainer', 'all'] } },
+        where: deptIds.length > 0 ? { departmentId: { in: deptIds }, targetRole: { in: ['trainer', 'all'] } } : { targetRole: { in: ['trainer', 'all'] } },
         include: { creator: { select: { fullName: true } }, department: { select: { name: true } } },
         orderBy: { createdAt: 'desc' },
     });

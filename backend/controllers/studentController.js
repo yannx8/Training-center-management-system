@@ -19,9 +19,12 @@ const getDashboard = asyncHandler(async(req, res) => {
     });
 
     // Latest announcements for this dept
+    // Fixed: Replaced optional chaining and nullish coalescing
+    const deptId = (student.program && student.program.departmentId) ? student.program.departmentId : undefined;
+    
     const announcements = await prisma.announcement.findMany({
         where: {
-            departmentId: student.program ? .departmentId ? ? undefined,
+            departmentId: deptId,
             targetRole: { in: ['student', 'all'] },
         },
         include: { creator: { select: { fullName: true } } },
@@ -30,9 +33,12 @@ const getDashboard = asyncHandler(async(req, res) => {
     });
 
     // Academic timetable (published)
+    // Fixed: Replaced nullish coalescing
+    const progId = student.programId ? student.programId : undefined;
+
     const timetableSlots = await prisma.timetableSlot.findMany({
         where: {
-            course: { session: { programId: student.programId ? ? undefined } },
+            course: { session: { programId: progId } },
             timetable: { status: 'published' },
         },
         include: { room: true, trainer: { include: { user: true } }, course: true },
@@ -52,10 +58,13 @@ const getTimetableHandler = asyncHandler(async(req, res) => {
     if (!student) return res.status(404).json({ success: false, message: 'Student not found', code: 'NOT_FOUND' });
 
     const { weekId } = req.query;
+    
+    // Fixed: Replaced nullish coalescing
+    const progId = student.programId ? student.programId : undefined;
 
     const slots = await prisma.timetableSlot.findMany({
         where: {
-            course: { session: { programId: student.programId ? ? undefined } },
+            course: { session: { programId: progId } },
             timetable: { status: 'published' },
             ...(weekId ? { academicWeekId: Number(weekId) } : {}),
         },
@@ -254,9 +263,12 @@ const getAnnouncementsHandler = asyncHandler(async(req, res) => {
     const student = await getStudent(req.user.userId);
     if (!student) return res.status(404).json({ success: false, message: 'Student not found', code: 'NOT_FOUND' });
 
+    // Fixed: Replaced optional chaining and nullish coalescing
+    const deptId = (student.program && student.program.departmentId) ? student.program.departmentId : undefined;
+
     const announcements = await prisma.announcement.findMany({
         where: {
-            departmentId: student.program ? .departmentId ? ? undefined,
+            departmentId: deptId,
             targetRole: { in: ['student', 'all'] },
         },
         include: {

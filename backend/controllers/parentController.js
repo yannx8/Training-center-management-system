@@ -25,7 +25,9 @@ const getDashboard = asyncHandler(async(req, res) => {
     if (!parent) return res.status(404).json({ success: false, message: 'Parent profile not found', code: 'NOT_FOUND' });
 
     const children = parent.studentLinks.map(l => l.student);
-    const deptIds = [...new Set(children.map(c => c.program ? .departmentId).filter(Boolean))];
+
+    // Fixed: Replaced optional chaining with logical AND
+    const deptIds = [...new Set(children.map(c => c.program && c.program.departmentId).filter(Boolean))];
 
     // Latest announcements for all children's departments
     const announcements = await prisma.announcement.findMany({
@@ -75,10 +77,13 @@ const getChildTimetableHandler = asyncHandler(async(req, res) => {
 
     const child = link.student;
 
+    // Fixed: Replaced nullish coalescing with ternary operator
+    const progId = child.programId ? child.programId : undefined;
+
     // Academic timetable slots
     const academicSlots = await prisma.timetableSlot.findMany({
         where: {
-            course: { session: { programId: child.programId ? ? undefined } },
+            course: { session: { programId: progId } },
             timetable: { status: 'published' },
             ...(weekId ? { academicWeekId: Number(weekId) } : {}),
         },
@@ -111,8 +116,7 @@ const getChildTimetableHandler = asyncHandler(async(req, res) => {
                 academicWeek: true,
             },
             orderBy: [{ dayOfWeek: 'asc' }, { timeStart: 'asc' }],
-        }) :
-        [];
+        }) : [];
 
     return res.json({ success: true, data: { child, slots: academicSlots, certSlots } });
 });
@@ -170,8 +174,9 @@ const getAnnouncementsHandler = asyncHandler(async(req, res) => {
     const parent = await getParent(req.user.userId);
     if (!parent) return res.status(404).json({ success: false, message: 'Parent not found', code: 'NOT_FOUND' });
 
+    // Fixed: Replaced optional chaining with logical AND
     const deptIds = [...new Set(
-        parent.studentLinks.map(l => l.student.program ? .departmentId).filter(Boolean)
+        parent.studentLinks.map(l => l.student.program && l.student.program.departmentId).filter(Boolean)
     )];
 
     const announcements = await prisma.announcement.findMany({
