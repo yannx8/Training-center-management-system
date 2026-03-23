@@ -2,10 +2,13 @@ const prisma = require('../lib/prisma');
 const { asyncHandler } = require('../middleware/errorHandler');
 
 async function getStudent(userId) {
-    return prisma.student.findUnique({ where: { userId }, include: { program: { include: { department: true } } } });
+    return prisma.student.findUnique({
+        where: { userId },
+        include: { program: { include: { department: true } } }
+    });
 }
 
-//DASHBOARD 
+// DASHBOARD 
 const getDashboard = asyncHandler(async(req, res) => {
     const student = await getStudent(req.user.userId);
     if (!student) return res.status(404).json({ success: false, message: 'Student profile not found', code: 'NOT_FOUND' });
@@ -19,7 +22,7 @@ const getDashboard = asyncHandler(async(req, res) => {
     });
 
     // Latest announcements for this dept
-    // Fixed: Replaced optional chaining and nullish coalescing
+    // Fixed: Safe check for departmentId
     const deptId = (student.program && student.program.departmentId) ? student.program.departmentId : undefined;
 
     const announcements = await prisma.announcement.findMany({
@@ -33,7 +36,6 @@ const getDashboard = asyncHandler(async(req, res) => {
     });
 
     // Academic timetable (published)
-    // Fixed: Replaced nullish coalescing
     const progId = student.programId ? student.programId : undefined;
 
     const timetableSlots = await prisma.timetableSlot.findMany({
@@ -58,8 +60,6 @@ const getTimetableHandler = asyncHandler(async(req, res) => {
     if (!student) return res.status(404).json({ success: false, message: 'Student not found', code: 'NOT_FOUND' });
 
     const { weekId } = req.query;
-
-    // Fixed: Replaced nullish coalescing
     const progId = student.programId ? student.programId : undefined;
 
     const slots = await prisma.timetableSlot.findMany({
@@ -80,7 +80,7 @@ const getTimetableHandler = asyncHandler(async(req, res) => {
     return res.json({ success: true, data: slots });
 });
 
-//CERTIFICATION TIMETABLE 
+// CERTIFICATION TIMETABLE 
 const getCertTimetableHandler = asyncHandler(async(req, res) => {
     const student = await getStudent(req.user.userId);
     if (!student) return res.status(404).json({ success: false, message: 'Student not found', code: 'NOT_FOUND' });
@@ -112,7 +112,6 @@ const getCertTimetableHandler = asyncHandler(async(req, res) => {
 });
 
 //  CERT AVAILABILITY SUBMISSION 
-// Students enrolled in certifications can submit availability for cert scheduling
 const getCertEnrollmentsHandler = asyncHandler(async(req, res) => {
     const student = await getStudent(req.user.userId);
     if (!student) return res.status(404).json({ success: false, message: 'Student not found', code: 'NOT_FOUND' });
@@ -124,32 +123,27 @@ const getCertEnrollmentsHandler = asyncHandler(async(req, res) => {
     return res.json({ success: true, data: enrollments });
 });
 
-// FILE: backend/controllers/studentController.js — only the changed function shown
-// Replace getPublishedWeeksForCertHandler in studentController.js with this:
-
-// PATCH: backend/controllers/studentController.js
-// Replace getPublishedWeeksForCertHandler with this version:
-
 const getPublishedWeeksForCertHandler = asyncHandler(async(req, res) => {
     const student = await getStudent(req.user.userId);
     if (!student) return res.status(404).json({ success: false, message: 'Student not found', code: 'NOT_FOUND' });
 
     const { certificationId, type } = req.query;
 
-    // type=academic → return HOD-published academic weeks for student's department
+    // type=academic -> return HOD-published academic weeks for student's department
     if (type === 'academic') {
+        const deptId = (student.program && student.program.departmentId) ? student.program.departmentId : undefined;
         const weeks = await prisma.academicWeek.findMany({
             where: {
-                departmentId: student.program ? .departmentId ? ? undefined,
+                departmentId: deptId,
                 status: 'published',
-                certificationId: null, // academic weeks only
+                certificationId: null,
             },
             orderBy: { weekNumber: 'desc' },
         });
         return res.json({ success: true, data: weeks });
     }
 
-    // certificationId provided → return cert-specific published weeks for that cert
+    // certificationId provided -> return cert-specific published weeks for that cert
     if (certificationId) {
         const weeks = await prisma.academicWeek.findMany({
             where: { certificationId: Number(certificationId), status: 'published' },
@@ -158,7 +152,7 @@ const getPublishedWeeksForCertHandler = asyncHandler(async(req, res) => {
         return res.json({ success: true, data: weeks });
     }
 
-    // No params → return all cert weeks for all certs this student is enrolled in
+    // No params -> return all cert weeks for all certs this student is enrolled in
     const certEnrollments = await prisma.enrollment.findMany({
         where: { studentId: student.id, certificationId: { not: null }, status: 'active' },
         select: { certificationId: true },
@@ -174,6 +168,7 @@ const getPublishedWeeksForCertHandler = asyncHandler(async(req, res) => {
     });
     return res.json({ success: true, data: weeks });
 });
+
 const submitCertAvailabilityHandler = asyncHandler(async(req, res) => {
     const student = await getStudent(req.user.userId);
     if (!student) return res.status(404).json({ success: false, message: 'Student not found', code: 'NOT_FOUND' });
@@ -278,7 +273,6 @@ const getAnnouncementsHandler = asyncHandler(async(req, res) => {
     const student = await getStudent(req.user.userId);
     if (!student) return res.status(404).json({ success: false, message: 'Student not found', code: 'NOT_FOUND' });
 
-    // Fixed: Replaced optional chaining and nullish coalescing
     const deptId = (student.program && student.program.departmentId) ? student.program.departmentId : undefined;
 
     const announcements = await prisma.announcement.findMany({
