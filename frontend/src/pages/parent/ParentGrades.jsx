@@ -1,4 +1,3 @@
-// FILE: frontend/src/pages/parent/ParentGrades.jsx
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { BarChart2 } from 'lucide-react';
@@ -20,11 +19,11 @@ export default function ParentGrades() {
   const { t } = useTranslation();
   const [searchParams] = useSearchParams();
   const [children, setChildren] = useState([]);
-  const [childId, setChildId]   = useState(searchParams.get('childId') || '');
-  const [grades, setGrades]     = useState([]);
-  const [loading, setLoading]   = useState(true);
+  const [childId, setChildId] = useState(searchParams.get('childId') || '');
+  const [grades, setGrades] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [gradesLoading, setGradesLoading] = useState(false);
-  const [error, setError]       = useState('');
+  const [error, setError] = useState('');
 
   useEffect(() => {
     parentApi.getChildren().then(r => {
@@ -40,7 +39,7 @@ export default function ParentGrades() {
     setGradesLoading(true);
     parentApi.getChildGrades(childId)
       .then(r => {
-        // Backend returns { child, grades } — extract grades array
+
         const data = r.data;
         setGrades(Array.isArray(data) ? data : (data?.grades || []));
         setGradesLoading(false);
@@ -48,17 +47,17 @@ export default function ParentGrades() {
       .catch(() => { setGrades([]); setGradesLoading(false); });
   }, [childId]);
 
-  const child     = children.find(c => String(c.id) === String(childId));
-  const academic  = grades.filter(g => g.courseId);
+  const child = children.find(c => String(c.id) === String(childId));
+  const academic = grades.filter(g => g.courseId);
   const certGrades = grades.filter(g => g.certificationId);
 
   const numericGrades = grades.filter(g => g.grade !== null).map(g => parseFloat(g.grade));
-  const avg    = numericGrades.length ? (numericGrades.reduce((a,b) => a+b, 0) / numericGrades.length).toFixed(1) : null;
+  const avg = numericGrades.length ? (numericGrades.reduce((a, b) => a + b, 0) / numericGrades.length).toFixed(1) : null;
   const passed = numericGrades.filter(n => n >= 50).length;
-  const failed  = numericGrades.filter(n => n < 50).length;
+  const failed = numericGrades.filter(n => n < 50).length;
 
-  if (loading) return <PageLoader/>;
-  if (error)   return <ErrorAlert message={error}/>;
+  if (loading) return <PageLoader />;
+  if (error) return <ErrorAlert message={error} />;
 
   return (
     <div className="space-y-4">
@@ -78,11 +77,11 @@ export default function ParentGrades() {
         </div>
       )}
 
-      {gradesLoading && <PageLoader/>}
+      {gradesLoading && <PageLoader />}
 
       {!gradesLoading && childId && grades.length === 0 && (
         <div className="card p-10 text-center">
-          <BarChart2 size={36} className="mx-auto text-gray-300 mb-3"/>
+          <BarChart2 size={36} className="mx-auto text-gray-300 mb-3" />
           <p className="text-gray-500">{t('grades.noGradesYet', 'No grades recorded yet.')}</p>
         </div>
       )}
@@ -114,7 +113,7 @@ export default function ParentGrades() {
               <div className="divide-y divide-gray-50">
                 {academic.map(g => (
                   <div key={g.id} className="px-4 py-3 flex items-center gap-3">
-                    <GradePill letter={g.gradeLetter} value={g.grade}/>
+                    <GradePill letter={g.gradeLetter} value={g.grade} />
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-gray-900 truncate">{g.course?.name}</p>
                       <p className="text-xs text-gray-400">
@@ -139,7 +138,7 @@ export default function ParentGrades() {
               <div className="divide-y divide-gray-50">
                 {certGrades.map(g => (
                   <div key={g.id} className="px-4 py-3 flex items-center gap-3">
-                    <GradePill letter={g.gradeLetter} value={g.grade}/>
+                    <GradePill letter={g.gradeLetter} value={g.grade} />
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-gray-900 truncate">{g.certification?.name}</p>
                     </div>

@@ -1,6 +1,7 @@
-// FILE: frontend/src/api/index.js
 import api from './axiosInstance';
 
+// Authentication-related API calls.
+// This handles everything from signing in to updating your own profile info.
 export const authApi = {
     login: b => api.post('/auth/login', b).then(r => r.data),
     selectRole: b => api.post('/auth/select-role', b).then(r => r.data),
@@ -9,6 +10,8 @@ export const authApi = {
     updateProfile: b => api.put('/auth/profile', b).then(r => r.data),
 };
 
+// Admin-only API calls.
+// Used for high-level management of users, departments, programs, and system settings.
 export const adminApi = {
     getDashboard: () => api.get('/admin/dashboard').then(r => r.data),
     createSemester: b => api.post('/admin/semesters', b).then(r => r.data),
@@ -63,6 +66,7 @@ export const hodApi = {
     getPublishedWeeks: () => api.get('/hod/weeks/published').then(r => r.data),
     publishWeek: id => api.put(`/hod/weeks/${id}/publish`).then(r => r.data),
     unpublishWeek: id => api.put(`/hod/weeks/${id}/unpublish`).then(r => r.data),
+    closeWeek: id => api.put(`/hod/weeks/${id}/close`).then(r => r.data),
     deleteWeek: id => api.delete(`/hod/weeks/${id}`).then(r => r.data),
     getAvailability: p => api.get('/hod/availability', { params: p }).then(r => r.data),
     getTrainerAvailabilityStatus: wid => api.get('/hod/availability/status', { params: { weekId: wid } }).then(r => r.data),
@@ -86,9 +90,11 @@ export const trainerApi = {
     createCertWeek: b => api.post('/trainer/cert-weeks', b).then(r => r.data),
     publishCertWeek: id => api.put(`/trainer/cert-weeks/${id}/publish`).then(r => r.data),
     unpublishCertWeek: id => api.put(`/trainer/cert-weeks/${id}/unpublish`).then(r => r.data),
+    closeCertWeek: id => api.put(`/trainer/cert-weeks/${id}/close`).then(r => r.data),
     deleteCertWeek: id => api.delete(`/trainer/cert-weeks/${id}`).then(r => r.data),
     // HOD academic weeks (for trainer availability)
     getPublishedWeeks: () => api.get('/trainer/weeks/published').then(r => r.data),
+    getLockStatus: wid => api.get('/hod/availability/lock', { params: { weekId: wid } }).then(r => r.data),
     getAvailability: p => api.get('/trainer/availability', { params: p }).then(r => r.data),
     submitAvailability: b => api.post('/trainer/availability', b).then(r => r.data),
     clearAvailability: wid => api.delete(`/trainer/availability/${wid}`).then(r => r.data),

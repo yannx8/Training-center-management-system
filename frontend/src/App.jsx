@@ -62,25 +62,39 @@ import SecretaryDashboard from './pages/secretary/SecretaryDashboard';
 import AllStudents        from './pages/secretary/AllStudents';
 import RegisterStudent    from './pages/secretary/RegisterStudent';
 
-//  Auth guard 
+// A specialized wrapper to guard our routes. 
+// It checks if the user is logged in and if they have the correct role permission 
+// before letting them see the page. If not, it redirects them to the right spot.
 function Protected({ role, children }) {
   const { isAuthenticated, role: userRole, loading } = useAuth();
+  
+  // Show nothing while we're still checking their session.
   if (loading) return null;
+  
   if (!isAuthenticated) return <Navigate to="/login" replace/>;
+  
+  // If they are logged in but trying to access a role-specific page they don't own, 
+  // send them back to their own dashboard.
   if (role && userRole !== role) return <Navigate to={'/' + userRole} replace/>;
+  
   return children;
 }
 
+// The root component of our frontend application.
+// We set up the global authentication context and all the possible page routes here.
 export default function App() {
   return (
     <AuthProvider>
       <BrowserRouter>
         <Routes>
+          {/* Public access routes */}
           <Route path="/login"       element={<Login/>}/>
           <Route path="/select-role" element={<SelectRole/>}/>
           <Route path="/"            element={<Navigate to="/login" replace/>}/>
 
-          {/* Admin */}
+          {/* Role-specific dashboards and features, each grouped under its own layout */}
+          
+          {/* Admin Section: High-level system management */}
           <Route path="/admin" element={<Protected role="admin"><AdminLayout/></Protected>}>
             <Route index                        element={<AdminDashboard/>}/>
             <Route path="users"                 element={<UserManagement/>}/>
@@ -94,7 +108,7 @@ export default function App() {
             <Route path="profile"               element={<Profile/>}/>
           </Route>
 
-          {/* HOD */}
+          {/* HOD Section: Departmental scheduling and trainer oversight */}
           <Route path="/hod" element={<Protected role="hod"><HodLayout/></Protected>}>
             <Route index                element={<HodDashboard/>}/>
             <Route path="weeks"         element={<HodWeeks/>}/>
@@ -104,7 +118,7 @@ export default function App() {
             <Route path="profile"       element={<Profile/>}/>
           </Route>
 
-          {/* Trainer*/}
+          {/* Trainer Section: Grading, scheduling, and course materials */}
           <Route path="/trainer" element={<Protected role="trainer"><TrainerLayout/></Protected>}>
             <Route index                 element={<TrainerDashboard/>}/>
             <Route path="courses"        element={<TrainerCourses/>}/>
@@ -117,7 +131,7 @@ export default function App() {
             <Route path="profile"        element={<Profile/>}/>
           </Route>
 
-          {/* Student */}
+          {/* Student Section: Timetables, grades, and announcements */}
           <Route path="/student" element={<Protected role="student"><StudentLayout/></Protected>}>
             <Route index                     element={<StudentDashboard/>}/>
             <Route path="timetable"          element={<StudentTimetable/>}/>
@@ -129,7 +143,7 @@ export default function App() {
             <Route path="profile"            element={<Profile/>}/>
           </Route>
 
-          {/* Parent */}
+          {/* Parent Section: Monitoring children's progress and schedules */}
           <Route path="/parent" element={<Protected role="parent"><ParentLayout/></Protected>}>
             <Route index                element={<ParentDashboard/>}/>
             <Route path="children"      element={<ParentChildren/>}/>
@@ -140,7 +154,7 @@ export default function App() {
             <Route path="profile"       element={<Profile/>}/>
           </Route>
 
-          {/* Secretary */}
+          {/* Secretary Section: Student registration and records */}
           <Route path="/secretary" element={<Protected role="secretary"><SecretaryLayout/></Protected>}>
             <Route index           element={<SecretaryDashboard/>}/>
             <Route path="students" element={<AllStudents/>}/>

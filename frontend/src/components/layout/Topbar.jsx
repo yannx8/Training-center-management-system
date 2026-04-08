@@ -12,10 +12,9 @@ export default function TopBar({ roleLabel = '', roleColor = 'bg-primary-600' })
   const ref = useRef(null);
 
   const currentLang = i18n.language?.startsWith('fr') ? 'fr' : 'en';
-  const initials    = user?.fullName?.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() || '?';
+  const initials = user?.fullName?.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() || '?';
   const profilePath = `/${role}/profile`;
 
-  // Close dropdown on outside click
   useEffect(() => {
     if (!open) return;
     function handle(e) { if (!ref.current?.contains(e.target)) setOpen(false); }
@@ -25,23 +24,17 @@ export default function TopBar({ roleLabel = '', roleColor = 'bg-primary-600' })
 
   function handleLogout() { setOpen(false); logout(); navigate('/login'); }
 
-  const roleBadgeClass = roleColor.replace('bg-', 'text-').replace('-600', '-700');
-  const roleBadgeBg    = roleColor.replace('-600', '-50');
-
   return (
-    <header className="h-14 flex-shrink-0 bg-white border-b border-gray-100 flex items-center justify-end px-4 gap-2 z-30 lg:px-6">
+    <header className="h-14 flex-shrink-0 glass-panel flex items-center justify-end px-4 gap-2 z-30 lg:px-6">
 
-      {/* ── Language toggle ──────────────────────────────── */}
+      {/* Language toggle */}
       <div className="flex items-center bg-gray-100 rounded-full p-0.5 gap-0.5">
         {['en', 'fr'].map(lang => (
           <button
             key={lang}
             onClick={() => i18n.changeLanguage(lang)}
-            className={`px-2.5 py-1 rounded-full text-xs font-semibold transition-all duration-150 ${
-              currentLang === lang
-                ? 'bg-white shadow-sm text-gray-900'
-                : 'text-gray-400 hover:text-gray-600'
-            }`}
+            className={`px-2.5 py-1 rounded-full text-xs font-semibold transition-all duration-150 ${currentLang === lang ? 'bg-white shadow-sm text-gray-900' : 'text-gray-400 hover:text-gray-600'
+              }`}
           >
             {lang.toUpperCase()}
           </button>
@@ -50,13 +43,17 @@ export default function TopBar({ roleLabel = '', roleColor = 'bg-primary-600' })
 
       <div className="w-px h-5 bg-gray-200" />
 
-      {/* ── Profile dropdown ─────────────────────────────── */}
+      {/* Profile dropdown */}
       <div className="relative" ref={ref}>
         <button
           onClick={() => setOpen(o => !o)}
           className="flex items-center gap-2 pl-1.5 pr-2.5 py-1.5 rounded-full hover:bg-gray-50 border border-transparent hover:border-gray-200 transition-all duration-150"
         >
-          <div className={`w-7 h-7 rounded-full ${roleColor} flex items-center justify-center text-white text-[11px] font-bold flex-shrink-0`}>
+          {/* Avatar — uses role CSS variable for bg */}
+          <div
+            className="w-7 h-7 rounded-full flex items-center justify-center text-white text-[11px] font-bold flex-shrink-0"
+            style={{ background: 'var(--tb-accent)' }}
+          >
             {initials}
           </div>
           <div className="text-left hidden sm:block">
@@ -68,19 +65,24 @@ export default function TopBar({ roleLabel = '', roleColor = 'bg-primary-600' })
           <ChevronDown size={13} className={`text-gray-400 transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
         </button>
 
-        {/* Dropdown */}
         {open && (
           <div className="absolute right-0 top-full mt-2 w-60 bg-white border border-gray-100 rounded-2xl shadow-xl overflow-hidden z-50">
             {/* User header */}
-            <div className="px-4 py-4 bg-gray-50 border-b border-gray-100">
+            <div className="px-4 py-4 border-b border-gray-100" style={{ background: 'var(--tb-accent-light, #f9fafb)' }}>
               <div className="flex items-center gap-3">
-                <div className={`w-10 h-10 rounded-xl ${roleColor} flex items-center justify-center text-white text-sm font-bold flex-shrink-0`}>
+                <div
+                  className="w-10 h-10 rounded-xl flex items-center justify-center text-white text-sm font-bold flex-shrink-0"
+                  style={{ background: 'var(--tb-accent)' }}
+                >
                   {initials}
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-semibold text-gray-900 truncate">{user?.fullName}</p>
                   <p className="text-xs text-gray-400 truncate mt-0.5">{user?.email}</p>
-                  <span className={`inline-block mt-1.5 text-[10px] font-bold px-2 py-0.5 rounded-full ${roleBadgeBg} ${roleBadgeClass} capitalize`}>
+                  <span
+                    className="inline-block mt-1.5 text-[10px] font-bold px-2 py-0.5 rounded-full capitalize"
+                    style={{ background: 'var(--primary-100)', color: 'var(--primary-700)' }}
+                  >
                     {roleLabel}
                   </span>
                 </div>
@@ -94,8 +96,11 @@ export default function TopBar({ roleLabel = '', roleColor = 'bg-primary-600' })
                 onClick={() => setOpen(false)}
                 className="flex items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
               >
-                <div className="w-7 h-7 rounded-lg bg-primary-50 flex items-center justify-center flex-shrink-0">
-                  <User size={14} className="text-primary-600" />
+                <div
+                  className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
+                  style={{ background: 'var(--primary-100)' }}
+                >
+                  <User size={14} style={{ color: 'var(--primary-600)' }} />
                 </div>
                 <span>{t('nav.profile', 'My Profile')}</span>
               </NavLink>

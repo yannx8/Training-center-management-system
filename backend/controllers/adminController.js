@@ -3,6 +3,8 @@ const bcrypt = require("bcryptjs");
 const prisma = require("../lib/prisma");
 const { asyncHandler } = require("../middleware/errorHandler");
 
+// This pulls a high-level overview of the entire system for the admin dashboard.
+// We're grabbing counts for users, departments, and pending items to show on the landing page.
 const getDashboard = asyncHandler(async(req, res) => {
     const [totalUsers, departments, programs, certifications, trainers, students, pendingComplaints] = await Promise.all([
         prisma.user.count(),
@@ -14,7 +16,8 @@ const getDashboard = asyncHandler(async(req, res) => {
         prisma.complaint.count({ where: { status: "pending" } }),
     ]);
     const recentUsers = await prisma.user.findMany({
-        orderBy: { createdAt: "desc" }, take: 5,
+        orderBy: { createdAt: "desc" },
+        take: 5,
         include: { userRoles: { include: { role: true } } }
     });
     const deptOverview = await prisma.department.findMany({
@@ -30,7 +33,9 @@ const getDashboard = asyncHandler(async(req, res) => {
     });
 });
 
-// ── USERS ─────────────────────────────────────────────────────────
+const { generateUniqueEmail } = require("../lib/userUtils");
+
+// CRUD users
 const getUsers = asyncHandler(async(req, res) => {
     const { role, status } = req.query;
     const users = await prisma.user.findMany({
@@ -41,19 +46,30 @@ const getUsers = asyncHandler(async(req, res) => {
     return res.json({ success: true, data: users.map(u => ({...u, passwordHash: undefined, roles: u.userRoles.map(ur => ur.role.name) })) });
 });
 
+// Handles creating a new user from scratch. 
+// It automatically generates a unique email and sets their initial password to their phone number.
 const createUserHandler = asyncHandler(async(req, res) => {
-    const { fullName, email, roleName, department, phone, status } = req.body;
-    if (!fullName || !email || !roleName || !phone)
-        return res.status(400).json({ success: false, message: "fullName, email, roleName, phone required", code: "MISSING_FIELDS" });
+    const { firstName, lastName, roleName, department, phone, status } = req.body;
+    if (!firstName || !lastName || !roleName || !phone)
+        return res.status(400).json({ success: false, message: "firstName, lastName, roleName, phone required", code: "MISSING_FIELDS" });
+    
     const role = await prisma.role.findUnique({ where: { name: roleName } });
     if (!role) return res.status(400).json({ success: false, message: "Invalid role name", code: "INVALID_ROLE" });
+    
+    const fullName = `${firstName.trim()} ${lastName.trim()}`;
+    const email = await generateUniqueEmail(firstName, lastName);
+    
+    // We use the phone number as the default password. The user will be prompted to change it later.
     const hash = await bcrypt.hash(phone, Number(process.env.BCRYPT_SALT_ROUNDS) || 12);
     const user = await prisma.user.create({
-        data: { fullName, email: email.toLowerCase().trim(), passwordHash: hash, phone, department: department || null, status: status || "active", passwordChanged: false, userRoles: { create: { roleId: role.id } } },
+        data: { fullName, email, passwordHash: hash, phone, department: department || null, status: status || "active", passwordChanged: false, userRoles: { create: { roleId: role.id } } },
         include: { userRoles: { include: { role: true } } },
     });
+
+    // If they're a trainer or HOD, we need to make sure their profiles/dept assignments are synced.
     if (roleName === "trainer") await prisma.trainer.upsert({ where: { userId: user.id }, update: {}, create: { userId: user.id } });
     if (roleName === "hod" && department) await prisma.department.updateMany({ where: { name: department }, data: { hodUserId: user.id, hodName: fullName } });
+    
     return res.status(201).json({ success: true, data: {...user, passwordHash: undefined, roles: user.userRoles.map(ur => ur.role.name) } });
 });
 
@@ -84,7 +100,7 @@ const deleteUserHandler = asyncHandler(async(req, res) => {
     return res.json({ success: true, data: { deleted: true } });
 });
 
-// ── DEPARTMENTS ───────────────────────────────────────────────────
+// CRUD Depts
 const getDepartmentsHandler = asyncHandler(async(req, res) => {
     const depts = await prisma.department.findMany({ include: { hod: { select: { fullName: true, email: true } }, _count: { select: { programs: true } } }, orderBy: { name: "asc" } });
     return res.json({ success: true, data: depts });
@@ -110,12 +126,14 @@ const deleteDepartmentHandler = asyncHandler(async(req, res) => {
     return res.json({ success: true, data: { deleted: true } });
 });
 
-// ── PROGRAMS ──────────────────────────────────────────────────────
+// CRUD programs
+// Fetches all programs and groups them by department for easier display in the UI.
 const getProgramsHandler = asyncHandler(async(req, res) => {
     const programs = await prisma.program.findMany({
         include: { department: { select: { name: true, code: true } }, _count: { select: { enrollments: true } } },
         orderBy: [{ department: { name: "asc" } }, { name: "asc" }],
     });
+    
     const grouped = {};
     for (const p of programs) {
         const key = p.department ? p.department.name : "No Department";
@@ -140,7 +158,7 @@ const deleteProgramHandler = asyncHandler(async(req, res) => {
     return res.json({ success: true, data: { deleted: true } });
 });
 
-// ── ACADEMIC LEVELS CRUD ──────────────────────────────────────────
+//  ACADEMIC LEVELS CRUD 
 const getAcademicLevelsHandler = asyncHandler(async(req, res) => {
     const { programId } = req.query;
     const levels = await prisma.academicLevel.findMany({
@@ -166,12 +184,17 @@ const deleteAcademicLevelHandler = asyncHandler(async(req, res) => {
     return res.json({ success: true, data: { deleted: true } });
 });
 
-// ── PROGRAM COURSES (hierarchical) ───────────────────────────────
+// programs's courses managing
+// Builds a complete "tree" view of a program, including its levels, semesters, and courses.
+// This is used for the complex administrative views of curriculum structure.
 const getProgramTreeHandler = asyncHandler(async(req, res) => {
     const program = await prisma.program.findUnique({ where: { id: Number(req.params.id) }, include: { department: true } });
     if (!program) return res.status(404).json({ success: false, message: "Program not found", code: "NOT_FOUND" });
+    
     const levels = await prisma.academicLevel.findMany({ where: { programId: Number(req.params.id) }, orderBy: { levelOrder: "asc" } });
     const semesters = await prisma.semester.findMany({ orderBy: { semesterOrder: "asc" } });
+    
+    // We iterate through each level and semester to build the full schedule grid.
     const levelTree = await Promise.all(levels.map(async level => {
         const semTree = await Promise.all(semesters.map(async sem => {
             const session = await prisma.session.findFirst({ where: { programId: Number(req.params.id), academicLevelId: level.id, semesterId: sem.id } });
@@ -198,16 +221,26 @@ const getProgramCoursesHandler = asyncHandler(async(req, res) => {
     return res.json({ success: true, data: { program, sessions } });
 });
 
-// ── COURSES ───────────────────────────────────────────────────────
+// COURSES
 const createCourseHandler = asyncHandler(async(req, res) => {
-    const { name, code, credits, hoursPerWeek, sessionId } = req.body;
+    const { name, code, credits, hoursPerWeek, sessionId, totalDurationHours } = req.body;
     if (!name || !code || !sessionId) return res.status(400).json({ success: false, message: "name, code, sessionId required", code: "MISSING_FIELDS" });
-    const course = await prisma.course.create({ data: { name, code, credits: Number(credits) || 3, hoursPerWeek: Number(hoursPerWeek) || 2, sessionId: Number(sessionId) } });
+    const tdh = Number(totalDurationHours) || 32;
+    const course = await prisma.course.create({ data: { name, code, credits: Number(credits) || 3, hoursPerWeek: Number(hoursPerWeek) || 2, sessionId: Number(sessionId), totalDurationHours: tdh, remainingHours: tdh } });
     return res.status(201).json({ success: true, data: course });
 });
 const updateCourseHandler = asyncHandler(async(req, res) => {
-    const { name, code, credits, hoursPerWeek } = req.body;
-    const course = await prisma.course.update({ where: { id: Number(req.params.id) }, data: { name, code, credits: Number(credits), hoursPerWeek: Number(hoursPerWeek) } });
+    const { name, code, credits, hoursPerWeek, totalDurationHours } = req.body;
+    const data = { name, code, credits: Number(credits), hoursPerWeek: Number(hoursPerWeek) };
+    if (totalDurationHours !== undefined) {
+        const existing = await prisma.course.findUnique({ where: { id: Number(req.params.id) } });
+        const oldTotal = existing ? existing.totalDurationHours : 0;
+        const newTotal = Number(totalDurationHours);
+        const diff = newTotal - oldTotal;
+        data.totalDurationHours = newTotal;
+        data.remainingHours = Math.max(0, (existing ? existing.remainingHours : 0) + diff);
+    }
+    const course = await prisma.course.update({ where: { id: Number(req.params.id) }, data });
     return res.json({ success: true, data: course });
 });
 const deleteCourseHandler = asyncHandler(async(req, res) => {
@@ -226,7 +259,7 @@ const assignTrainerHandler = asyncHandler(async(req, res) => {
     return res.json({ success: true, data: { assigned: !!trainerId } });
 });
 
-// ── CERTIFICATIONS ────────────────────────────────────────────────
+//CERTIFICATIONS
 const getCertificationsHandler = asyncHandler(async(req, res) => {
     const certs = await prisma.certification.findMany({
         include: { trainerCourses: { include: { trainer: { include: { user: true } } } }, _count: { select: { enrollments: true } } },
@@ -237,7 +270,8 @@ const getCertificationsHandler = asyncHandler(async(req, res) => {
 const createCertificationHandler = asyncHandler(async(req, res) => {
     const { name, code, description, durationHours, status, capacity } = req.body;
     if (!name || !code) return res.status(400).json({ success: false, message: "name and code required", code: "MISSING_FIELDS" });
-    const cert = await prisma.certification.create({ data: { name, code, description, durationHours: Number(durationHours) || 40, status: status || "active", capacity: capacity ? Number(capacity) : null } });
+    const dh = Number(durationHours) || 40;
+    const cert = await prisma.certification.create({ data: { name, code, description, durationHours: dh, remainingHours: dh, status: status || "active", capacity: capacity ? Number(capacity) : null } });
     return res.status(201).json({ success: true, data: cert });
 });
 const updateCertificationHandler = asyncHandler(async(req, res) => {
@@ -258,7 +292,7 @@ const assignTrainerToCertHandler = asyncHandler(async(req, res) => {
     return res.json({ success: true, data: { assigned: !!trainerId } });
 });
 
-// ── ROOMS ─────────────────────────────────────────────────────────
+// crud rOOMS
 const getRoomsHandler = asyncHandler(async(req, res) => { const rooms = await prisma.room.findMany({ orderBy: { name: "asc" } }); return res.json({ success: true, data: rooms }); });
 const createRoomHandler = asyncHandler(async(req, res) => {
     const { name, code, building, capacity, roomType, status } = req.body;
@@ -273,7 +307,7 @@ const updateRoomHandler = asyncHandler(async(req, res) => {
 });
 const deleteRoomHandler = asyncHandler(async(req, res) => { await prisma.room.delete({ where: { id: Number(req.params.id) } }); return res.json({ success: true, data: { deleted: true } }); });
 
-// ── ACADEMIC YEARS ────────────────────────────────────────────────
+//  ACADEMIC YEARS 
 const getAcademicYearsHandler = asyncHandler(async(req, res) => {
     const years = await prisma.academicYear.findMany({ include: { program: { select: { name: true } }, certification: { select: { name: true } } }, orderBy: { startDate: "desc" } });
     return res.json({ success: true, data: years });
@@ -285,7 +319,7 @@ const createAcademicYearHandler = asyncHandler(async(req, res) => {
     return res.status(201).json({ success: true, data: year });
 });
 
-// ── SESSIONS ──────────────────────────────────────────────────────
+//  SESSIONS 
 const getSessionsForProgramHandler = asyncHandler(async(req, res) => {
     const sessions = await prisma.session.findMany({ where: { programId: Number(req.params.id) }, include: { academicLevel: true, semester: true, academicYear: true }, orderBy: [{ academicLevel: { levelOrder: "asc" } }, { semester: { semesterOrder: "asc" } }] });
     return res.json({ success: true, data: sessions });
@@ -298,7 +332,7 @@ const createSessionHandler = asyncHandler(async(req, res) => {
     return res.status(201).json({ success: true, data: session });
 });
 
-// ── SEMESTERS ─────────────────────────────────────────────────────
+//  SEMESTERS 
 const getSemestersHandler = asyncHandler(async(req, res) => {
     const semesters = await prisma.semester.findMany({ orderBy: { semesterOrder: "asc" } });
     return res.json({ success: true, data: semesters });
@@ -319,7 +353,7 @@ const deleteSemesterHandler = asyncHandler(async(req, res) => {
     return res.json({ success: true, data: { deleted: true } });
 });
 
-// ── COMPLAINTS ────────────────────────────────────────────────────
+// COMPLANITS
 const getComplaintsHandler = asyncHandler(async(req, res) => {
     const complaints = await prisma.complaint.findMany({ include: { parent: { include: { user: { select: { fullName: true, email: true } } } } }, orderBy: { createdAt: "desc" } });
     return res.json({ success: true, data: complaints });
@@ -329,7 +363,7 @@ const updateComplaintHandler = asyncHandler(async(req, res) => {
     return res.json({ success: true, data: complaint });
 });
 
-// ── HELPERS ───────────────────────────────────────────────────────
+//Some HELPERS
 const getTrainersByDeptHandler = asyncHandler(async(req, res) => {
     const dept = await prisma.department.findUnique({ where: { id: Number(req.params.id) } });
     if (!dept) return res.status(404).json({ success: false, message: "Department not found", code: "NOT_FOUND" });
@@ -347,17 +381,48 @@ const getAllTrainersHandler = asyncHandler(async(req, res) => {
 });
 
 module.exports = {
-    getDashboard, getUsers, createUserHandler, updateUserHandler, deleteUserHandler,
-    getDepartmentsHandler, createDepartmentHandler, updateDepartmentHandler, deleteDepartmentHandler,
-    getProgramsHandler, createProgramHandler, updateProgramHandler, deleteProgramHandler,
-    getProgramTreeHandler, getProgramCoursesHandler,
-    getAcademicLevelsHandler, createAcademicLevelHandler, updateAcademicLevelHandler, deleteAcademicLevelHandler,
-    createCourseHandler, updateCourseHandler, deleteCourseHandler, assignTrainerHandler,
-    getCertificationsHandler, createCertificationHandler, updateCertificationHandler, deleteCertificationHandler, assignTrainerToCertHandler,
-    getRoomsHandler, createRoomHandler, updateRoomHandler, deleteRoomHandler,
-    getAcademicYearsHandler, createAcademicYearHandler,
-    getSessionsForProgramHandler, createSessionHandler,
-    getSemestersHandler, createSemesterHandler, updateSemesterHandler, deleteSemesterHandler,
-    getComplaintsHandler, updateComplaintHandler,
-    getTrainersByDeptHandler, getAllTrainersHandler,
+    getDashboard,
+    getUsers,
+    createUserHandler,
+    updateUserHandler,
+    deleteUserHandler,
+    getDepartmentsHandler,
+    createDepartmentHandler,
+    updateDepartmentHandler,
+    deleteDepartmentHandler,
+    getProgramsHandler,
+    createProgramHandler,
+    updateProgramHandler,
+    deleteProgramHandler,
+    getProgramTreeHandler,
+    getProgramCoursesHandler,
+    getAcademicLevelsHandler,
+    createAcademicLevelHandler,
+    updateAcademicLevelHandler,
+    deleteAcademicLevelHandler,
+    createCourseHandler,
+    updateCourseHandler,
+    deleteCourseHandler,
+    assignTrainerHandler,
+    getCertificationsHandler,
+    createCertificationHandler,
+    updateCertificationHandler,
+    deleteCertificationHandler,
+    assignTrainerToCertHandler,
+    getRoomsHandler,
+    createRoomHandler,
+    updateRoomHandler,
+    deleteRoomHandler,
+    getAcademicYearsHandler,
+    createAcademicYearHandler,
+    getSessionsForProgramHandler,
+    createSessionHandler,
+    getSemestersHandler,
+    createSemesterHandler,
+    updateSemesterHandler,
+    deleteSemesterHandler,
+    getComplaintsHandler,
+    updateComplaintHandler,
+    getTrainersByDeptHandler,
+    getAllTrainersHandler,
 };

@@ -1,4 +1,3 @@
-// FILE: frontend/src/pages/parent/ParentTimetable.jsx
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { parentApi } from '../../api';
@@ -10,10 +9,10 @@ export default function ParentTimetable() {
   const { t } = useTranslation();
   const [searchParams] = useSearchParams();
   const [children, setChildren] = useState([]);
-  const [childId, setChildId]   = useState(searchParams.get('childId') || '');
-  const [data, setData]         = useState(null);
-  const [loading, setLoading]   = useState(true);
-  const [error, setError]       = useState('');
+  const [childId, setChildId] = useState(searchParams.get('childId') || '');
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   useEffect(() => {
     parentApi.getChildren().then(r => {
@@ -35,17 +34,17 @@ export default function ParentTimetable() {
   // Combine academic and cert slots for the grid
   const academicSlots = (data?.slots || []).map(s => ({
     ...s,
-    type:        'academic',
-    subject:     s.course?.name,
-    weekLabel:   s.timetable?.academicWeek?.label,
-    levelName:   s.course?.session?.academicLevel?.name,
+    type: 'academic',
+    subject: s.course?.name,
+    weekLabel: s.timetable?.academicWeek?.label,
+    levelName: s.course?.session?.academicLevel?.name,
     semesterName: s.course?.session?.semester?.name,
   }));
 
   const certSlots = (data?.certSlots || []).map(s => ({
     ...s,
-    type:      'certification',
-    subject:   s.certification?.name,
+    type: 'certification',
+    subject: s.certification?.name,
     weekLabel: s.academicWeek?.label,
   }));
 
@@ -53,7 +52,7 @@ export default function ParentTimetable() {
   const child = data?.child || children.find(c => String(c.id) === String(childId));
 
   if (loading) return <PageLoader />;
-  if (error)   return <ErrorAlert message={error} />;
+  if (error) return <ErrorAlert message={error} />;
 
   return (
     <div className="space-y-4">

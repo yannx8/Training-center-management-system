@@ -8,7 +8,7 @@
   :root {
     /* ⚠️ AGENT MUST REPLACE: These are placeholder colors. You MUST define a custom palette before writing components. */
     /* The template uses distinctive placeholder colors to force customization - do NOT use these in production! */
-    
+
     /* 
      * EXAMPLE PALETTES (use as inspiration, replace with your own):
      * 
@@ -32,7 +32,7 @@
      * --primary: 24 95% 53%;         (Orange #F97316)
      * --accent: 24 95% 63%;          (Lighter orange #FB923C)
      */
-    
+
     /* Colors - REPLACE ALL VALUES BELOW with your custom palette */
     --background: 208 100% 97.0588%;
     --foreground: 216.9231 19.1176% 26.6667%;

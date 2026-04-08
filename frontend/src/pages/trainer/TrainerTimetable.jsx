@@ -24,7 +24,6 @@ export default function TrainerTimetable() {
       ...s,
       type:      'academic',
       subject:   s.course?.name,
-      weekLabel: s.timetable?.academicWeek?.label,
       levelName: s.course?.session?.academicLevel?.name,
       semesterName: s.course?.session?.semester?.name,
     })),
@@ -32,7 +31,6 @@ export default function TrainerTimetable() {
       ...s,
       type:      'certification',
       subject:   s.certification?.name,
-      weekLabel: s.academicWeek?.label,
     })),
   ];
 

@@ -25,10 +25,10 @@ export default function TrainerLayout() {
   ];
 
   return (
-    <div className="flex h-screen overflow-hidden bg-gray-50">
-      <Sidebar navItems={NAV} roleLabel={t('roles.trainer','Trainer')} roleColor="bg-amber-600" />
+    <div className="flex h-screen overflow-hidden bg-gray-50 theme-trainer">
+      <Sidebar navItems={NAV} roleLabel={t('roles.trainer','Trainer')} roleColor="bg-primary-600" />
       <div className="flex-1 flex flex-col overflow-hidden min-w-0">
-        <TopBar roleLabel={t('roles.trainer','Trainer')} roleColor="bg-amber-600" />
+        <TopBar roleLabel={t('roles.trainer','Trainer')} roleColor="bg-primary-600" />
         <main className="flex-1 overflow-y-auto">
           <div className="max-w-7xl mx-auto px-4 py-4 lg:px-6 lg:py-6 pt-16 lg:pt-4"><Outlet /></div>
         </main>

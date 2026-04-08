@@ -609,7 +609,7 @@
     "studentStatusTitle": "Étudiants inscrits — Statut de disponibilité",
     "slots": "{{count}} créneau(x)",
     "notSubmitted": "Non soumis",
-    "cannotGenerate": "⚠ Impossible de générer tant que tous les étudiants n'ont pas soumis leur disponibilité.",
+    "cannotGenerate": "Impossible de générer tant que tous les étudiants n'ont pas soumis leur disponibilité.",
     "noStudentsEnrolled": "Aucun étudiant inscrit à cette certification pour l'instant."
   },
   "trainerCourses": {

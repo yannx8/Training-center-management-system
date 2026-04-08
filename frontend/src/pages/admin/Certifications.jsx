@@ -1,4 +1,3 @@
-// FILE: frontend/src/pages/admin/Certifications.jsx
 import { useEffect, useState } from 'react';
 import { Plus, Pencil, Trash2, UserCheck } from 'lucide-react';
 import { adminApi } from '../../api';
@@ -6,20 +5,20 @@ import Modal from '../../components/ui/Modal';
 import { PageLoader, SectionHeader, ConfirmModal, Badge, ErrorAlert } from '../../components/ui';
 import { useTranslation } from 'react-i18next';
 
-const EMPTY = { name:'', code:'', description:'', durationHours:40, status:'active', capacity:'' };
+const EMPTY = { name: '', code: '', description: '', durationHours: 40, status: 'active', capacity: '' };
 
 export default function Certifications() {
   const { t } = useTranslation();
-  const [certs, setCerts]       = useState([]);
-  const [trainers, setTrainers] = useState([]);  // trainer profiles {id, user:{fullName}}
-  const [loading, setLoading]   = useState(true);
-  const [modal, setModal]       = useState(false);
-  const [editing, setEditing]   = useState(null);
-  const [form, setForm]         = useState(EMPTY);
-  const [saving, setSaving]     = useState(false);
+  const [certs, setCerts] = useState([]);
+  const [trainers, setTrainers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [modal, setModal] = useState(false);
+  const [editing, setEditing] = useState(null);
+  const [form, setForm] = useState(EMPTY);
+  const [saving, setSaving] = useState(false);
   const [deleteId, setDeleteId] = useState(null);
   const [assignModal, setAssignModal] = useState(null);
-  const [selTrainer, setSelTrainer]   = useState('');
+  const [selTrainer, setSelTrainer] = useState('');
 
   function load() {
     Promise.all([adminApi.getCertifications(), adminApi.getAllTrainers()])
@@ -35,7 +34,7 @@ export default function Certifications() {
     setSaving(true);
     try {
       if (editing) await adminApi.updateCertification(editing.id, form);
-      else         await adminApi.createCertification(form);
+      else await adminApi.createCertification(form);
       setModal(false); load();
     } catch (e) { alert(e.response?.data?.message || t('common.failedSave', 'Failed')); }
     finally { setSaving(false); }
@@ -55,7 +54,7 @@ export default function Certifications() {
         subtitle={t('certifications.subtitle', 'Standalone certifications')}
       >
         <button className="btn-primary" onClick={() => { setForm(EMPTY); setEditing(null); setModal(true); }}>
-          <Plus size={16}/> {t('certifications.addCertification', 'Add Certification')}
+          <Plus size={16} /> {t('certifications.addCertification', 'Add Certification')}
         </button>
       </SectionHeader>
 
@@ -82,7 +81,7 @@ export default function Certifications() {
                 ? <span className="badge-green text-xs">{assignedTrainer.user?.fullName}</span>
                 : <span className="badge-yellow text-xs">{t('certifications.unassigned', 'Unassigned')}</span>
               }
-              <Badge value={c.status}/>
+              <Badge value={c.status} />
               <button
                 className="btn-ghost btn-sm btn-icon text-blue-500"
                 title={t('certifications.assignTrainer', 'Assign Trainer')}
@@ -92,7 +91,7 @@ export default function Certifications() {
                   setSelTrainer(String(c.trainerCourses?.[0]?.trainer?.id || ''));
                 }}
               >
-                <UserCheck size={14}/>
+                <UserCheck size={14} />
               </button>
               <button
                 className="btn-ghost btn-sm btn-icon"
@@ -101,13 +100,13 @@ export default function Certifications() {
                   setEditing(c); setModal(true);
                 }}
               >
-                <Pencil size={14}/>
+                <Pencil size={14} />
               </button>
               <button
                 className="btn-ghost btn-sm btn-icon text-red-500 hover:bg-red-50"
                 onClick={() => setDeleteId(c.id)}
               >
-                <Trash2 size={14}/>
+                <Trash2 size={14} />
               </button>
             </div>
           );
@@ -129,24 +128,24 @@ export default function Certifications() {
       >
         <div className="space-y-4">
           <div><label className="label">{t('certifications.certName', 'Name')}</label>
-            <input className="input" value={form.name} onChange={e => setForm(p => ({...p, name: e.target.value}))}/>
+            <input className="input" value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} />
           </div>
           <div><label className="label">{t('certifications.certCode', 'Code')}</label>
-            <input className="input" value={form.code} onChange={e => setForm(p => ({...p, code: e.target.value}))}/>
+            <input className="input" value={form.code} onChange={e => setForm(p => ({ ...p, code: e.target.value }))} />
           </div>
           <div><label className="label">{t('common.description', 'Description')}</label>
-            <textarea rows={2} className="input" value={form.description} onChange={e => setForm(p => ({...p, description: e.target.value}))}/>
+            <textarea rows={2} className="input" value={form.description} onChange={e => setForm(p => ({ ...p, description: e.target.value }))} />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div><label className="label">{t('certifications.durationHours', 'Duration (hours)')}</label>
-              <input type="number" min={1} className="input" value={form.durationHours} onChange={e => setForm(p => ({...p, durationHours: +e.target.value}))}/>
+              <input type="number" min={1} className="input" value={form.durationHours} onChange={e => setForm(p => ({ ...p, durationHours: +e.target.value }))} />
             </div>
             <div><label className="label">{t('certifications.maxStudents', 'Max Students')}</label>
-              <input type="number" min={1} className="input" placeholder={t('common.noLimit', 'No limit')} value={form.capacity} onChange={e => setForm(p => ({...p, capacity: e.target.value}))}/>
+              <input type="number" min={1} className="input" placeholder={t('common.noLimit', 'No limit')} value={form.capacity} onChange={e => setForm(p => ({ ...p, capacity: e.target.value }))} />
             </div>
           </div>
           <div><label className="label">{t('common.status', 'Status')}</label>
-            <select className="select" value={form.status} onChange={e => setForm(p => ({...p, status: e.target.value}))}>
+            <select className="select" value={form.status} onChange={e => setForm(p => ({ ...p, status: e.target.value }))}>
               <option value="active">{t('common.active', 'Active')}</option>
               <option value="inactive">{t('common.inactive', 'Inactive')}</option>
             </select>
@@ -170,7 +169,9 @@ export default function Certifications() {
           <select className="select" value={selTrainer} onChange={e => setSelTrainer(e.target.value)}>
             <option value="">{t('programs.removeTrainer', '— Remove trainer —')}</option>
             {trainers.map(tr => (
-              <option key={tr.id} value={tr.id}>{tr.user?.fullName}</option>
+              <option key={tr.id} value={String(tr.id)} className="text-gray-900">
+                {tr.user?.fullName || tr.user?.email || `Trainer #${tr.id}`}
+              </option>
             ))}
           </select>
         </div>

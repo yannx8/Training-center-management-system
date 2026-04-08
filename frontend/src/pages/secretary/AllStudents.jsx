@@ -109,53 +109,10 @@ export default function AllStudents() {
             </div>
             <div className="flex items-center gap-2 flex-shrink-0">
               <Badge value={s.user?.status || 'active'} />
-              <button
-                className="btn-ghost btn-sm btn-icon"
-                title={t('secretary.editStudent','Edit')}
-                onClick={() => { setEditModal(s); setEditForm({ fullName: s.user?.fullName, phone: s.user?.phone, status: s.user?.status }); }}
-              >
-                <Pencil size={14}/>
-              </button>
             </div>
           </div>
         ))}
       </div>
-
-      {/* Edit modal */}
-      <Modal
-        open={!!editModal}
-        onClose={() => setEditModal(null)}
-        title={t('secretary.editStudent','Edit Student')}
-        footer={
-          <>
-            <button className="btn-secondary" onClick={() => setEditModal(null)}>{t('common.cancel','Cancel')}</button>
-            <button className="btn-primary" onClick={handleUpdate} disabled={saving}>
-              {saving ? t('common.saving','Saving…') : t('common.save','Save')}
-            </button>
-          </>
-        }
-      >
-        <div className="space-y-4">
-          <p className="text-xs text-amber-600 bg-amber-50 border border-amber-100 rounded-xl px-3 py-2">
-            {t('secretary.editStudentNote','⚠ Secretaries can update student data but cannot delete students.')}
-          </p>
-          <div>
-            <label className="label">{t('userManagement.fullName','Full Name')}</label>
-            <input className="input" value={editForm.fullName||''} onChange={e=>setEditForm(f=>({...f,fullName:e.target.value}))}/>
-          </div>
-          <div>
-            <label className="label">{t('userManagement.phone','Phone')}</label>
-            <input className="input" value={editForm.phone||''} onChange={e=>setEditForm(f=>({...f,phone:e.target.value}))}/>
-          </div>
-          <div>
-            <label className="label">{t('common.status','Status')}</label>
-            <select className="select" value={editForm.status||'active'} onChange={e=>setEditForm(f=>({...f,status:e.target.value}))}>
-              <option value="active">{t('common.active','Active')}</option>
-              <option value="inactive">{t('common.inactive','Inactive')}</option>
-            </select>
-          </div>
-        </div>
-      </Modal>
     </div>
   );
 }

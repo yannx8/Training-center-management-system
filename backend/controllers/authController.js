@@ -3,12 +3,16 @@ const jwt     = require('jsonwebtoken');
 const prisma  = require('../lib/prisma');
 const { asyncHandler } = require('../middleware/errorHandler');
 
+// Helper to create a JWT token for a user session.
+// This is used after successful login or role selection.
 function signToken(payload) {
   return jwt.sign(payload, process.env.JWT_SECRET, {
     expiresIn: process.env.JWT_EXPIRES_IN || '24h',
   });
 }
 
+// Main login handler. It checks credentials and either logs the user in 
+// or flags that they need to pick a role if they have multiple assignments.
 const login = asyncHandler(async (req, res) => {
   const { email, password } = req.body;
   if (!email || !password)
@@ -21,6 +25,8 @@ const login = asyncHandler(async (req, res) => {
 
   if (!user)
     return res.status(401).json({ success: false, message: 'Invalid credentials' });
+  
+  // We keep inactive accounts in the DB but block their access here.
   if (user.status === 'inactive')
     return res.status(403).json({ success: false, message: 'Account is inactive' });
 
@@ -30,6 +36,7 @@ const login = asyncHandler(async (req, res) => {
 
   const roles = user.userRoles.map(ur => ur.role.name);
 
+  // If they only have one role, we can log them in immediately.
   if (roles.length === 1) {
     const token = signToken({ userId: user.id, role: roles[0], email: user.email });
     return res.json({
@@ -120,6 +127,8 @@ const getMe = asyncHandler(async (req, res) => {
 });
 
 // PUT /auth/profile  — update own profile info
+// Allows users to update their own contact info. 
+// For students, we also let them update their date of birth, but they can't touch their matricule.
 const updateProfile = asyncHandler(async (req, res) => {
   const { fullName, phone } = req.body;
   if (!fullName) return res.status(400).json({ success: false, message: 'fullName required' });
@@ -130,7 +139,6 @@ const updateProfile = asyncHandler(async (req, res) => {
     select: { id: true, fullName: true, email: true, phone: true },
   });
 
-  // If student, update dateOfBirth (students can't change matricule)
   if (req.user.role === 'student' && req.body.dateOfBirth !== undefined) {
     await prisma.student.update({
       where: { userId: req.user.userId },
@@ -138,7 +146,6 @@ const updateProfile = asyncHandler(async (req, res) => {
     });
   }
 
-  // Sync localStorage name via response
   return res.json({ success: true, data: updated });
 });
 

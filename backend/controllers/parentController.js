@@ -1,6 +1,8 @@
 const prisma = require('../lib/prisma');
 const { asyncHandler } = require('../middleware/errorHandler');
 
+// Helper to fetch the parent's profile along with all the students (their children)
+// linked to their account. We need this to show them info for multiple kids at once.
 async function getParent(userId) {
     return prisma.parent.findUnique({
         where: { userId },
@@ -19,17 +21,18 @@ async function getParent(userId) {
     });
 }
 
-// DASHBOARD 
-const getDashboard = asyncHandler(async(req, res) => {
+// Builds the main dashboard for parents.
+// It shows an overview for each of their children, relevant announcements, and complaint status.
+const getDashboard = asyncHandler(async (req, res) => {
     const parent = await getParent(req.user.userId);
     if (!parent) return res.status(404).json({ success: false, message: 'Parent profile not found', code: 'NOT_FOUND' });
 
     const children = parent.studentLinks.map(l => l.student);
 
-    // Fixed: Replaced optional chaining with logical AND
+    // We collect the department IDs for all children so we can pull relevant announcements for the parent.
     const deptIds = [...new Set(children.map(c => c.program && c.program.departmentId).filter(Boolean))];
 
-    // Latest announcements for all children's departments
+    // Grab the latest 5 announcements that are either for parents specifically or for everyone.
     const announcements = await prisma.announcement.findMany({
         where: {
             departmentId: { in: deptIds },
@@ -43,7 +46,7 @@ const getDashboard = asyncHandler(async(req, res) => {
         take: 5,
     });
 
-    // Pending complaints
+    // Count how many issues are still being looked at.
     const pendingComplaints = await prisma.complaint.count({
         where: { parentId: parent.id, status: 'pending' },
     });
@@ -55,17 +58,15 @@ const getDashboard = asyncHandler(async(req, res) => {
 });
 
 // CHILDREN 
-const getChildrenHandler = asyncHandler(async(req, res) => {
+const getChildrenHandler = asyncHandler(async (req, res) => {
     const parent = await getParent(req.user.userId);
     if (!parent) return res.status(404).json({ success: false, message: 'Parent not found', code: 'NOT_FOUND' });
     return res.json({ success: true, data: parent.studentLinks.map(l => l.student) });
 });
 
 //  CHILD TIMETABLE 
-// FILE: backend/controllers/parentController.js
-// Replace getChildTimetableHandler with this version that returns both academic + cert slots
 
-const getChildTimetableHandler = asyncHandler(async(req, res) => {
+const getChildTimetableHandler = asyncHandler(async (req, res) => {
     const parent = await getParent(req.user.userId);
     if (!parent) return res.status(404).json({ success: false, message: 'Parent not found', code: 'NOT_FOUND' });
 
@@ -122,7 +123,7 @@ const getChildTimetableHandler = asyncHandler(async(req, res) => {
 });
 
 //  CHILD GRADES 
-const getChildGradesHandler = asyncHandler(async(req, res) => {
+const getChildGradesHandler = asyncHandler(async (req, res) => {
     const parent = await getParent(req.user.userId);
     if (!parent) return res.status(404).json({ success: false, message: 'Parent not found', code: 'NOT_FOUND' });
 
@@ -139,7 +140,7 @@ const getChildGradesHandler = asyncHandler(async(req, res) => {
 });
 
 // COMPLAINTS 
-const getComplaintsHandler = asyncHandler(async(req, res) => {
+const getComplaintsHandler = asyncHandler(async (req, res) => {
     const parent = await getParent(req.user.userId);
     if (!parent) return res.status(404).json({ success: false, message: 'Parent not found', code: 'NOT_FOUND' });
 
@@ -150,7 +151,7 @@ const getComplaintsHandler = asyncHandler(async(req, res) => {
     return res.json({ success: true, data: complaints });
 });
 
-const createComplaintHandler = asyncHandler(async(req, res) => {
+const createComplaintHandler = asyncHandler(async (req, res) => {
     const parent = await getParent(req.user.userId);
     if (!parent) return res.status(404).json({ success: false, message: 'Parent not found', code: 'NOT_FOUND' });
 
@@ -170,7 +171,7 @@ const createComplaintHandler = asyncHandler(async(req, res) => {
 });
 
 // ANNOUNCEMENTS 
-const getAnnouncementsHandler = asyncHandler(async(req, res) => {
+const getAnnouncementsHandler = asyncHandler(async (req, res) => {
     const parent = await getParent(req.user.userId);
     if (!parent) return res.status(404).json({ success: false, message: 'Parent not found', code: 'NOT_FOUND' });
 

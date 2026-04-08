@@ -1,4 +1,3 @@
-// FILE: frontend/src/pages/admin/UserManagement.jsx
 import { useEffect, useState } from 'react';
 import { Plus, Pencil, Trash2, Search, UserCheck, UserX } from 'lucide-react';
 import { adminApi } from '../../api';
@@ -7,24 +6,36 @@ import { PageLoader, ErrorAlert, SectionHeader, ConfirmModal, Badge } from '../.
 import { useTranslation } from 'react-i18next';
 
 const ASSIGNABLE_ROLES = ['hod', 'trainer', 'secretary'];
-const EMPTY = { fullName: '', email: '', phone: '', roleName: 'trainer', department: '', status: 'active' };
+const EMPTY = { firstName: '', lastName: '', email: '', phone: '', roleName: 'trainer', department: '', status: 'active' };
 
 export default function UserManagement() {
   const { t } = useTranslation();
-  const [users, setUsers]       = useState([]);
-  const [depts, setDepts]       = useState([]);
-  const [loading, setLoading]   = useState(true);
-  const [error, setError]       = useState('');
-  const [search, setSearch]     = useState('');
-  const [roleFilter, setRoleFilter]     = useState('');
+  const [users, setUsers] = useState([]);
+  const [depts, setDepts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [search, setSearch] = useState('');
+  const [roleFilter, setRoleFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
-  const [modal, setModal]       = useState(false);
-  const [editing, setEditing]   = useState(null);
-  const [form, setForm]         = useState(EMPTY);
-  const [saving, setSaving]     = useState(false);
+  const [modal, setModal] = useState(false);
+  const [editing, setEditing] = useState(null);
+  const [form, setForm] = useState(EMPTY);
+  const [saving, setSaving] = useState(false);
   const [deleteId, setDeleteId] = useState(null);
   const [hodWarning, setHodWarning] = useState('');
 
+  // This little effect handles auto-generating the email address as the admin types.
+  // It only runs when creating a new user, making sure it doesn't overwrite an existing email.
+  useEffect(() => {
+    if (!editing && form.firstName && form.lastName) {
+      const email = `${form.firstName.toLowerCase().trim()}.${form.lastName.toLowerCase().trim()}`.replace(/\s+/g, '') + '@pylvia.com';
+      setForm(f => ({ ...f, email }));
+    } else if (!editing && (!form.firstName || !form.lastName)) {
+      setForm(f => ({ ...f, email: '' }));
+    }
+  }, [form.firstName, form.lastName, editing]);
+
+  // Grabs both the user list and the department list so we have them ready.
   function load() {
     setLoading(true);
     Promise.all([adminApi.getUsers(roleFilter ? { role: roleFilter } : {}), adminApi.getDepartments()])
@@ -33,6 +44,8 @@ export default function UserManagement() {
   }
   useEffect(load, [roleFilter]);
 
+  // This is a safety check: since each department should only have one HOD, 
+  // we warn the admin if they're about to assign a new HOD to a department that already has one.
   useEffect(() => {
     if (form.roleName !== 'hod' || !form.department) { setHodWarning(''); return; }
     const dept = depts.find(d => d.name === form.department);
@@ -41,19 +54,27 @@ export default function UserManagement() {
     setHodWarning(t('userManagement.hodWarning', '⚠ This department already has a HOD ({{name}}). Saving will replace them.', { name: dept.hodName }));
   }, [form.roleName, form.department]);
 
+  // Handles both creating new users and updating existing ones.
   async function handleSave() {
     setSaving(true);
     try {
       const payload = { ...form, roles: [form.roleName] };
-      if (editing) await adminApi.updateUser(editing.id, payload);
-      else         await adminApi.createUser(payload);
+      if (editing) {
+        // We combine the names back together for the backend update.
+        await adminApi.updateUser(editing.id, { ...payload, fullName: `${form.firstName} ${form.lastName}` });
+      } else {
+        await adminApi.createUser(payload);
+      }
       setModal(false); load();
     } catch (e) { alert(e.response?.data?.message || t('common.failedSave', 'Save failed')); }
     finally { setSaving(false); }
   }
 
   function openEdit(u) {
-    setForm({ fullName: u.fullName, email: u.email, phone: u.phone || '', roleName: u.roles?.[0] || 'trainer', department: u.department || '', status: u.status });
+    const parts = u.fullName.split(' ');
+    const firstName = parts[0] || '';
+    const lastName = parts.slice(1).join(' ') || '';
+    setForm({ firstName, lastName, email: u.email, phone: u.phone || '', roleName: u.roles?.[0] || 'trainer', department: u.department || '', status: u.status });
     setEditing(u); setModal(true);
   }
 
@@ -79,14 +100,14 @@ export default function UserManagement() {
         subtitle={t('userManagement.subtitle', '{{filtered}} of {{total}} users', { filtered: filtered.length, total: users.length })}
       >
         <button className="btn-primary" onClick={() => { setForm(EMPTY); setEditing(null); setModal(true); }}>
-          <Plus size={16}/> {t('userManagement.addUser', 'Add User')}
+          <Plus size={16} /> {t('userManagement.addUser', 'Add User')}
         </button>
       </SectionHeader>
       {error && <ErrorAlert message={error} />}
 
       <div className="card p-3 space-y-2">
         <div className="relative">
-          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"/>
+          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
           <input
             className="input pl-9"
             placeholder={t('userManagement.searchPlaceholder', 'Search by name or email…')}
@@ -97,7 +118,7 @@ export default function UserManagement() {
         <div className="flex gap-2">
           <select className="select flex-1 text-sm" value={roleFilter} onChange={e => setRoleFilter(e.target.value)}>
             <option value="">{t('userManagement.allRoles', 'All Roles')}</option>
-            {['admin','hod','trainer','secretary','student','parent'].map(r => (
+            {['admin', 'hod', 'trainer', 'secretary', 'student', 'parent'].map(r => (
               <option key={r} value={r}>{t(`roles.${r}`, r)}</option>
             ))}
           </select>
@@ -124,18 +145,18 @@ export default function UserManagement() {
               <Badge value={u.status} />
               <button
                 className="btn-ghost btn-sm btn-icon"
-                title={u.status === 'active' ? t('userManagement.deactivate','Deactivate') : t('userManagement.activate','Activate')}
+                title={u.status === 'active' ? t('userManagement.deactivate', 'Deactivate') : t('userManagement.activate', 'Activate')}
                 onClick={() => toggleStatus(u)}
               >
                 {u.status === 'active'
-                  ? <UserX size={14} className="text-amber-500"/>
-                  : <UserCheck size={14} className="text-green-500"/>}
+                  ? <UserX size={14} className="text-amber-500" />
+                  : <UserCheck size={14} className="text-green-500" />}
               </button>
               <button className="btn-ghost btn-sm btn-icon" onClick={() => openEdit(u)}>
-                <Pencil size={14}/>
+                <Pencil size={14} />
               </button>
               <button className="btn-ghost btn-sm btn-icon text-red-500 hover:bg-red-50" onClick={() => setDeleteId(u.id)}>
-                <Trash2 size={14}/>
+                <Trash2 size={14} />
               </button>
             </div>
           </div>
@@ -144,52 +165,59 @@ export default function UserManagement() {
 
       <Modal
         open={modal} onClose={() => setModal(false)}
-        title={editing ? t('userManagement.editUser','Edit User') : t('userManagement.addUser','Add User')}
+        title={editing ? t('userManagement.editUser', 'Edit User') : t('userManagement.addUser', 'Add User')}
         footer={
           <>
-            <button className="btn-secondary" onClick={() => setModal(false)}>{t('common.cancel','Cancel')}</button>
+            <button className="btn-secondary" onClick={() => setModal(false)}>{t('common.cancel', 'Cancel')}</button>
             <button className="btn-primary" onClick={handleSave} disabled={saving}>
-              {saving ? t('common.saving','Saving…') : t('common.save','Save')}
+              {saving ? t('common.saving', 'Saving…') : t('common.save', 'Save')}
             </button>
           </>
         }
       >
         <div className="space-y-4">
-          <div>
-            <label className="label">{t('common.name','Full Name')}</label>
-            <input className="input" value={form.fullName} onChange={e => setForm(f=>({...f,fullName:e.target.value}))}/>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="label">{t('common.firstName', 'First Name')}</label>
+              <input className="input" value={form.firstName} onChange={e => setForm(f => ({ ...f, firstName: e.target.value }))} />
+            </div>
+            <div>
+              <label className="label">{t('common.lastName', 'Last Name')}</label>
+              <input className="input" value={form.lastName} onChange={e => setForm(f => ({ ...f, lastName: e.target.value }))} />
+            </div>
           </div>
           <div>
-            <label className="label">{t('common.email','Email')}</label>
-            <input type="email" className="input" value={form.email} onChange={e => setForm(f=>({...f,email:e.target.value}))}/>
+            <label className="label">{t('common.email', 'Email')}</label>
+            <input type="email" className="input bg-gray-50 gray-400 cursor-not-allowed" value={form.email} readOnly disabled />
+            <p className="text-[10px] text-gray-400 mt-1">{t('userManagement.emailAuto', 'Email is auto-generated and cannot be edited.')}</p>
           </div>
           <div>
-            <label className="label">{t('common.phone','Phone')}</label>
-            <input className="input" value={form.phone} onChange={e => setForm(f=>({...f,phone:e.target.value}))}/>
-            {!editing && <p className="text-xs text-gray-400 mt-1">{t('userManagement.phoneNote','Phone number becomes the initial password.')}</p>}
+            <label className="label">{t('common.phone', 'Phone')}</label>
+            <input className="input" value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} />
+            {!editing && <p className="text-xs text-gray-400 mt-1">{t('userManagement.phoneNote', 'Phone number becomes the initial password.')}</p>}
           </div>
           <div>
-            <label className="label">{t('userManagement.role','Role')}</label>
-            <select className="select" value={form.roleName} onChange={e => setForm(f=>({...f,roleName:e.target.value}))}>
+            <label className="label">{t('userManagement.role', 'Role')}</label>
+            <select className="select" value={form.roleName} onChange={e => setForm(f => ({ ...f, roleName: e.target.value }))}>
               {ASSIGNABLE_ROLES.map(r => <option key={r} value={r}>{t(`roles.${r}`, r)}</option>)}
             </select>
-            <p className="text-xs text-gray-400 mt-1">{t('userManagement.roleNote','Only HOD, Trainer and Secretary roles can be assigned here.')}</p>
+            <p className="text-xs text-gray-400 mt-1">{t('userManagement.roleNote', 'Only HOD, Trainer and Secretary roles can be assigned here.')}</p>
           </div>
           {(form.roleName === 'hod' || form.roleName === 'trainer') && (
             <div>
-              <label className="label">{t('userManagement.department','Department')}</label>
-              <select className="select" value={form.department} onChange={e => setForm(f=>({...f,department:e.target.value}))}>
-                <option value="">{t('userManagement.noneOption','— None —')}</option>
+              <label className="label">{t('userManagement.department', 'Department')}</label>
+              <select className="select" value={form.department} onChange={e => setForm(f => ({ ...f, department: e.target.value }))}>
+                <option value="">{t('userManagement.noneOption', '— None —')}</option>
                 {depts.map(d => <option key={d.id} value={d.name}>{d.name}</option>)}
               </select>
               {hodWarning && <p className="text-xs text-amber-600 mt-1">{hodWarning}</p>}
             </div>
           )}
           <div>
-            <label className="label">{t('common.status','Status')}</label>
-            <select className="select" value={form.status} onChange={e => setForm(f=>({...f,status:e.target.value}))}>
-              <option value="active">{t('common.active','Active')}</option>
-              <option value="inactive">{t('common.inactive','Inactive')}</option>
+            <label className="label">{t('common.status', 'Status')}</label>
+            <select className="select" value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value }))}>
+              <option value="active">{t('common.active', 'Active')}</option>
+              <option value="inactive">{t('common.inactive', 'Inactive')}</option>
             </select>
           </div>
         </div>
@@ -198,8 +226,8 @@ export default function UserManagement() {
       <ConfirmModal
         open={!!deleteId} onClose={() => setDeleteId(null)}
         onConfirm={async () => { await adminApi.deleteUser(deleteId); setDeleteId(null); load(); }}
-        title={t('userManagement.deleteUser','Delete User')}
-        message={t('userManagement.deleteConfirm','This action cannot be undone.')}
+        title={t('userManagement.deleteUser', 'Delete User')}
+        message={t('userManagement.deleteConfirm', 'This action cannot be undone.')}
       />
     </div>
   );

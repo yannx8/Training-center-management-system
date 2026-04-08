@@ -66,7 +66,6 @@ export default function StudentTimetable() {
         sessions={filtered.map(s => ({
           ...s,
           subject: s.course?.name,
-          weekLabel: s.timetable?.academicWeek?.label,
         }))}
         getDay={s => s.dayOfWeek}
         getType={() => 'academic'}

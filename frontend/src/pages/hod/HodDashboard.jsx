@@ -27,7 +27,7 @@ export default function HodDashboard() {
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="page-title">{t('dashboard.hodTitle', 'Department Overview')}</h1>
+        <h1 className="page-title">{data.department}</h1>
         <p className="page-subtitle">
           {t('auth.welcome', 'Welcome back')}, <span className="font-semibold">{firstName}</span>
         </p>
@@ -39,7 +39,7 @@ export default function HodDashboard() {
       )}
 
       {/* Stats grid — 2 cols on mobile, 4 on desktop */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
         <StatCard
           label={t('dashboard.programs', 'Programs')}
           value={stats?.programCount ?? '—'}
@@ -51,12 +51,6 @@ export default function HodDashboard() {
           value={stats?.trainerCount ?? '—'}
           icon={<Users size={20}/>}
           color="bg-amber-100 text-amber-700"
-        />
-        <StatCard
-          label={t('dashboard.availabilitySlots', 'Availability Slots')}
-          value={stats?.availabilityCount ?? '—'}
-          icon={<Clock size={20}/>}
-          color="bg-blue-100 text-blue-700"
         />
         <StatCard
           label={t('dashboard.activeWeek', 'Active Week')}

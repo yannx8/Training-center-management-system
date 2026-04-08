@@ -1,4 +1,3 @@
-// ─── ParentComplaints.jsx ──────────────────────────────────────────────────
 import { useEffect, useState } from 'react';
 import { MessageSquare, Plus } from 'lucide-react';
 import { parentApi } from '../../api';
@@ -11,17 +10,17 @@ const EMPTY = { subject: '', description: '', priority: 'medium', studentId: '' 
 export function ParentComplaints() {
   const { t } = useTranslation();
   const [complaints, setComplaints] = useState([]);
-  const [children, setChildren]     = useState([]);
-  const [loading, setLoading]       = useState(true);
-  const [modal, setModal]           = useState(false);
-  const [form, setForm]             = useState(EMPTY);
-  const [saving, setSaving]         = useState(false);
-  const [error, setError]           = useState('');
+  const [children, setChildren] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [modal, setModal] = useState(false);
+  const [form, setForm] = useState(EMPTY);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
 
   function load() {
     Promise.all([parentApi.getComplaints(), parentApi.getChildren()])
-      .then(([c, ch]) => { setComplaints(c.data||[]); setChildren(ch.data||[]); setLoading(false); })
-      .catch(() => setError(t('common.failedLoad','Failed to load')));
+      .then(([c, ch]) => { setComplaints(c.data || []); setChildren(ch.data || []); setLoading(false); })
+      .catch(() => setError(t('common.failedLoad', 'Failed to load')));
   }
   useEffect(load, []);
 
@@ -30,38 +29,38 @@ export function ParentComplaints() {
     setSaving(true);
     try {
       await parentApi.createComplaint({
-        subject:     form.subject,
+        subject: form.subject,
         description: form.description,
-        priority:    form.priority,
-        studentId:   form.studentId || undefined,
+        priority: form.priority,
+        studentId: form.studentId || undefined,
       });
       setModal(false); setForm(EMPTY); load();
-    } catch (e) { alert(e.response?.data?.message || t('common.failedSave','Failed')); }
+    } catch (e) { alert(e.response?.data?.message || t('common.failedSave', 'Failed')); }
     finally { setSaving(false); }
   }
 
   if (loading) return <PageLoader />;
-  if (error)   return <ErrorAlert message={error} />;
+  if (error) return <ErrorAlert message={error} />;
 
-  const pending  = complaints.filter(c => c.status === 'pending');
+  const pending = complaints.filter(c => c.status === 'pending');
   const resolved = complaints.filter(c => c.status !== 'pending');
 
   return (
     <div className="space-y-4">
-      <SectionHeader title={t('complaints.title','Complaints')} subtitle={t('complaints.subtitle','Submit and track your complaints')}>
+      <SectionHeader title={t('complaints.title', 'Complaints')} subtitle={t('complaints.subtitle', 'Submit and track your complaints')}>
         <button className="btn-primary" onClick={() => { setForm(EMPTY); setModal(true); }}>
-          <Plus size={16}/> {t('complaints.newComplaint','New Complaint')}
+          <Plus size={16} /> {t('complaints.newComplaint', 'New Complaint')}
         </button>
       </SectionHeader>
 
       {complaints.length === 0 && (
         <div className="card p-10 text-center">
           <MessageSquare size={36} className="mx-auto text-gray-300 mb-3" />
-          <p className="text-gray-500">{t('complaints.noPendingComplaints','No complaints submitted yet.')}</p>
+          <p className="text-gray-500">{t('complaints.noPendingComplaints', 'No complaints submitted yet.')}</p>
         </div>
       )}
 
-      {[{ label: t('complaints.pending','Pending'), items: pending }, { label: t('complaints.resolved','Resolved'), items: resolved }]
+      {[{ label: t('complaints.pending', 'Pending'), items: pending }, { label: t('complaints.resolved', 'Resolved'), items: resolved }]
         .filter(g => g.items.length > 0)
         .map(group => (
           <div key={group.label}>
@@ -82,7 +81,7 @@ export function ParentComplaints() {
                   {c.description && <p className="text-sm text-gray-600">{c.description}</p>}
                   {c.adminResponse && (
                     <div className="bg-violet-50 border border-violet-100 rounded-xl px-3 py-2">
-                      <p className="text-xs font-semibold text-violet-700 mb-1">{t('complaints.adminResponse','Administration response')}</p>
+                      <p className="text-xs font-semibold text-violet-700 mb-1">{t('complaints.adminResponse', 'Administration response')}</p>
                       <p className="text-sm text-violet-800">{c.adminResponse}</p>
                     </div>
                   )}
@@ -92,40 +91,40 @@ export function ParentComplaints() {
           </div>
         ))}
 
-      <Modal open={modal} onClose={() => setModal(false)} title={t('complaints.submitComplaint','Submit Complaint')}
+      <Modal open={modal} onClose={() => setModal(false)} title={t('complaints.submitComplaint', 'Submit Complaint')}
         footer={
           <>
-            <button className="btn-secondary" onClick={() => setModal(false)}>{t('common.cancel','Cancel')}</button>
+            <button className="btn-secondary" onClick={() => setModal(false)}>{t('common.cancel', 'Cancel')}</button>
             <button className="btn-primary" onClick={handleSubmit} disabled={saving}>
-              {saving ? t('common.submitting','Submitting…') : t('common.submit','Submit')}
+              {saving ? t('common.submitting', 'Submitting…') : t('common.submit', 'Submit')}
             </button>
           </>
         }>
         <div className="space-y-4">
           <div>
-            <label className="label">{t('complaints.subjectLabel','Subject *')}</label>
-            <input className="input" placeholder={t('complaints.subjectPlaceholder','Brief title')}
-              value={form.subject} onChange={e => setForm(f=>({...f,subject:e.target.value}))} />
+            <label className="label">{t('complaints.subjectLabel', 'Subject *')}</label>
+            <input className="input" placeholder={t('complaints.subjectPlaceholder', 'Brief title')}
+              value={form.subject} onChange={e => setForm(f => ({ ...f, subject: e.target.value }))} />
           </div>
           <div>
-            <label className="label">{t('complaints.details','Details')}</label>
-            <textarea rows={3} className="input" placeholder={t('complaints.detailsPlaceholder','Describe your concern…')}
-              value={form.description} onChange={e => setForm(f=>({...f,description:e.target.value}))} />
+            <label className="label">{t('complaints.details', 'Details')}</label>
+            <textarea rows={3} className="input" placeholder={t('complaints.detailsPlaceholder', 'Describe your concern…')}
+              value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="label">{t('complaints.priority','Priority')}</label>
-              <select className="select" value={form.priority} onChange={e=>setForm(f=>({...f,priority:e.target.value}))}>
-                <option value="high">{t('complaints.high','High')}</option>
-                <option value="medium">{t('complaints.medium','Medium')}</option>
-                <option value="low">{t('complaints.low','Low')}</option>
+              <label className="label">{t('complaints.priority', 'Priority')}</label>
+              <select className="select" value={form.priority} onChange={e => setForm(f => ({ ...f, priority: e.target.value }))}>
+                <option value="high">{t('complaints.high', 'High')}</option>
+                <option value="medium">{t('complaints.medium', 'Medium')}</option>
+                <option value="low">{t('complaints.low', 'Low')}</option>
               </select>
             </div>
             {children.length > 0 && (
               <div>
-                <label className="label">{t('complaints.regardingChild','Regarding Child')}</label>
-                <select className="select" value={form.studentId} onChange={e=>setForm(f=>({...f,studentId:e.target.value}))}>
-                  <option value="">{t('complaints.generalComplaint','— General —')}</option>
+                <label className="label">{t('complaints.regardingChild', 'Regarding Child')}</label>
+                <select className="select" value={form.studentId} onChange={e => setForm(f => ({ ...f, studentId: e.target.value }))}>
+                  <option value="">{t('complaints.generalComplaint', '— General —')}</option>
                   {children.map(c => <option key={c.id} value={c.id}>{c.user?.fullName}</option>)}
                 </select>
               </div>

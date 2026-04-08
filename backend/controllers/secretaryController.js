@@ -2,22 +2,30 @@ const bcrypt = require('bcryptjs');
 const prisma = require('../lib/prisma');
 const { asyncHandler } = require('../middleware/errorHandler');
 
+// Generates a unique matricule for a student (e.g., COMP-2024-0001).
+// This is used as their official ID within the system.
 function genMatricule(code, year, seq) {
   return `${code}-${year}-${String(seq).padStart(4, '0')}`;
 }
 
+// Builds the landing page for the secretary, showing current enrolment stats
+// for programs and certifications for the active year.
 const getDashboard = asyncHandler(async (req, res) => {
   const activeYear = await prisma.academicYear.findFirst({ where: { isActive: true } });
+  
+  // We list all active programs, optionally filtered by the current academic year if one is set.
   const programs = await prisma.program.findMany({
     where: { status: 'active', ...(activeYear ? { academicYears: { some: { id: activeYear.id } } } : {}) },
     include: { department: { select: { name: true } }, _count: { select: { enrollments: true } } },
     orderBy: { name: 'asc' },
   });
+
   const certifications = await prisma.certification.findMany({
     where: { status: 'active' },
     include: { _count: { select: { enrollments: true } }, trainerCourses: { include: { trainer: { include: { user: { select: { fullName: true } } } } } } },
     orderBy: { name: 'asc' },
   });
+
   const studentCount = await prisma.student.count();
   return res.json({ success: true, data: { activeYear, programs, certifications, studentCount } });
 });
@@ -41,17 +49,31 @@ const getAllStudentsHandler = asyncHandler(async (req, res) => {
   return res.json({ success: true, data: students });
 });
 
+const { generateUniqueEmail } = require('../lib/userUtils');
+
+function validateEmail(email) {
+  const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return re.test(email.toLowerCase());
+}
+
 const registerStudentHandler = asyncHandler(async (req, res) => {
   const {
-    fullName, email, phone, dateOfBirth,
+    firstName, lastName, phone, dateOfBirth,
     programId, levelId, certificationId,
-    parents = [],   // array of { fullName, email, phone, relationship }
+    parents = [],   // array of { firstName, lastName, email, phone, relationship }
   } = req.body;
 
-  if (!fullName || !email || !phone)
-    return res.status(400).json({ success: false, message: 'fullName, email, phone required' });
+  if (!firstName || !lastName || !phone)
+    return res.status(400).json({ success: false, message: 'firstName, lastName, phone required' });
   if (!programId && !certificationId)
     return res.status(400).json({ success: false, message: 'Must enroll in a program or certification' });
+
+  // Safety check: Make sure all provided parent emails are actually valid emails.
+  for (const p of parents) {
+    if (p.email && !validateEmail(p.email)) {
+      return res.status(400).json({ success: false, message: `Invalid email format for parent: ${p.email}` });
+    }
+  }
 
   // Capacity check
   if (programId) {
@@ -69,6 +91,9 @@ const registerStudentHandler = asyncHandler(async (req, res) => {
 
   const SALT = Number(process.env.BCRYPT_SALT_ROUNDS) || 12;
   const studentHash = await bcrypt.hash(phone, SALT);
+
+  const fullName = `${firstName.trim()} ${lastName.trim()}`;
+  const studentEmail = await generateUniqueEmail(firstName, lastName);
 
   // Hash parent passwords before transaction
   const parentsWithHash = await Promise.all(
@@ -90,15 +115,13 @@ const registerStudentHandler = asyncHandler(async (req, res) => {
     : (await prisma.certification.findUnique({ where: { id: Number(certificationId) } }))?.code || 'CERT';
   const matricule = genMatricule(code, new Date().getFullYear(), count + 1);
 
-  const activeYear = programId
-    ? await prisma.academicYear.findFirst({ where: { programId: Number(programId), isActive: true } })
-    : null;
-
+  // We use a transaction here to ensure that if anything fails (creating user, enrolling, or linking parents),
+  // none of the records are saved. It's an "all or nothing" deal for data integrity.
   const result = await prisma.$transaction(async tx => {
     const studentRole = await tx.role.findUnique({ where: { name: 'student' } });
     const studentUser = await tx.user.create({
       data: {
-        fullName, email: email.toLowerCase().trim(),
+        fullName, email: studentEmail,
         passwordHash: studentHash, phone,
         department: deptName, status: 'active', passwordChanged: false,
         userRoles: { create: { roleId: studentRole.id } },
@@ -130,7 +153,7 @@ const registerStudentHandler = asyncHandler(async (req, res) => {
       if (!parentUser) {
         parentUser = await tx.user.create({
           data: {
-            fullName: p.fullName || 'Parent',
+            fullName: `${p.firstName || ''} ${p.lastName || ''}`.trim() || 'Parent',
             email: p.email.toLowerCase().trim(),
             passwordHash: p.hash,
             phone: p.phone || phone,

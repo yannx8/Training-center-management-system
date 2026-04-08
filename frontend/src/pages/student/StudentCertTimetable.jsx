@@ -1,4 +1,3 @@
-// FILE: frontend/src/pages/student/StudentTimetable.jsx
 import { useEffect, useState } from 'react';
 import { studentApi } from '../../api';
 import { PageLoader, ErrorAlert } from '../../components/ui';
@@ -7,9 +6,9 @@ import { useTranslation } from 'react-i18next';
 
 export default function StudentTimetable() {
   const { t } = useTranslation();
-  const [slots, setSlots]   = useState([]);
+  const [slots, setSlots] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError]   = useState('');
+  const [error, setError] = useState('');
 
   useEffect(() => {
     // Only fetch timetable — auto-uses latest published academic week on backend
@@ -19,7 +18,7 @@ export default function StudentTimetable() {
   }, []);
 
   if (loading) return <PageLoader />;
-  if (error)   return <ErrorAlert message={error} />;
+  if (error) return <ErrorAlert message={error} />;
 
   if (slots.length === 0) {
     return (
@@ -53,9 +52,9 @@ export default function StudentTimetable() {
       <TimetableGrid
         sessions={slots.map(s => ({
           ...s,
-          subject:      s.course?.name,
-          weekLabel:    s.timetable?.academicWeek?.label,
-          levelName:    s.course?.session?.academicLevel?.name,
+          subject: s.course?.name,
+          weekLabel: s.timetable?.academicWeek?.label,
+          levelName: s.course?.session?.academicLevel?.name,
           semesterName: s.course?.session?.semester?.name,
         }))}
         getDay={s => s.dayOfWeek}

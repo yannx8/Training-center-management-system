@@ -1,4 +1,3 @@
-// FILE: backend/routes/trainer.js
 const router = require('express').Router();
 const { authenticate, authorize } = require('../middleware/auth');
 const t = require('../controllers/trainerController');
@@ -9,11 +8,12 @@ router.get('/dashboard', t.getDashboard);
 router.get('/courses', t.getCoursesHandler);
 router.get('/certifications', t.getCertificationsHandler);
 
-// Cert-specific weeks (trainer creates these, not HOD)
+// Cert weeks 
 router.get('/cert-weeks', t.getCertWeeksHandler);
 router.post('/cert-weeks', t.createCertWeekHandler);
 router.put('/cert-weeks/:id/publish', t.publishCertWeekHandler);
 router.put('/cert-weeks/:id/unpublish', t.unpublishCertWeekHandler);
+router.put('/cert-weeks/:id/close', t.closeCertWeekHandler);
 router.delete('/cert-weeks/:id', t.deleteCertWeekHandler);
 
 // HOD-published academic weeks (for trainer availability submission)

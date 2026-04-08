@@ -1,4 +1,3 @@
-// ─── StudentAnnouncements.jsx ────────────────────────────────────────────────
 import { useEffect, useState } from 'react';
 import { Megaphone, Bell } from 'lucide-react';
 import { studentApi } from '../../api';
@@ -9,30 +8,30 @@ export default function StudentAnnouncements() {
   const { t, i18n } = useTranslation();
   const [announcements, setAnnouncements] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError]     = useState('');
+  const [error, setError] = useState('');
   const locale = i18n.language?.startsWith('fr') ? 'fr-FR' : 'en-GB';
 
   useEffect(() => {
     studentApi.getAnnouncements()
       .then(r => { setAnnouncements(r.data || []); setLoading(false); })
-      .catch(() => setError(t('common.failedLoad','Failed to load')));
+      .catch(() => setError(t('common.failedLoad', 'Failed to load')));
   }, []);
 
   if (loading) return <PageLoader />;
-  if (error)   return <ErrorAlert message={error} />;
+  if (error) return <ErrorAlert message={error} />;
 
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="page-title">{t('announcements.title','Announcements')}</h1>
-        <p className="page-subtitle">{t('announcements.departmentMessagesStudent','Announcements from your department')}</p>
+        <h1 className="page-title">{t('announcements.title', 'Announcements')}</h1>
+        <p className="page-subtitle">{t('announcements.departmentMessagesStudent', 'Announcements from your department')}</p>
       </div>
 
       {announcements.length === 0 && (
         <div className="card p-10 text-center">
           <Megaphone size={36} className="mx-auto text-gray-300 mb-3" />
-          <p className="text-gray-500 font-medium">{t('announcements.noAnnouncementsYet','No announcements yet.')}</p>
-          <p className="text-sm text-gray-400 mt-1">{t('announcements.noMessagesFromHOD','Announcements from your HOD will appear here.')}</p>
+          <p className="text-gray-500 font-medium">{t('announcements.noAnnouncementsYet', 'No announcements yet.')}</p>
+          <p className="text-sm text-gray-400 mt-1">{t('announcements.noMessagesFromHOD', 'Announcements from your HOD will appear here.')}</p>
         </div>
       )}
 
@@ -50,7 +49,7 @@ export default function StudentAnnouncements() {
                 </div>
                 <p className="text-sm text-gray-600 whitespace-pre-line">{a.body}</p>
                 <p className="text-xs text-gray-400 mt-2">
-                  {a.creator?.fullName} · {new Date(a.createdAt).toLocaleDateString(locale, { day:'numeric', month:'long', year:'numeric' })}
+                  {a.creator?.fullName} · {new Date(a.createdAt).toLocaleDateString(locale, { day: 'numeric', month: 'long', year: 'numeric' })}
                 </p>
               </div>
             </div>

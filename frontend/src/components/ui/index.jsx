@@ -2,7 +2,7 @@ import { AlertTriangle, Loader2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import Modal from './Modal';
 
-// ── StatCard ─────────────────────────────────────────────────────
+//  StatCard 
 export function StatCard({ label, value, icon, color = 'bg-primary-100 text-primary-700' }) {
   return (
     <div className="stat-card">
@@ -15,7 +15,7 @@ export function StatCard({ label, value, icon, color = 'bg-primary-100 text-prim
   );
 }
 
-// ── SectionHeader ────────────────────────────────────────────────
+//  SectionHeader 
 export function SectionHeader({ title, subtitle, children }) {
   return (
     <div className="flex items-start justify-between gap-4 flex-wrap">
@@ -28,7 +28,7 @@ export function SectionHeader({ title, subtitle, children }) {
   );
 }
 
-// ── PageLoader ───────────────────────────────────────────────────
+//  PageLoader 
 export function PageLoader() {
   return (
     <div className="flex items-center justify-center py-16">
@@ -37,7 +37,7 @@ export function PageLoader() {
   );
 }
 
-// ── ErrorAlert ───────────────────────────────────────────────────
+//  ErrorAlert 
 export function ErrorAlert({ message }) {
   return (
     <div className="card p-4 bg-red-50 border border-red-200 text-red-700 text-sm flex items-center gap-2">
@@ -47,40 +47,40 @@ export function ErrorAlert({ message }) {
   );
 }
 
-// ── Badge ────────────────────────────────────────────────────────
+//  Badge 
 export function Badge({ value, label }) {
   const { t } = useTranslation();
 
   const BADGE_MAP = {
-    active:      'badge-green',
-    inactive:    'badge-red',
-    published:   'badge-green',
-    draft:       'badge-gray',
-    pending:     'badge-yellow',
-    reviewed:    'badge-blue',
-    resolved:    'badge-green',
+    active: 'badge-green',
+    inactive: 'badge-red',
+    published: 'badge-green',
+    draft: 'badge-gray',
+    pending: 'badge-yellow',
+    reviewed: 'badge-blue',
+    resolved: 'badge-green',
     in_progress: 'badge-blue',
-    available:   'badge-green',
+    available: 'badge-green',
     unavailable: 'badge-red',
-    high:        'badge-red',
-    medium:      'badge-yellow',
-    low:         'badge-gray',
+    high: 'badge-red',
+    medium: 'badge-yellow',
+    low: 'badge-gray',
   };
 
   const LABEL_KEYS = {
-    active:      'common.active',
-    inactive:    'common.inactive',
-    published:   'common.published',
-    draft:       'common.draft',
-    pending:     'common.pending',
-    reviewed:    'common.reviewed',
-    resolved:    'common.resolved',
+    active: 'common.active',
+    inactive: 'common.inactive',
+    published: 'common.published',
+    draft: 'common.draft',
+    pending: 'common.pending',
+    reviewed: 'common.reviewed',
+    resolved: 'common.resolved',
     in_progress: 'common.in_progress',
-    available:   'common.active',
+    available: 'common.active',
     unavailable: 'common.inactive',
-    high:        'common.high',
-    medium:      'common.medium',
-    low:         'common.low',
+    high: 'common.high',
+    medium: 'common.medium',
+    low: 'common.low',
   };
 
   const key = String(value || '').toLowerCase();
@@ -90,27 +90,27 @@ export function Badge({ value, label }) {
   return <span className={cls}>{displayLabel}</span>;
 }
 
-// ── ConfirmModal ─────────────────────────────────────────────────
+//  ConfirmModal 
 export function ConfirmModal({ open, onClose, onConfirm, title, message }) {
   const { t } = useTranslation();
   return (
     <Modal
       open={open}
       onClose={onClose}
-      title={title || t('common.confirm','Confirm')}
+      title={title || t('common.confirm', 'Confirm')}
       footer={
         <>
-          <button className="btn-secondary" onClick={onClose}>{t('common.cancel','Cancel')}</button>
+          <button className="btn-secondary" onClick={onClose}>{t('common.cancel', 'Cancel')}</button>
           <button
             className="btn-danger"
             onClick={async () => { await onConfirm(); onClose(); }}
           >
-            {t('common.delete','Delete')}
+            {t('common.delete', 'Delete')}
           </button>
         </>
       }
     >
-      <p className="text-sm text-gray-600">{message || t('common.confirm','Are you sure?')}</p>
+      <p className="text-sm text-gray-600">{message || t('common.confirm', 'Are you sure?')}</p>
     </Modal>
   );
 }

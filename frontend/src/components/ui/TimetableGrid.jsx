@@ -1,28 +1,18 @@
-/**
- * TimetableGrid — shared academic/certification timetable display
- * Mobile-first card layout. Fully translated via i18n.
- *
- * Props:
- *   sessions  : array  — normalised session objects
- *   getDay    : fn(s)  => day string (English key, e.g. "Monday")
- *   getType   : fn(s)  => 'academic' | 'certification'
- *   emptyMessage : string (fallback if not using t())
- */
 import { Calendar, Clock, MapPin, User, BookOpen, Award } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
-const DAYS_EN = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+const DAYS_EN = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
 const TYPE_STYLES = {
-  academic:      { bg: 'bg-blue-50',   border: 'border-blue-200',   text: 'text-blue-900',   badge: 'bg-blue-100 text-blue-700',    icon: <BookOpen size={12}/> },
-  certification: { bg: 'bg-violet-50', border: 'border-violet-200', text: 'text-violet-900', badge: 'bg-violet-100 text-violet-700', icon: <Award size={12}/> },
-  default:       { bg: 'bg-gray-50',   border: 'border-gray-200',   text: 'text-gray-900',   badge: 'bg-gray-100 text-gray-700',    icon: <Calendar size={12}/> },
+  academic: { bg: 'bg-blue-50', border: 'border-blue-200', text: 'text-blue-900', badge: 'bg-blue-100 text-blue-700', icon: <BookOpen size={12} /> },
+  certification: { bg: 'bg-violet-50', border: 'border-violet-200', text: 'text-violet-900', badge: 'bg-violet-100 text-violet-700', icon: <Award size={12} /> },
+  default: { bg: 'bg-gray-50', border: 'border-gray-200', text: 'text-gray-900', badge: 'bg-gray-100 text-gray-700', icon: <Calendar size={12} /> },
 };
 
 export function SessionCard({ session, type = 'academic' }) {
   const { t } = useTranslation();
-  const style   = TYPE_STYLES[type] || TYPE_STYLES.default;
-  const timeStr = `${session.timeStart?.slice(0,5) || '—'} – ${session.timeEnd?.slice(0,5) || '—'}`;
+  const style = TYPE_STYLES[type] || TYPE_STYLES.default;
+  const timeStr = `${session.timeStart?.slice(0, 5) || '—'} – ${session.timeEnd?.slice(0, 5) || '—'}`;
   const subject = session.subject || session.course?.name || session.certification?.name || '—';
   const typeLabel = type === 'certification'
     ? t('timetable.certification', 'Certification')
@@ -63,8 +53,8 @@ export function SessionCard({ session, type = 'academic' }) {
       {/* Week / level / semester badge row */}
       {(session.weekLabel || session.levelName || session.semesterName) && (
         <div className="flex flex-wrap gap-1 mt-1">
-          {session.weekLabel   && <span className="text-[10px] bg-white/80 border border-gray-200 rounded px-1.5 py-0.5 text-gray-500">{session.weekLabel}</span>}
-          {session.levelName   && <span className="text-[10px] bg-white/80 border border-gray-200 rounded px-1.5 py-0.5 text-gray-500">{session.levelName}</span>}
+          {session.weekLabel && <span className="text-[10px] bg-white/80 border border-gray-200 rounded px-1.5 py-0.5 text-gray-500">{session.weekLabel}</span>}
+          {session.levelName && <span className="text-[10px] bg-white/80 border border-gray-200 rounded px-1.5 py-0.5 text-gray-500">{session.levelName}</span>}
           {session.semesterName && <span className="text-[10px] bg-white/80 border border-gray-200 rounded px-1.5 py-0.5 text-gray-500">{session.semesterName}</span>}
         </div>
       )}

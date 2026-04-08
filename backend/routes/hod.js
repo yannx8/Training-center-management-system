@@ -9,9 +9,9 @@ router.post("/weeks", h.createAcademicWeekHandler);
 router.get("/weeks/published", h.getPublishedWeeksHandler);
 router.put("/weeks/:id/publish", h.publishWeekHandler);
 router.put("/weeks/:id/unpublish", h.unpublishWeekHandler);
-router.delete("/weeks/:id", h.deleteWeekHandler);
+router.put("/weeks/:id/close", h.closeWeekHandler);
 router.get("/availability", h.getAvailabilityHandler);
-router.get("/availability/status", h.getTrainerAvailabilityStatusHandler); // NEW
+router.get("/availability/status", h.getTrainerAvailabilityStatusHandler);
 router.get("/availability/lock", h.getLockStatus);
 router.post("/availability/lock", h.lockAvailabilityHandler);
 router.post("/availability/unlock", h.unlockAvailabilityHandler);

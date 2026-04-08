@@ -1,6 +1,8 @@
 const prisma = require('../lib/prisma');
 const { asyncHandler } = require('../middleware/errorHandler');
 
+// Helper function to grab the student's profile along with their program and department info.
+// We use this often to ensure we have context about what they're studying.
 async function getStudent(userId) {
     return prisma.student.findUnique({
         where: { userId },
@@ -8,12 +10,13 @@ async function getStudent(userId) {
     });
 }
 
-// DASHBOARD 
-const getDashboard = asyncHandler(async(req, res) => {
+// Fetches all the data needed for the student's homepage dashboard.
+// This includes recent grades, announcements, and their upcoming classes.
+const getDashboard = asyncHandler(async (req, res) => {
     const student = await getStudent(req.user.userId);
     if (!student) return res.status(404).json({ success: false, message: 'Student profile not found', code: 'NOT_FOUND' });
 
-    // Recent grades
+    // Grab the 5 most recent grades so they can see how they're doing at a glance.
     const grades = await prisma.grade.findMany({
         where: { studentId: student.id },
         include: { course: true, certification: true },
@@ -21,8 +24,7 @@ const getDashboard = asyncHandler(async(req, res) => {
         take: 5,
     });
 
-    // Latest announcements for this dept
-    // Fixed: Safe check for departmentId
+    // We pull announcements relevant to their department or marked for 'all'.
     const deptId = (student.program && student.program.departmentId) ? student.program.departmentId : undefined;
 
     const announcements = await prisma.announcement.findMany({
@@ -35,7 +37,7 @@ const getDashboard = asyncHandler(async(req, res) => {
         take: 5,
     });
 
-    // Academic timetable (published)
+    // Get the next 6 scheduled classes that have been officially published.
     const progId = student.programId ? student.programId : undefined;
 
     const timetableSlots = await prisma.timetableSlot.findMany({
@@ -55,7 +57,7 @@ const getDashboard = asyncHandler(async(req, res) => {
 });
 
 // TIMETABLE (academic)
-const getTimetableHandler = asyncHandler(async(req, res) => {
+const getTimetableHandler = asyncHandler(async (req, res) => {
     const student = await getStudent(req.user.userId);
     if (!student) return res.status(404).json({ success: false, message: 'Student not found', code: 'NOT_FOUND' });
 
@@ -81,7 +83,7 @@ const getTimetableHandler = asyncHandler(async(req, res) => {
 });
 
 // CERTIFICATION TIMETABLE 
-const getCertTimetableHandler = asyncHandler(async(req, res) => {
+const getCertTimetableHandler = asyncHandler(async (req, res) => {
     const student = await getStudent(req.user.userId);
     if (!student) return res.status(404).json({ success: false, message: 'Student not found', code: 'NOT_FOUND' });
 
@@ -112,7 +114,7 @@ const getCertTimetableHandler = asyncHandler(async(req, res) => {
 });
 
 //  CERT AVAILABILITY SUBMISSION 
-const getCertEnrollmentsHandler = asyncHandler(async(req, res) => {
+const getCertEnrollmentsHandler = asyncHandler(async (req, res) => {
     const student = await getStudent(req.user.userId);
     if (!student) return res.status(404).json({ success: false, message: 'Student not found', code: 'NOT_FOUND' });
 
@@ -123,25 +125,11 @@ const getCertEnrollmentsHandler = asyncHandler(async(req, res) => {
     return res.json({ success: true, data: enrollments });
 });
 
-const getPublishedWeeksForCertHandler = asyncHandler(async(req, res) => {
+const getPublishedWeeksForCertHandler = asyncHandler(async (req, res) => {
     const student = await getStudent(req.user.userId);
     if (!student) return res.status(404).json({ success: false, message: 'Student not found', code: 'NOT_FOUND' });
 
-    const { certificationId, type } = req.query;
-
-    // type=academic -> return HOD-published academic weeks for student's department
-    if (type === 'academic') {
-        const deptId = (student.program && student.program.departmentId) ? student.program.departmentId : undefined;
-        const weeks = await prisma.academicWeek.findMany({
-            where: {
-                departmentId: deptId,
-                status: 'published',
-                certificationId: null,
-            },
-            orderBy: { weekNumber: 'desc' },
-        });
-        return res.json({ success: true, data: weeks });
-    }
+    const { certificationId } = req.query;
 
     // certificationId provided -> return cert-specific published weeks for that cert
     if (certificationId) {
@@ -169,7 +157,7 @@ const getPublishedWeeksForCertHandler = asyncHandler(async(req, res) => {
     return res.json({ success: true, data: weeks });
 });
 
-const submitCertAvailabilityHandler = asyncHandler(async(req, res) => {
+const submitCertAvailabilityHandler = asyncHandler(async (req, res) => {
     const student = await getStudent(req.user.userId);
     if (!student) return res.status(404).json({ success: false, message: 'Student not found', code: 'NOT_FOUND' });
 
@@ -183,7 +171,8 @@ const submitCertAvailabilityHandler = asyncHandler(async(req, res) => {
     });
     if (!enrolled) return res.status(403).json({ success: false, message: 'Not enrolled in this certification', code: 'NOT_ENROLLED' });
 
-    // Delete existing, then insert new
+    // To keep things clean, we wipe any existing availability for this specific week/cert 
+    // before saving the new list. This ensures they don't have stale data lingering.
     await prisma.studentAvailability.deleteMany({
         where: { studentId: student.id, academicWeekId: Number(weekId), certificationId: Number(certificationId) },
     });
@@ -203,7 +192,7 @@ const submitCertAvailabilityHandler = asyncHandler(async(req, res) => {
     return res.status(201).json({ success: true, data: { created: created.count } });
 });
 
-const getCertAvailabilityHandler = asyncHandler(async(req, res) => {
+const getCertAvailabilityHandler = asyncHandler(async (req, res) => {
     const student = await getStudent(req.user.userId);
     if (!student) return res.status(404).json({ success: false, message: 'Student not found', code: 'NOT_FOUND' });
 
@@ -219,24 +208,60 @@ const getCertAvailabilityHandler = asyncHandler(async(req, res) => {
 });
 
 // GRADES 
-const getGradesHandler = asyncHandler(async(req, res) => {
+const getGradesHandler = asyncHandler(async (req, res) => {
     const student = await getStudent(req.user.userId);
     if (!student) return res.status(404).json({ success: false, message: 'Student not found', code: 'NOT_FOUND' });
 
+    // 1. Get all courses for the student's program
+    const programCourses = await prisma.course.findMany({
+        where: { session: { programId: student.programId } },
+        include: { session: { include: { program: true, academicLevel: true, semester: true } } }
+    });
+
+    // 2. Get existing grades
     const grades = await prisma.grade.findMany({
         where: { studentId: student.id },
         include: {
-            course: { include: { session: { include: { program: true, academicLevel: true, semester: true } } } },
+            course: true,
             certification: true,
             academicYear: true,
         },
-        orderBy: { submittedAt: 'desc' },
     });
-    return res.json({ success: true, data: grades });
+
+    // 3. Merge
+    const gradeMap = {};
+    const certGrades = [];
+    
+    grades.forEach(g => {
+        if (g.courseId) gradeMap[g.courseId] = g;
+        else if (g.certificationId) certGrades.push(g);
+    });
+
+    const result = programCourses.map(course => {
+        const grade = gradeMap[course.id];
+        if (grade) return grade;
+        
+        // If a course hasn't been graded yet, we return a "placeholder" object.
+        // This helps the frontend display the course row even without a mark.
+        return {
+            id: `p-${course.id}`,
+            grade: null,
+            gradeLetter: null,
+            courseId: course.id,
+            course: course,
+            studentId: student.id,
+            submittedAt: null
+        };
+    });
+
+    // Add certification grades (they stay as is since they are specific to the student's enrollments)
+    const finalResult = [...result, ...certGrades];
+
+    return res.json({ success: true, data: finalResult });
 });
 
 // MARK COMPLAINTS 
-const createComplaintHandler = asyncHandler(async(req, res) => {
+const createComplaintHandler = asyncHandler(async (req, res) => {
     const student = await getStudent(req.user.userId);
     if (!student) return res.status(404).json({ success: false, message: 'Student not found', code: 'NOT_FOUND' });
 
@@ -256,7 +281,7 @@ const createComplaintHandler = asyncHandler(async(req, res) => {
     return res.status(201).json({ success: true, data: complaint });
 });
 
-const getComplaintsHandler = asyncHandler(async(req, res) => {
+const getComplaintsHandler = asyncHandler(async (req, res) => {
     const student = await getStudent(req.user.userId);
     if (!student) return res.status(404).json({ success: false, message: 'Student not found', code: 'NOT_FOUND' });
 
@@ -269,7 +294,7 @@ const getComplaintsHandler = asyncHandler(async(req, res) => {
 });
 
 //ANNOUNCEMENTS 
-const getAnnouncementsHandler = asyncHandler(async(req, res) => {
+const getAnnouncementsHandler = asyncHandler(async (req, res) => {
     const student = await getStudent(req.user.userId);
     if (!student) return res.status(404).json({ success: false, message: 'Student not found', code: 'NOT_FOUND' });
 

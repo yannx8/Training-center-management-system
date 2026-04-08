@@ -1,4 +1,3 @@
-// FILE: frontend/src/pages/trainer/TrainerCertifications.jsx
 import { useEffect, useState } from 'react';
 import { Award, Zap, Users, CheckCircle, XCircle, ChevronDown, ChevronUp, Plus, Trash2, Eye, EyeOff } from 'lucide-react';
 import { trainerApi } from '../../api';
@@ -6,22 +5,22 @@ import Modal from '../../components/ui/Modal';
 import { PageLoader, ErrorAlert } from '../../components/ui';
 import { useTranslation } from 'react-i18next';
 
-const EMPTY_WEEK = { weekNumber: '', label: '', startDate: '', endDate: '' };
+const EMPTY_WEEK = { weekNumber: '', label: '', startDate: '', endDate: '', availabilityDeadline: '' };
 
 export default function TrainerCertifications() {
   const { t } = useTranslation();
-  const [certs, setCerts]             = useState([]);
-  const [certWeeks, setCertWeeks]     = useState({});   // { certId: [weeks] }
-  const [loading, setLoading]         = useState(true);
-  const [error, setError]             = useState('');
-  const [expanded, setExpanded]       = useState({});
-  const [selectedWeek, setSelectedWeek]   = useState({});
+  const [certs, setCerts] = useState([]);
+  const [certWeeks, setCertWeeks] = useState({});
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [expanded, setExpanded] = useState({});
+  const [selectedWeek, setSelectedWeek] = useState({});
   const [studentStatus, setStudentStatus] = useState({});
-  const [generating, setGenerating]       = useState({});
-  const [genMsg, setGenMsg]               = useState({});
-  const [weekModal, setWeekModal]         = useState(null); // certId
-  const [weekForm, setWeekForm]           = useState(EMPTY_WEEK);
-  const [savingWeek, setSavingWeek]       = useState(false);
+  const [generating, setGenerating] = useState({});
+  const [genMsg, setGenMsg] = useState({});
+  const [weekModal, setWeekModal] = useState(null);
+  const [weekForm, setWeekForm] = useState(EMPTY_WEEK);
+  const [savingWeek, setSavingWeek] = useState(false);
 
   useEffect(() => {
     trainerApi.getCertifications()
@@ -33,7 +32,7 @@ export default function TrainerCertifications() {
     try {
       const r = await trainerApi.getCertWeeks({ certificationId: certId });
       setCertWeeks(w => ({ ...w, [certId]: r.data || [] }));
-    } catch {}
+    } catch { }
   }
 
   async function loadStudentStatus(certId, weekId) {
@@ -41,7 +40,7 @@ export default function TrainerCertifications() {
     try {
       const r = await trainerApi.getCertStudentStatus({ weekId, certificationId: certId });
       setStudentStatus(s => ({ ...s, [`${certId}-${weekId}`]: r.data || [] }));
-    } catch {}
+    } catch { }
   }
 
   async function handleCreateWeek(certId) {
@@ -59,9 +58,17 @@ export default function TrainerCertifications() {
   async function handlePublishWeek(certId, weekId, isPublished) {
     try {
       if (isPublished) await trainerApi.unpublishCertWeek(weekId);
-      else             await trainerApi.publishCertWeek(weekId);
+      else await trainerApi.publishCertWeek(weekId);
       await loadCertWeeks(certId);
     } catch (e) { alert(e.response?.data?.message || 'Failed'); }
+  }
+
+  async function handleCloseWeek(certId, weekId) {
+    if (!window.confirm("Are you sure you want to close this week? Scheduled hours will be deducted from certification's remaining hours.")) return;
+    try {
+      await trainerApi.closeCertWeek(weekId);
+      await loadCertWeeks(certId);
+    } catch (e) { alert(e.response?.data?.message || 'Failed to close week'); }
   }
 
   async function handleDeleteWeek(certId, weekId) {
@@ -79,9 +86,9 @@ export default function TrainerCertifications() {
     setGenMsg(m => ({ ...m, [certId]: '' }));
     try {
       const r = await trainerApi.generateCertTimetable({ certificationId: certId, weekId });
-      setGenMsg(m => ({ ...m, [certId]: `✅ ${r.data.scheduled} ${t('common.sessions', 'session(s)')} scheduled (${r.data.skipped} skipped)` }));
+      setGenMsg(m => ({ ...m, [certId]: `${r.data.scheduled} ${t('common.sessions', 'session(s)')} scheduled (${r.data.skipped} skipped)` }));
     } catch (e) {
-      setGenMsg(m => ({ ...m, [certId]: `❌ ${e.response?.data?.message || t('timetable.generationFailed', 'Generation failed')}` }));
+      setGenMsg(m => ({ ...m, [certId]: ` ${e.response?.data?.message || t('timetable.generationFailed', 'Generation failed')}` }));
     } finally {
       setGenerating(g => ({ ...g, [certId]: false }));
     }
@@ -94,7 +101,7 @@ export default function TrainerCertifications() {
   }
 
   if (loading) return <PageLoader />;
-  if (error)   return <ErrorAlert message={error} />;
+  if (error) return <ErrorAlert message={error} />;
 
   return (
     <div className="space-y-4">
@@ -105,17 +112,17 @@ export default function TrainerCertifications() {
 
       {certs.length === 0 && (
         <div className="card p-10 text-center">
-          <Award size={36} className="mx-auto text-gray-300 mb-3"/>
+          <Award size={36} className="mx-auto text-gray-300 mb-3" />
           <p className="text-gray-500">{t('trainerCerts.noAssigned', 'No certifications assigned to you yet.')}</p>
         </div>
       )}
 
       {certs.map(cert => {
-        const isOpen      = expanded[cert.id];
-        const weeks       = certWeeks[cert.id] || [];
-        const pubWeeks    = weeks.filter(w => w.status === 'published');
-        const weekId      = selectedWeek[cert.id];
-        const status      = studentStatus[`${cert.id}-${weekId}`] || [];
+        const isOpen = expanded[cert.id];
+        const weeks = certWeeks[cert.id] || [];
+        const pubWeeks = weeks.filter(w => w.status === 'published');
+        const weekId = selectedWeek[cert.id];
+        const status = studentStatus[`${cert.id}-${weekId}`] || [];
         const allSubmitted = status.length > 0 && status.every(s => s.hasSubmitted);
 
         return (
@@ -127,20 +134,20 @@ export default function TrainerCertifications() {
             >
               <div className="flex items-center gap-3 min-w-0">
                 <div className="w-9 h-9 bg-violet-100 rounded-xl flex items-center justify-center flex-shrink-0">
-                  <Award size={16} className="text-violet-600"/>
+                  <Award size={16} className="text-violet-600" />
                 </div>
                 <div className="text-left min-w-0">
                   <p className="font-semibold text-gray-900 text-sm truncate">{cert.name}</p>
                   <p className="text-xs text-gray-400">{cert.code} · {cert.durationHours}h · {pubWeeks.length} published week(s)</p>
                 </div>
               </div>
-              {isOpen ? <ChevronUp size={15} className="text-gray-400 flex-shrink-0"/> : <ChevronDown size={15} className="text-gray-400 flex-shrink-0"/>}
+              {isOpen ? <ChevronUp size={15} className="text-gray-400 flex-shrink-0" /> : <ChevronDown size={15} className="text-gray-400 flex-shrink-0" />}
             </button>
 
             {isOpen && (
               <div className="border-t border-gray-100 p-4 space-y-5">
 
-                {/* ── Section 1: Cert Weeks Management ── */}
+                {/*  Section 1: Cert Weeks Management  */}
                 <div>
                   <div className="flex items-center justify-between mb-3">
                     <p className="text-sm font-semibold text-gray-700">{t('trainerCerts.certWeeks', 'Certification Weeks')}</p>
@@ -148,7 +155,7 @@ export default function TrainerCertifications() {
                       className="btn-primary btn-sm"
                       onClick={() => { setWeekModal(cert.id); setWeekForm(EMPTY_WEEK); }}
                     >
-                      <Plus size={13}/> {t('trainerCerts.addWeek', 'Add Week')}
+                      <Plus size={13} /> {t('trainerCerts.addWeek', 'Add Week')}
                     </button>
                   </div>
 
@@ -164,6 +171,11 @@ export default function TrainerCertifications() {
                           <p className="text-xs text-gray-400">
                             Week {w.weekNumber} · {new Date(w.startDate).toLocaleDateString()} – {new Date(w.endDate).toLocaleDateString()}
                           </p>
+                          {w.availabilityDeadline && (
+                            <p className="text-xs text-amber-600 mt-0.5 font-medium">
+                              Deadline: {new Date(w.availabilityDeadline).toLocaleString()}
+                            </p>
+                          )}
                         </div>
                         <span className={`text-xs font-semibold px-2 py-0.5 rounded-full flex-shrink-0 ${w.status === 'published' ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-600'}`}>
                           {w.status}
@@ -173,20 +185,28 @@ export default function TrainerCertifications() {
                           title={w.status === 'published' ? 'Unpublish' : 'Publish'}
                           onClick={() => handlePublishWeek(cert.id, w.id, w.status === 'published')}
                         >
-                          {w.status === 'published' ? <EyeOff size={14}/> : <Eye size={14}/>}
+                          {w.status === 'published' ? <EyeOff size={14} /> : <Eye size={14} />}
                         </button>
+                        {w.status === 'published' && (
+                          <button
+                            className="bg-rose-100 hover:bg-rose-200 text-rose-700 px-2 py-1 rounded text-xs font-medium flex-shrink-0"
+                            onClick={() => handleCloseWeek(cert.id, w.id)}
+                          >
+                            Close
+                          </button>
+                        )}
                         <button
                           className="btn-ghost btn-sm btn-icon text-red-500 flex-shrink-0"
                           onClick={() => handleDeleteWeek(cert.id, w.id)}
                         >
-                          <Trash2 size={14}/>
+                          <Trash2 size={14} />
                         </button>
                       </div>
                     ))}
                   </div>
                 </div>
 
-                {/* ── Section 2: Generate Timetable ── */}
+                {/*  Section 2: Generate Timetable  */}
                 <div className="rounded-xl p-4 bg-amber-50 border border-amber-200 space-y-3">
                   <p className="text-sm font-semibold text-amber-800">{t('trainerCerts.generateTitle', 'Generate Certification Timetable')}</p>
                   <p className="text-xs text-amber-700">{t('trainerCerts.generateHint', 'You must have submitted your availability, and all enrolled students must have submitted theirs.')}</p>
@@ -214,26 +234,26 @@ export default function TrainerCertifications() {
                       onClick={() => generateTimetable(cert.id)}
                       disabled={!weekId || generating[cert.id] || !allSubmitted}
                     >
-                      <Zap size={15}/> {generating[cert.id] ? t('common.generating', 'Generating…') : t('trainerCerts.generate', 'Generate')}
+                      <Zap size={15} /> {generating[cert.id] ? t('common.generating', 'Generating…') : t('trainerCerts.generate', 'Generate')}
                     </button>
                   </div>
 
                   {genMsg[cert.id] && <p className="text-sm">{genMsg[cert.id]}</p>}
                 </div>
 
-                {/* ── Section 3: Student Availability Status ── */}
+                {/*  Section 3: Student Availability Status  */}
                 {weekId && status.length > 0 && (
                   <div>
                     <p className="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
-                      <Users size={14}/> {t('trainerCerts.studentStatusTitle', 'Enrolled Students — Availability Status')}
+                      <Users size={14} /> {t('trainerCerts.studentStatusTitle', 'Enrolled Students — Availability Status')}
                     </p>
                     <div className="space-y-1">
                       {status.map(s => (
                         <div key={s.studentId} className="flex items-center justify-between px-3 py-2.5 rounded-xl bg-gray-50 text-sm">
                           <span className="text-gray-800 truncate">{s.studentName} <span className="text-gray-400 text-xs">({s.matricule})</span></span>
                           {s.hasSubmitted
-                            ? <span className="flex items-center gap-1 text-green-600 text-xs flex-shrink-0"><CheckCircle size={13}/> {s.slotCount} slot(s)</span>
-                            : <span className="flex items-center gap-1 text-red-500 text-xs flex-shrink-0"><XCircle size={13}/> {t('trainerCerts.notSubmitted', 'Not submitted')}</span>
+                            ? <span className="flex items-center gap-1 text-green-600 text-xs flex-shrink-0"><CheckCircle size={13} /> {s.slotCount} slot(s)</span>
+                            : <span className="flex items-center gap-1 text-red-500 text-xs flex-shrink-0"><XCircle size={13} /> {t('trainerCerts.notSubmitted', 'Not submitted')}</span>
                           }
                         </div>
                       ))}
@@ -271,21 +291,25 @@ export default function TrainerCertifications() {
           <div className="grid grid-cols-2 gap-3">
             <div><label className="label">{t('weeks.weekNumber', 'Week Number')}</label>
               <input type="number" min={1} className="input" value={weekForm.weekNumber}
-                onChange={e => setWeekForm(f => ({...f, weekNumber: e.target.value}))}/>
+                onChange={e => setWeekForm(f => ({ ...f, weekNumber: e.target.value }))} />
             </div>
             <div><label className="label">{t('weeks.label', 'Label')}</label>
               <input className="input" placeholder="e.g. Cert Week 1" value={weekForm.label}
-                onChange={e => setWeekForm(f => ({...f, label: e.target.value}))}/>
+                onChange={e => setWeekForm(f => ({ ...f, label: e.target.value }))} />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div><label className="label">{t('weeks.startDate', 'Start Date')}</label>
               <input type="date" className="input" value={weekForm.startDate}
-                onChange={e => setWeekForm(f => ({...f, startDate: e.target.value}))}/>
+                onChange={e => setWeekForm(f => ({ ...f, startDate: e.target.value }))} />
             </div>
             <div><label className="label">{t('weeks.endDate', 'End Date')}</label>
               <input type="date" className="input" value={weekForm.endDate}
-                onChange={e => setWeekForm(f => ({...f, endDate: e.target.value}))}/>
+                onChange={e => setWeekForm(f => ({ ...f, endDate: e.target.value }))} />
+            </div>
+            <div className="col-span-2"><label className="label">Availability Deadline (Optional)</label>
+              <input type="datetime-local" className="input" value={weekForm.availabilityDeadline}
+                onChange={e => setWeekForm(f => ({ ...f, availabilityDeadline: e.target.value }))} />
             </div>
           </div>
         </div>

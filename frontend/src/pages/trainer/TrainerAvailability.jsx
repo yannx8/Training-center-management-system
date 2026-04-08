@@ -1,28 +1,31 @@
-// FILE: frontend/src/pages/trainer/TrainerAvailability.jsx
 import { useEffect, useState } from 'react';
 import { Save, Trash2, Info, Lock } from 'lucide-react';
 import { trainerApi } from '../../api';
 import { PageLoader, ErrorAlert } from '../../components/ui';
 import { useTranslation } from 'react-i18next';
 
-const DAYS_EN    = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
-const TIME_SLOTS = ['08:00','09:00','10:00','11:00','12:00','13:00','14:00','15:00','16:00','17:00','18:00'];
+const DAYS_EN = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+const TIME_SLOTS = [
+  { start: "08:00", end: "12:00" },
+  { start: "13:00", end: "15:00" },
+  { start: "15:30", end: "17:00" },
+  { start: "17:00", end: "19:00" },
+  { start: "19:30", end: "21:30" },
+];
 
-function slotLabel(time) {
-  const idx  = TIME_SLOTS.indexOf(time);
-  const next = TIME_SLOTS[idx + 1] || '19:00';
-  return `${time} – ${next}`;
+function slotLabel(slot) {
+  return `${slot.start} – ${slot.end}`;
 }
 
 export default function TrainerAvailability() {
   const { t } = useTranslation();
-  const [week, setWeek]         = useState(null);   // the single active published week
-  const [slots, setSlots]       = useState([]);
-  const [loading, setLoading]   = useState(true);
-  const [saving, setSaving]     = useState(false);
+  const [week, setWeek] = useState(null);
+  const [slots, setSlots] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [isLocked, setIsLocked] = useState(false);
-  const [error, setError]       = useState('');
-  const [msg, setMsg]           = useState('');
+  const [error, setError] = useState('');
+  const [msg, setMsg] = useState('');
 
   useEffect(() => {
     trainerApi.getPublishedWeeks()
@@ -41,7 +44,7 @@ export default function TrainerAvailability() {
           setSlots((avail.data || []).map(a => ({
             dayOfWeek: a.dayOfWeek,
             timeStart: a.timeStart.slice(0, 5),
-            timeEnd:   a.timeEnd.slice(0, 5),
+            timeEnd: a.timeEnd.slice(0, 5),
           })));
           setIsLocked(lock?.data?.isLocked || false);
         }
@@ -54,16 +57,14 @@ export default function TrainerAvailability() {
     return slots.some(s => s.dayOfWeek === day && s.timeStart === time);
   }
 
-  function toggleSlot(day, time) {
+  function toggleSlot(day, slot) {
     if (isLocked) return;
     setMsg('');
-    const exists = slots.find(s => s.dayOfWeek === day && s.timeStart === time);
+    const exists = slots.find(s => s.dayOfWeek === day && s.timeStart === slot.start);
     if (exists) {
-      setSlots(p => p.filter(x => !(x.dayOfWeek === day && x.timeStart === time)));
+      setSlots(p => p.filter(x => !(x.dayOfWeek === day && x.timeStart === slot.start)));
     } else {
-      const idx = TIME_SLOTS.indexOf(time);
-      const end = TIME_SLOTS[idx + 1] || '19:00';
-      setSlots(p => [...p, { dayOfWeek: day, timeStart: time, timeEnd: end }]);
+      setSlots(p => [...p, { dayOfWeek: day, timeStart: slot.start, timeEnd: slot.end }]);
     }
   }
 
@@ -71,8 +72,8 @@ export default function TrainerAvailability() {
     if (isLocked) return;
     const all = [];
     for (const day of DAYS_EN)
-      for (let i = 0; i < TIME_SLOTS.length - 1; i++)
-        all.push({ dayOfWeek: day, timeStart: TIME_SLOTS[i], timeEnd: TIME_SLOTS[i + 1] });
+      for (const slot of TIME_SLOTS)
+        all.push({ dayOfWeek: day, timeStart: slot.start, timeEnd: slot.end });
     setSlots(all);
   }
 
@@ -90,7 +91,7 @@ export default function TrainerAvailability() {
   if (loading) return <PageLoader />;
 
   const selectedCount = slots.length;
-  const daysCovered   = DAYS_EN.filter(d => slots.some(s => s.dayOfWeek === d)).length;
+  const daysCovered = DAYS_EN.filter(d => slots.some(s => s.dayOfWeek === d)).length;
 
   return (
     <div className="space-y-4">
@@ -102,7 +103,7 @@ export default function TrainerAvailability() {
       {/* No published week */}
       {!week && !error && (
         <div className="card p-10 text-center">
-          <Info size={32} className="mx-auto text-gray-300 mb-3"/>
+          <Info size={32} className="mx-auto text-gray-300 mb-3" />
           <p className="font-medium text-gray-600">{t('availability.noPublishedWeeks', 'No published weeks yet')}</p>
           <p className="text-sm text-gray-400 mt-1">{t('availability.noPublishedWeeksHint', 'Your HOD needs to publish an academic week before you can submit availability.')}</p>
         </div>
@@ -121,10 +122,15 @@ export default function TrainerAvailability() {
                 {new Date(week.startDate).toLocaleDateString()} – {new Date(week.endDate).toLocaleDateString()}
                 {week.department?.name ? ` · ${week.department.name}` : ''}
               </p>
+              {week.availabilityDeadline && (
+                <p className="text-xs text-amber-600 mt-0.5 font-medium">
+                  Deadline: {new Date(week.availabilityDeadline).toLocaleString()}
+                </p>
+              )}
             </div>
             {isLocked && (
               <div className="flex items-center gap-1.5 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-1.5">
-                <Lock size={12}/> {t('availability.locked', 'Locked by HOD')}
+                <Lock size={12} /> {t('availability.locked', 'Locked by HOD')}
               </div>
             )}
           </div>
@@ -133,13 +139,13 @@ export default function TrainerAvailability() {
           {!isLocked && (
             <div className="flex flex-wrap gap-2">
               <button className="btn-primary flex-1 justify-center" onClick={handleSave} disabled={saving}>
-                <Save size={15}/> {saving ? t('common.saving', 'Saving…') : t('availability.saveAvailability', 'Save Availability')}
+                <Save size={15} /> {saving ? t('common.saving', 'Saving…') : t('availability.saveAvailability', 'Save Availability')}
               </button>
               <button className="btn-secondary" onClick={selectAll}>
                 {t('availability.selectAll', 'Select All')}
               </button>
               <button className="btn-secondary" onClick={() => setSlots([])}>
-                <Trash2 size={15}/> {t('availability.clearAll', 'Clear')}
+                <Trash2 size={15} /> {t('availability.clearAll', 'Clear')}
               </button>
             </div>
           )}
@@ -149,7 +155,7 @@ export default function TrainerAvailability() {
           {/* Grid */}
           <div className="card overflow-hidden">
             <div className="px-4 py-2.5 bg-blue-50 border-b border-blue-100 flex items-start gap-2 text-xs text-blue-700">
-              <Info size={13} className="flex-shrink-0 mt-0.5"/>
+              <Info size={13} className="flex-shrink-0 mt-0.5" />
               <span>
                 {isLocked
                   ? t('availability.lockedNote', 'This week is locked — availability cannot be edited.')
@@ -184,17 +190,17 @@ export default function TrainerAvailability() {
                   </tr>
                 </thead>
                 <tbody>
-                  {TIME_SLOTS.slice(0, -1).map((time, ri) => (
-                    <tr key={time} className={`border-b border-gray-100 ${ri % 2 === 0 ? 'bg-white' : 'bg-gray-50/40'}`}>
+                  {TIME_SLOTS.map((slot, ri) => (
+                    <tr key={slot.start} className={`border-b border-gray-100 ${ri % 2 === 0 ? 'bg-white' : 'bg-gray-50/40'}`}>
                       <td className="px-3 py-1.5 sticky left-0 bg-inherit z-10">
-                        <span className="text-xs font-mono font-semibold text-gray-700 whitespace-nowrap">{slotLabel(time)}</span>
+                        <span className="text-xs font-mono font-semibold text-gray-700 whitespace-nowrap">{slotLabel(slot)}</span>
                       </td>
                       {DAYS_EN.map(day => {
-                        const sel = isSelected(day, time);
+                        const sel = isSelected(day, slot.start);
                         return (
                           <td key={day} className="px-1 py-1 text-center">
                             <button
-                              onClick={() => toggleSlot(day, time)}
+                              onClick={() => toggleSlot(day, slot)}
                               disabled={isLocked}
                               className={`w-full h-8 rounded-lg text-xs font-semibold transition-all border
                                 ${isLocked
@@ -219,11 +225,11 @@ export default function TrainerAvailability() {
 
             <div className="px-4 py-2.5 border-t border-gray-100 flex items-center gap-4 text-xs text-gray-500">
               <span className="flex items-center gap-1.5">
-                <span className="w-4 h-4 rounded bg-blue-500 inline-block"/>
+                <span className="w-4 h-4 rounded bg-blue-500 inline-block" />
                 {t('availability.available', 'Available')}
               </span>
               <span className="flex items-center gap-1.5">
-                <span className="w-4 h-4 rounded bg-white border border-gray-200 inline-block"/>
+                <span className="w-4 h-4 rounded bg-white border border-gray-200 inline-block" />
                 {t('availability.notAvailable', 'Not available')}
               </span>
             </div>
