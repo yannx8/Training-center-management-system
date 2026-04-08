@@ -1,8 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, NavLink } from 'react-router-dom';
-import { LogOut, User, ChevronDown } from 'lucide-react';
+import { LogOut, User, ChevronDown, Users } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { authApi } from '../../api';
 import { useTranslation } from 'react-i18next';
+import Modal from '../ui/Modal';
 
 export default function TopBar({ roleLabel = '', roleColor = 'bg-primary-600' }) {
   const { user, logout, role } = useAuth();
@@ -14,7 +16,9 @@ export default function TopBar({ roleLabel = '', roleColor = 'bg-primary-600' })
   const currentLang = i18n.language?.startsWith('fr') ? 'fr' : 'en';
   const initials = user?.fullName?.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() || '?';
   const profilePath = `/${role}/profile`;
-
+  const [switchModalOpen, setSwitchModalOpen] = useState[false];
+  const [availableRoles, setAvailableRoles] = useState([]);
+  const [isSwitching, setisSwitching] = useState(false);
   useEffect(() => {
     if (!open) return;
     function handle(e) { if (!ref.current?.contains(e.target)) setOpen(false); }
