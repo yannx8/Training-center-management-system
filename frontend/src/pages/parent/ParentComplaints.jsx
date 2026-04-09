@@ -47,7 +47,11 @@ export function ParentComplaints() {
 
   return (
     <div className="space-y-4">
-      <SectionHeader title={t('complaints.title', 'Complaints')} subtitle={t('complaints.subtitle', 'Submit and track your complaints')}>
+      <SectionHeader
+        title={t('complaints.title', 'Complaints')}
+        subtitle={t('complaints.subtitle', 'Submit and track your complaints')}
+      >
+        {/* btn-primary → inherits parent pink theme via CSS vars */}
         <button className="btn-primary" onClick={() => { setForm(EMPTY); setModal(true); }}>
           <Plus size={16} /> {t('complaints.newComplaint', 'New Complaint')}
         </button>
@@ -60,11 +64,16 @@ export function ParentComplaints() {
         </div>
       )}
 
-      {[{ label: t('complaints.pending', 'Pending'), items: pending }, { label: t('complaints.resolved', 'Resolved'), items: resolved }]
+      {[
+        { label: t('complaints.pending', 'Pending'), items: pending },
+        { label: t('complaints.resolved', 'Resolved'), items: resolved },
+      ]
         .filter(g => g.items.length > 0)
         .map(group => (
           <div key={group.label}>
-            <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 px-1">{group.label}</h2>
+            <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 px-1">
+              {group.label}
+            </h2>
             <div className="space-y-3">
               {group.items.map(c => (
                 <div key={c.id} className="card p-4 space-y-2">
@@ -81,7 +90,9 @@ export function ParentComplaints() {
                   {c.description && <p className="text-sm text-gray-600">{c.description}</p>}
                   {c.adminResponse && (
                     <div className="bg-violet-50 border border-violet-100 rounded-xl px-3 py-2">
-                      <p className="text-xs font-semibold text-violet-700 mb-1">{t('complaints.adminResponse', 'Administration response')}</p>
+                      <p className="text-xs font-semibold text-violet-700 mb-1">
+                        {t('complaints.adminResponse', 'Administration response')}
+                      </p>
                       <p className="text-sm text-violet-800">{c.adminResponse}</p>
                     </div>
                   )}
@@ -91,25 +102,40 @@ export function ParentComplaints() {
           </div>
         ))}
 
-      <Modal open={modal} onClose={() => setModal(false)} title={t('complaints.submitComplaint', 'Submit Complaint')}
+      <Modal
+        open={modal}
+        onClose={() => setModal(false)}
+        title={t('complaints.submitComplaint', 'Submit Complaint')}
         footer={
           <>
-            <button className="btn-secondary" onClick={() => setModal(false)}>{t('common.cancel', 'Cancel')}</button>
+            <button className="btn-secondary" onClick={() => setModal(false)}>
+              {t('common.cancel', 'Cancel')}
+            </button>
             <button className="btn-primary" onClick={handleSubmit} disabled={saving}>
               {saving ? t('common.submitting', 'Submitting…') : t('common.submit', 'Submit')}
             </button>
           </>
-        }>
+        }
+      >
         <div className="space-y-4">
           <div>
             <label className="label">{t('complaints.subjectLabel', 'Subject *')}</label>
-            <input className="input" placeholder={t('complaints.subjectPlaceholder', 'Brief title')}
-              value={form.subject} onChange={e => setForm(f => ({ ...f, subject: e.target.value }))} />
+            <input
+              className="input"
+              placeholder={t('complaints.subjectPlaceholder', 'Brief title')}
+              value={form.subject}
+              onChange={e => setForm(f => ({ ...f, subject: e.target.value }))}
+            />
           </div>
           <div>
             <label className="label">{t('complaints.details', 'Details')}</label>
-            <textarea rows={3} className="input" placeholder={t('complaints.detailsPlaceholder', 'Describe your concern…')}
-              value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} />
+            <textarea
+              rows={3}
+              className="input"
+              placeholder={t('complaints.detailsPlaceholder', 'Describe your concern…')}
+              value={form.description}
+              onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
+            />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
@@ -125,7 +151,9 @@ export function ParentComplaints() {
                 <label className="label">{t('complaints.regardingChild', 'Regarding Child')}</label>
                 <select className="select" value={form.studentId} onChange={e => setForm(f => ({ ...f, studentId: e.target.value }))}>
                   <option value="">{t('complaints.generalComplaint', '— General —')}</option>
-                  {children.map(c => <option key={c.id} value={c.id}>{c.user?.fullName}</option>)}
+                  {children.map(c => (
+                    <option key={c.id} value={c.id}>{c.user?.fullName}</option>
+                  ))}
                 </select>
               </div>
             )}

@@ -9,7 +9,7 @@ import { useTranslation } from 'react-i18next';
 export default function HodDashboard() {
   const { t } = useTranslation();
   const { user } = useAuth();
-  const [data, setData]   = useState(null);
+  const [data, setData] = useState(null);
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -22,14 +22,15 @@ export default function HodDashboard() {
   if (error) return <ErrorAlert message={error} />;
 
   const { stats, programs, recentAnnouncements } = data || {};
-  const firstName = user?.fullName?.split(' ')[0] || 'HOD';
+  const displayName = data?.fullName || user?.fullName || 'HOD';
 
   return (
     <div className="space-y-5">
       <div>
         <h1 className="page-title">{data.department}</h1>
         <p className="page-subtitle">
-          {t('auth.welcome', 'Welcome back')}, <span className="font-semibold">{firstName}</span>
+          {t('auth.welcome', 'Welcome back')},{' '}
+          <span className="font-semibold text-primary-600">{displayName}</span>
         </p>
       </div>
 
@@ -43,19 +44,19 @@ export default function HodDashboard() {
         <StatCard
           label={t('dashboard.programs', 'Programs')}
           value={stats?.programCount ?? '—'}
-          icon={<BarChart2 size={20}/>}
+          icon={<BarChart2 size={20} />}
           color="bg-teal-100 text-teal-700"
         />
         <StatCard
           label={t('dashboard.trainers', 'Trainers')}
           value={stats?.trainerCount ?? '—'}
-          icon={<Users size={20}/>}
+          icon={<Users size={20} />}
           color="bg-amber-100 text-amber-700"
         />
         <StatCard
           label={t('dashboard.activeWeek', 'Active Week')}
           value={stats?.activeWeek ?? '—'}
-          icon={<CalendarRange size={20}/>}
+          icon={<CalendarRange size={20} />}
           color="bg-violet-100 text-violet-700"
         />
       </div>
@@ -64,7 +65,7 @@ export default function HodDashboard() {
       {programs?.length > 0 && (
         <div className="card overflow-hidden">
           <div className="px-4 py-3 border-b border-gray-100 flex items-center gap-2">
-            <BarChart2 size={15} className="text-teal-500 flex-shrink-0"/>
+            <BarChart2 size={15} className="text-teal-500 flex-shrink-0" />
             <h2 className="font-semibold text-gray-900 text-sm">{t('dashboard.programsOverview', 'Programs Overview')}</h2>
           </div>
           <div className="divide-y divide-gray-50">

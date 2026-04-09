@@ -4,21 +4,32 @@ import { LogOut, User, ChevronDown, Users } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { authApi } from '../../api';
 import { useTranslation } from 'react-i18next';
-import Modal from '../ui/Modal';
 
+/*  Main TopBar  */
 export default function TopBar({ roleLabel = '', roleColor = 'bg-primary-600' }) {
   const { user, logout, role } = useAuth();
   const navigate = useNavigate();
   const { i18n, t } = useTranslation();
+
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
 
   const currentLang = i18n.language?.startsWith('fr') ? 'fr' : 'en';
   const initials = user?.fullName?.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() || '?';
   const profilePath = `/${role}/profile`;
-  const [switchModalOpen, setSwitchModalOpen] = useState[false];
-  const [availableRoles, setAvailableRoles] = useState([]);
-  const [isSwitching, setisSwitching] = useState(false);
+
+  // Role switching state
+  const [roles, setRoles] = useState([]);
+
+  // Fetch available roles
+  useEffect(() => {
+    if (!user?.id) return;
+    authApi.getMe().then(res => {
+      if (res.data?.roles) setRoles(res.data.roles);
+    }).catch(err => console.error('Failed to fetch user roles', err));
+  }, [user?.id]);
+
+  // Close dropdown on outside click
   useEffect(() => {
     if (!open) return;
     function handle(e) { if (!ref.current?.contains(e.target)) setOpen(false); }
@@ -28,9 +39,23 @@ export default function TopBar({ roleLabel = '', roleColor = 'bg-primary-600' })
 
   function handleLogout() { setOpen(false); logout(); navigate('/login'); }
 
+  // Navigate to /select-role page when switching account
+  function handleSwitchAccount() {
+    setOpen(false);
+    navigate('/select-role', {
+      state: {
+        userId: user?.id,
+        roles,
+        fullName: user?.fullName,
+      }
+    });
+  }
+
+  // Only show "Switch Account" button if the user has more than 1 role
+  const showSwitchButton = roles.length > 1;
+
   return (
     <header className="h-14 flex-shrink-0 glass-panel flex items-center justify-end px-4 gap-2 z-30 lg:px-6">
-
       {/* Language toggle */}
       <div className="flex items-center bg-gray-100 rounded-full p-0.5 gap-0.5">
         {['en', 'fr'].map(lang => (
@@ -53,7 +78,6 @@ export default function TopBar({ roleLabel = '', roleColor = 'bg-primary-600' })
           onClick={() => setOpen(o => !o)}
           className="flex items-center gap-2 pl-1.5 pr-2.5 py-1.5 rounded-full hover:bg-gray-50 border border-transparent hover:border-gray-200 transition-all duration-150"
         >
-          {/* Avatar — uses role CSS variable for bg */}
           <div
             className="w-7 h-7 rounded-full flex items-center justify-center text-white text-[11px] font-bold flex-shrink-0"
             style={{ background: 'var(--tb-accent)' }}
@@ -93,21 +117,31 @@ export default function TopBar({ roleLabel = '', roleColor = 'bg-primary-600' })
               </div>
             </div>
 
-            {/* Profile link */}
+            {/* Menu items */}
             <div className="py-1">
               <NavLink
                 to={profilePath}
                 onClick={() => setOpen(false)}
                 className="flex items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
               >
-                <div
-                  className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
-                  style={{ background: 'var(--primary-100)' }}
-                >
+                <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: 'var(--primary-100)' }}>
                   <User size={14} style={{ color: 'var(--primary-600)' }} />
                 </div>
                 <span>{t('nav.profile', 'My Profile')}</span>
               </NavLink>
+
+              {/* Switch Account — redirects to role selection page */}
+              {showSwitchButton && (
+                <button
+                  onClick={handleSwitchAccount}
+                  className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors text-left"
+                >
+                  <div className="w-7 h-7 rounded-lg bg-blue-50 flex items-center justify-center flex-shrink-0">
+                    <Users size={14} className="text-blue-600" />
+                  </div>
+                  <span>{t('auth.switchAccount', 'Switch Account')}</span>
+                </button>
+              )}
             </div>
 
             {/* Sign out */}

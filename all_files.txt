@@ -11538,7 +11538,7 @@ require('dotenv').config();
 const app = require('./app');
 // Start the engine! This launches our express server on the specified port.
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(' Server is officially live and running on port ' + PORT));
+app.listen(PORT, () => console.log(' Server running on port ' + PORT));
 
 ------------------------------------------------------------
 File: adminController.js
@@ -12166,7 +12166,7 @@ async function getHodDept(userId) {
 const getDashboard = asyncHandler(async (req, res) => {
     const dept = await getHodDept(req.user.userId);
     if (!dept) return res.status(404).json({ success: false, message: "No department assigned", code: "NO_DEPT" });
-    
+
     const programs = await prisma.program.findMany({
         where: { departmentId: dept.id },
         include: { _count: { select: { enrollments: true } } },
@@ -12207,7 +12207,11 @@ const getDashboard = asyncHandler(async (req, res) => {
 const getProgramsHandler = asyncHandler(async (req, res) => {
     const dept = await getHodDept(req.user.userId);
     if (!dept) return res.status(404).json({ success: false, message: "No department assigned", code: "NO_DEPT" });
-    const programs = await prisma.program.findMany({ where: { departmentId: dept.id }, orderBy: { name: "asc" } });
+    const programs = await prisma.program.findMany({
+        where: { departmentId: dept.id },
+        include: { levels: { orderBy: { levelOrder: 'asc' } } },   // <-- added
+        orderBy: { name: "asc" },
+    });
     return res.json({ success: true, data: programs });
 });
 
@@ -22421,7 +22425,7 @@ Path: frontend\public\locales\fr\translation.json
     "studentStatusTitle": "Étudiants inscrits — Statut de disponibilité",
     "slots": "{{count}} créneau(x)",
     "notSubmitted": "Non soumis",
-    "cannotGenerate": "⚠ Impossible de générer tant que tous les étudiants n'ont pas soumis leur disponibilité.",
+    "cannotGenerate": "Impossible de générer tant que tous les étudiants n'ont pas soumis leur disponibilité.",
     "noStudentsEnrolled": "Aucun étudiant inscrit à cette certification pour l'instant."
   },
   "trainerCourses": {
@@ -23458,14 +23462,17 @@ Path: frontend\src\components\layout\Topbar.jsx
 ------------------------------------------------------------
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, NavLink } from 'react-router-dom';
-import { LogOut, User, ChevronDown } from 'lucide-react';
+import { LogOut, User, ChevronDown, Users } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { authApi } from '../../api';
 import { useTranslation } from 'react-i18next';
 
+/*  Main TopBar  */
 export default function TopBar({ roleLabel = '', roleColor = 'bg-primary-600' }) {
   const { user, logout, role } = useAuth();
   const navigate = useNavigate();
   const { i18n, t } = useTranslation();
+
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
 
@@ -23473,6 +23480,18 @@ export default function TopBar({ roleLabel = '', roleColor = 'bg-primary-600' })
   const initials = user?.fullName?.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() || '?';
   const profilePath = `/${role}/profile`;
 
+  // Role switching state
+  const [roles, setRoles] = useState([]);
+
+  // Fetch available roles
+  useEffect(() => {
+    if (!user?.id) return;
+    authApi.getMe().then(res => {
+      if (res.data?.roles) setRoles(res.data.roles);
+    }).catch(err => console.error('Failed to fetch user roles', err));
+  }, [user?.id]);
+
+  // Close dropdown on outside click
   useEffect(() => {
     if (!open) return;
     function handle(e) { if (!ref.current?.contains(e.target)) setOpen(false); }
@@ -23482,9 +23501,23 @@ export default function TopBar({ roleLabel = '', roleColor = 'bg-primary-600' })
 
   function handleLogout() { setOpen(false); logout(); navigate('/login'); }
 
+  // Navigate to /select-role page when switching account
+  function handleSwitchAccount() {
+    setOpen(false);
+    navigate('/select-role', {
+      state: {
+        userId: user?.id,
+        roles,
+        fullName: user?.fullName,
+      }
+    });
+  }
+
+  // Only show "Switch Account" button if the user has more than 1 role
+  const showSwitchButton = roles.length > 1;
+
   return (
     <header className="h-14 flex-shrink-0 glass-panel flex items-center justify-end px-4 gap-2 z-30 lg:px-6">
-
       {/* Language toggle */}
       <div className="flex items-center bg-gray-100 rounded-full p-0.5 gap-0.5">
         {['en', 'fr'].map(lang => (
@@ -23507,7 +23540,6 @@ export default function TopBar({ roleLabel = '', roleColor = 'bg-primary-600' })
           onClick={() => setOpen(o => !o)}
           className="flex items-center gap-2 pl-1.5 pr-2.5 py-1.5 rounded-full hover:bg-gray-50 border border-transparent hover:border-gray-200 transition-all duration-150"
         >
-          {/* Avatar — uses role CSS variable for bg */}
           <div
             className="w-7 h-7 rounded-full flex items-center justify-center text-white text-[11px] font-bold flex-shrink-0"
             style={{ background: 'var(--tb-accent)' }}
@@ -23547,21 +23579,31 @@ export default function TopBar({ roleLabel = '', roleColor = 'bg-primary-600' })
               </div>
             </div>
 
-            {/* Profile link */}
+            {/* Menu items */}
             <div className="py-1">
               <NavLink
                 to={profilePath}
                 onClick={() => setOpen(false)}
                 className="flex items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
               >
-                <div
-                  className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
-                  style={{ background: 'var(--primary-100)' }}
-                >
+                <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: 'var(--primary-100)' }}>
                   <User size={14} style={{ color: 'var(--primary-600)' }} />
                 </div>
                 <span>{t('nav.profile', 'My Profile')}</span>
               </NavLink>
+
+              {/* Switch Account — redirects to role selection page */}
+              {showSwitchButton && (
+                <button
+                  onClick={handleSwitchAccount}
+                  className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors text-left"
+                >
+                  <div className="w-7 h-7 rounded-lg bg-blue-50 flex items-center justify-center flex-shrink-0">
+                    <Users size={14} className="text-blue-600" />
+                  </div>
+                  <span>{t('auth.switchAccount', 'Switch Account')}</span>
+                </button>
+              )}
             </div>
 
             {/* Sign out */}
@@ -24218,7 +24260,7 @@ function passwordStrength(pwd) {
   if (/[A-Z]/.test(pwd)) s++;
   if (/[0-9]/.test(pwd)) s++;
   if (/[^A-Za-z0-9]/.test(pwd)) s++;
-  
+
   if (s <= 1) return { label: 'Weak', width: '25%', bar: 'bg-red-400', text: 'text-red-500' };
   if (s <= 2) return { label: 'Fair', width: '50%', bar: 'bg-amber-400', text: 'text-amber-600' };
   if (s <= 3) return { label: 'Good', width: '75%', bar: 'bg-blue-400', text: 'text-blue-600' };
@@ -24250,17 +24292,17 @@ export default function Profile() {
   // Strength label translated
   const strengthLabel = strength ? t(`profile.${strength.label.toLowerCase()}`, strength.label) : '';
 
-    // When the page loads, we fetch the latest profile data from the server 
-    // to make sure what's on screen matches our database.
-    api.get('/auth/me').then(r => {
-      const u = r.data.data;
-      setProfile({
-        fullName: u.fullName || '',
-        phone: u.phone || '',
-        dateOfBirth: u.studentInfo?.dateOfBirth ? u.studentInfo.dateOfBirth.split('T')[0] : '',
-      });
-      if (u.studentInfo) setStudentInfo(u.studentInfo);
-    }).catch(() => { });
+  // When the page loads, we fetch the latest profile data from the server 
+  // to make sure what's on screen matches our database.
+  api.get('/auth/me').then(r => {
+    const u = r.data.data;
+    setProfile({
+      fullName: u.fullName || '',
+      phone: u.phone || '',
+      dateOfBirth: u.studentInfo?.dateOfBirth ? u.studentInfo.dateOfBirth.split('T')[0] : '',
+    });
+    if (u.studentInfo) setStudentInfo(u.studentInfo);
+  }).catch(() => { });
 
   // Saves the user's updated name or phone number back to the server.
   async function saveProfile(e) {
@@ -24269,10 +24311,10 @@ export default function Profile() {
       const payload = { fullName: profile.fullName, phone: profile.phone };
       if (role === 'student') payload.dateOfBirth = profile.dateOfBirth;
       await api.put('/auth/profile', payload);
-      
+
       // We also update the global auth context so their name updates in the sidebar instantly.
       if (setUser) setUser(u => ({ ...u, fullName: profile.fullName }));
-      
+
       setPMsg({ type: 'ok', text: t('profile.profileUpdated', 'Profile updated.') });
     } catch (e) {
       setPMsg({ type: 'err', text: e.response?.data?.message || 'Failed to update profile.' });
@@ -24333,8 +24375,8 @@ export default function Profile() {
             key={item.id}
             onClick={() => setTab(item.id)}
             className={`flex-1 flex items-center justify-center gap-2 py-3 text-sm font-semibold transition-all duration-150 ${tab === item.id
-                ? `${cfg.accentBg} ${cfg.accent} border-b-2 ${cfg.accentBorder}`
-                : 'text-gray-500 hover:text-gray-700 bg-white'
+              ? `${cfg.accentBg} ${cfg.accent} border-b-2 ${cfg.accentBorder}`
+              : 'text-gray-500 hover:text-gray-700 bg-white'
               }`}
           >
             {item.icon}
@@ -24540,7 +24582,7 @@ export default function SelectRole() {
             <GraduationCap size={24} className="text-primary-600" />
           </div>
           <h2 className="text-xl font-bold text-gray-900">Select your role</h2>
-          <p className="text-sm text-gray-500 mt-1">Hello {state.fullName?.split(" ")[0]}, choose how you want to sign in to continue</p>
+          <p className="text-sm text-gray-500 mt-1">Choose how to sign in to continue</p>
         </div>
 
         {error && <div className="mb-4 text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg px-4 py-2">{error}</div>}
@@ -24548,9 +24590,8 @@ export default function SelectRole() {
         <div className="space-y-2 mb-6">
           {state.roles.map(role => (
             <label key={role}
-              className={`flex items-center gap-3 px-4 py-3 rounded-xl border-2 cursor-pointer transition-colors ${
-                selected === role ? "border-primary-500 bg-primary-50" : "border-gray-200 hover:border-gray-300"
-              }`}>
+              className={`flex items-center gap-3 px-4 py-3 rounded-xl border-2 cursor-pointer transition-colors ${selected === role ? "border-primary-500 bg-primary-50" : "border-gray-200 hover:border-gray-300"
+                }`}>
               <input type="radio" name="role" value={role} checked={selected === role}
                 onChange={() => setSelected(role)} className="accent-primary-600 w-4 h-4" />
               <span className="text-sm font-medium text-gray-800">{ROLE_LABELS[role] || role}</span>
@@ -26377,7 +26418,6 @@ export default function HodAvailability() {
         const published = (r.data || []).filter(w => w.status === 'published');
         setWeeks(published);
         if (published.length > 0) {
-
           const latest = [...published].sort((a, b) => b.weekNumber - a.weekNumber)[0];
           setWeekId(latest.id);
         }
@@ -26419,8 +26459,11 @@ export default function HodAvailability() {
           <p className="page-subtitle">{t('availability.subtitle', 'Monitor who has submitted availability for the active week')}</p>
         </div>
         {weekId && (
-          <button className={isLocked ? 'btn-secondary' : 'btn-primary'} onClick={toggleLock}>
-            {isLocked ? <><Unlock size={15} /> {t('availability.unlock', 'Unlock')}</> : <><Lock size={15} /> {t('availability.lockSubmissions', 'Lock Submissions')}</>}
+          /* btn-primary always — color follows the HOD teal theme via CSS vars */
+          <button className="btn-primary" onClick={toggleLock}>
+            {isLocked
+              ? <><Unlock size={15} /> {t('availability.unlock', 'Unlock Submissions')}</>
+              : <><Lock size={15} /> {t('availability.lockSubmissions', 'Lock Submissions')}</>}
           </button>
         )}
       </div>
@@ -26429,11 +26472,10 @@ export default function HodAvailability() {
 
       {isLocked && weekId && (
         <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
-          {t('availability.locked', ' Locked — trainers cannot edit')}
+          {t('availability.locked', '🔒 Locked — trainers cannot edit their availability')}
         </p>
       )}
 
-      {/* Generation status */}
       {weekId && loadingStatus && <PageLoader />}
 
       {weekId && !loadingStatus && status && (
@@ -26442,13 +26484,13 @@ export default function HodAvailability() {
             <div className="card p-10 text-center space-y-3">
               <CheckCircle size={40} className="text-green-500 mx-auto" />
               <p className="font-semibold text-gray-900">{t('availability.allSubmitted', 'All trainers have submitted!')}</p>
-              <p className="text-sm text-gray-400">The timetable for this week can now be convenientl</p>
+              <p className="text-sm text-gray-400">The timetable for this week can now be conveniently generated.</p>
             </div>
           ) : (
             <div className="card overflow-hidden">
               <div className="px-5 py-4 bg-red-50 border-b border-red-100 flex items-center gap-2">
                 <XCircle size={17} className="text-red-500" />
-                <h3 className="font-semibold text-red-700">{t('availability.notSubmitted', 'Trainers who haven\'t submitted yet')} ({notSubmitted.length})</h3>
+                <h3 className="font-semibold text-red-700">{t('availability.notSubmitted', "Trainers who haven't submitted yet")} ({notSubmitted.length})</h3>
               </div>
               <div className="divide-y divide-gray-50 max-h-[600px] overflow-y-auto">
                 {notSubmitted.map(tr => (
@@ -26458,7 +26500,7 @@ export default function HodAvailability() {
                         {tr.user?.fullName?.charAt(0).toUpperCase() || '?'}
                       </div>
                       <div className="min-w-0">
-                        <p className="text-sm font-semibold text-gray-900 truncate">{tr.user?.fullName || "Unknown Trainer"}</p>
+                        <p className="text-sm font-semibold text-gray-900 truncate">{tr.user?.fullName || 'Unknown Trainer'}</p>
                         <p className="text-xs text-gray-400 truncate">{tr.user?.email}</p>
                       </div>
                     </div>
@@ -26495,7 +26537,7 @@ import { useTranslation } from 'react-i18next';
 export default function HodDashboard() {
   const { t } = useTranslation();
   const { user } = useAuth();
-  const [data, setData]   = useState(null);
+  const [data, setData] = useState(null);
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -26508,14 +26550,15 @@ export default function HodDashboard() {
   if (error) return <ErrorAlert message={error} />;
 
   const { stats, programs, recentAnnouncements } = data || {};
-  const firstName = user?.fullName?.split(' ')[0] || 'HOD';
+  const displayName = data?.fullName || user?.fullName || 'HOD';
 
   return (
     <div className="space-y-5">
       <div>
         <h1 className="page-title">{data.department}</h1>
         <p className="page-subtitle">
-          {t('auth.welcome', 'Welcome back')}, <span className="font-semibold">{firstName}</span>
+          {t('auth.welcome', 'Welcome back')},{' '}
+          <span className="font-semibold text-primary-600">{displayName}</span>
         </p>
       </div>
 
@@ -26529,19 +26572,19 @@ export default function HodDashboard() {
         <StatCard
           label={t('dashboard.programs', 'Programs')}
           value={stats?.programCount ?? '—'}
-          icon={<BarChart2 size={20}/>}
+          icon={<BarChart2 size={20} />}
           color="bg-teal-100 text-teal-700"
         />
         <StatCard
           label={t('dashboard.trainers', 'Trainers')}
           value={stats?.trainerCount ?? '—'}
-          icon={<Users size={20}/>}
+          icon={<Users size={20} />}
           color="bg-amber-100 text-amber-700"
         />
         <StatCard
           label={t('dashboard.activeWeek', 'Active Week')}
           value={stats?.activeWeek ?? '—'}
-          icon={<CalendarRange size={20}/>}
+          icon={<CalendarRange size={20} />}
           color="bg-violet-100 text-violet-700"
         />
       </div>
@@ -26550,7 +26593,7 @@ export default function HodDashboard() {
       {programs?.length > 0 && (
         <div className="card overflow-hidden">
           <div className="px-4 py-3 border-b border-gray-100 flex items-center gap-2">
-            <BarChart2 size={15} className="text-teal-500 flex-shrink-0"/>
+            <BarChart2 size={15} className="text-teal-500 flex-shrink-0" />
             <h2 className="font-semibold text-gray-900 text-sm">{t('dashboard.programsOverview', 'Programs Overview')}</h2>
           </div>
           <div className="divide-y divide-gray-50">
@@ -26614,135 +26657,458 @@ File: HodTimetable.jsx
 Path: frontend\src\pages\hod\HodTimetable.jsx
 ------------------------------------------------------------
 import { useEffect, useState } from 'react';
-import { Zap, Send, ChevronLeft, ChevronRight, BookOpen } from 'lucide-react';
+import {
+  Zap, Send, ChevronLeft, ChevronRight, BookOpen,
+  CheckCircle, AlertCircle, Circle, GraduationCap
+} from 'lucide-react';
 import { hodApi } from '../../api';
-import { PageLoader, ErrorAlert, Badge } from '../../components/ui';
-import { useTranslation } from 'react-i18next';
+import { PageLoader, Badge } from '../../components/ui';
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
+// ─── badge helpers ─────────────────────────────────────────────────────────────
+function ScheduledBadge() {
+  return (
+    <span className="flex items-center gap-1 text-[10px] font-semibold text-green-600 bg-green-50 border border-green-200 px-2 py-0.5 rounded-full flex-shrink-0">
+      <CheckCircle size={10} /> Scheduled
+    </span>
+  );
+}
+function NotScheduledBadge() {
+  return (
+    <span className="flex items-center gap-1 text-[10px] font-semibold text-orange-500 bg-orange-50 border border-orange-200 px-2 py-0.5 rounded-full flex-shrink-0">
+      <AlertCircle size={10} /> Not scheduled
+    </span>
+  );
+}
+function NoTimetableBadge() {
+  return (
+    <span className="flex items-center gap-1 text-[10px] font-semibold text-amber-500 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full flex-shrink-0">
+      <Circle size={10} /> No timetable
+    </span>
+  );
+}
+
+// ─── breadcrumb ────────────────────────────────────────────────────────────────
+function Breadcrumb({ program, level, onGoPrograms, onGoLevels }) {
+  return (
+    <div className="flex items-center gap-1.5 flex-wrap text-xs text-gray-500">
+      <button onClick={onGoPrograms} className="hover:text-primary-600 font-medium">
+        Programs
+      </button>
+      {program && (
+        <>
+          <ChevronRight size={12} />
+          <button
+            onClick={level ? onGoLevels : undefined}
+            className={level ? 'hover:text-primary-600 cursor-pointer' : 'text-gray-700 font-semibold cursor-default'}
+          >
+            {program.name}
+          </button>
+        </>
+      )}
+      {level && (
+        <>
+          <ChevronRight size={12} />
+          <span className="text-gray-700 font-semibold">{level.name}</span>
+        </>
+      )}
+    </div>
+  );
+}
+
+// ─── main ──────────────────────────────────────────────────────────────────────
 export default function HodTimetable() {
-  const { t } = useTranslation();
+  // remote data
   const [weeks, setWeeks] = useState([]);
   const [timetables, setTimetables] = useState([]);
   const [programs, setPrograms] = useState([]);
   const [selectedWeekId, setSelectedWeekId] = useState('');
-  const [selectedProgramId, setSelectedProgramId] = useState(null);
+
+  // 3-level navigation: 'programs' | 'levels' | 'slots'
+  const [view, setView] = useState('programs');
+  const [selectedProgram, setSelectedProgram] = useState(null);
+  const [selectedLevel, setSelectedLevel] = useState(null);
+
+  // ui
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [msg, setMsg] = useState('');
   const [error, setError] = useState('');
 
-  // This loads up the "published" weeks (the ones everyone can see), 
-  // the existing timetables, and the list of programs in this HOD's department.
+  // ── load ────────────────────────────────────────────────────────────────────
   function load() {
     setLoading(true);
     Promise.all([hodApi.getWeeks(), hodApi.getTimetables(), hodApi.getPrograms()])
       .then(([w, tt, p]) => {
-        // Only allow generation for published weeks
-        const availableWeeks = (w.data || []).filter(ww => ww.status === 'published');
-        setWeeks(availableWeeks);
+        const published = (w.data || []).filter(ww => ww.status === 'published');
+        setWeeks(published);
         setTimetables(tt.data || []);
         setPrograms(p.data || []);
-        
-        if (availableWeeks.length > 0) {
-          const latest = [...availableWeeks].sort((a, b) => b.weekNumber - a.weekNumber)[0];
-          setSelectedWeekId(latest.id);
+        if (published.length > 0) {
+          const latest = [...published].sort((a, b) => b.weekNumber - a.weekNumber)[0];
+          setSelectedWeekId(String(latest.id));
         }
         setLoading(false);
       })
       .catch(() => {
-        setError(t('common.failedLoad', 'Failed to load'));
+        setError('Failed to load data');
         setLoading(false);
       });
   }
   useEffect(load, []);
 
-  // This triggers the heavy-lifting logic on the backend to automatically
-  // assign courses to rooms and trainers without hitting any conflicts.
+  // ── generate ────────────────────────────────────────────────────────────────
   async function generate() {
     if (!selectedWeekId) return;
     setGenerating(true); setMsg(''); setError('');
     try {
       const r = await hodApi.generateTimetable({ weekId: selectedWeekId });
-      setMsg(t('timetable.generated', 'Generated: {{count}} sessions scheduled ({{skipped}} skipped)', { count: r.data.count, skipped: r.data.skipped }));
-      load();
-    } catch (e) { setError(e.response?.data?.message || t('timetable.generationFailed', 'Generation failed')); }
-    finally { setGenerating(false); }
-  }
-
-  // Once the HOD is happy with the draft timetable, they "publish" it
-  // so that students and trainers can finally see it on their ends.
-  async function publish(id) {
-    try {
-      await hodApi.publishTimetable(id);
+      setMsg(`Generated: ${r.data.count} sessions scheduled (${r.data.skipped} skipped)`);
       load();
     } catch (e) {
-      alert(e.response?.data?.message || 'Failed to publish');
+      setError(e.response?.data?.message || 'Generation failed');
+    } finally {
+      setGenerating(false);
     }
   }
 
+  async function publish(id) {
+    try { await hodApi.publishTimetable(id); load(); }
+    catch (e) { alert(e.response?.data?.message || 'Failed to publish'); }
+  }
+
+  // ── derived data ────────────────────────────────────────────────────────────
   if (loading) return <PageLoader />;
 
   const activeWeek = weeks.find(w => String(w.id) === String(selectedWeekId));
 
-  // Find the published timetable for the active week
-  const activeTimetable = timetables.find(tt => tt.status === 'published' && String(tt.academicWeekId) === String(selectedWeekId));
+  // KEY FIX: show the timetable whether it is "draft" OR "published"
+  // (previously it only showed "published" so nothing appeared after generation)
+  const activeTimetable = timetables.find(
+    tt => String(tt.academicWeekId) === String(selectedWeekId)
+  );
 
-  if (selectedProgramId) {
-    const program = programs.find(p => String(p.id) === String(selectedProgramId));
-    // Filter slots for this program from the active timetable
-    const pg = activeTimetable?.programGroups?.find(g => String(g.program.id) === String(selectedProgramId));
-    const slots = pg?.slots || [];
+  // All slots for a program (all levels combined)
+  function getSlotsForProgram(programId) {
+    if (!activeTimetable) return [];
+    const pg = activeTimetable.programGroups?.find(
+      g => String(g.program.id) === String(programId)
+    );
+    return pg?.slots || [];
+  }
+
+  // Slots filtered to one specific level
+  function getSlotsForLevel(programId, levelId) {
+    return getSlotsForProgram(programId).filter(
+      s => String(s.course?.session?.academicLevel?.id) === String(levelId)
+    );
+  }
+
+  function programHasAnySchedule(programId) {
+    return getSlotsForProgram(programId).length > 0;
+  }
+
+  function levelHasSchedule(programId, levelId) {
+    return getSlotsForLevel(programId, levelId).length > 0;
+  }
+
+  const latestWeekId = [...weeks].sort((a, b) => b.weekNumber - a.weekNumber)[0]?.id;
+  const canGenerate = selectedWeekId && String(selectedWeekId) === String(latestWeekId);
+
+  // ── navigation helpers ──────────────────────────────────────────────────────
+  function goPrograms() {
+    setView('programs');
+    setSelectedProgram(null);
+    setSelectedLevel(null);
+  }
+  function goLevels(prog) {
+    setSelectedProgram(prog);
+    setSelectedLevel(null);
+    setView('levels');
+  }
+  function goSlots(prog, level) {
+    setSelectedProgram(prog);
+    setSelectedLevel(level);
+    setView('slots');
+  }
+
+  // ── shared header ───────────────────────────────────────────────────────────
+  const PageHeader = () => (
+    <div className="space-y-3">
+      <div className="flex flex-wrap gap-4 items-center justify-between">
+        <div>
+          <h1 className="page-title">Timetable Generator</h1>
+          <p className="page-subtitle">Manage program schedules for your department</p>
+        </div>
+        <button
+          className="btn-primary"
+          onClick={generate}
+          disabled={generating || !canGenerate}
+        >
+          <Zap size={16} />
+          {generating ? 'Generating…' : 'Generate Timetable'}
+        </button>
+      </div>
+
+      {activeWeek && (
+        <div className="flex items-center justify-between py-2 border-b border-gray-100 flex-wrap gap-2">
+          <div>
+            <p className="text-sm font-bold text-gray-900">{activeWeek.label}</p>
+            <p className="text-[11px] text-gray-400 mt-0.5">
+              {new Date(activeWeek.startDate).toLocaleDateString()} → {new Date(activeWeek.endDate).toLocaleDateString()}
+            </p>
+          </div>
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <Badge value={activeWeek.status} />
+            {activeTimetable?.status === 'draft' && (
+              <button
+                className="btn-primary btn-sm px-3"
+                onClick={() => publish(activeTimetable.id)}
+              >
+                <Send size={13} /> Publish Timetable
+              </button>
+            )}
+            {activeTimetable?.status === 'published' && (
+              <span className="text-[10px] font-semibold text-green-600 bg-green-50 border border-green-200 px-2 py-1 rounded-full">
+                ✓ Timetable published
+              </span>
+            )}
+          </div>
+        </div>
+      )}
+
+      {msg && <p className="text-sm text-green-700 bg-green-50 border border-green-100 rounded-xl px-4 py-3">{msg}</p>}
+      {error && <p className="text-sm text-red-600 bg-red-50 border border-red-100 rounded-xl px-4 py-3">{error}</p>}
+    </div>
+  );
+
+  // ══════════════════════════════════════════════════════════════════════════════
+  // VIEW 1 — Program list
+  // ══════════════════════════════════════════════════════════════════════════════
+  if (view === 'programs') {
+    return (
+      <div className="space-y-4">
+        <PageHeader />
+
+        {programs.length === 0 ? (
+          <div className="card p-12 text-center text-gray-400 italic">
+            No programs found in this department.
+          </div>
+        ) : (
+          <div className="space-y-1 mt-2">
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest px-1 mb-3">
+              Programs ({programs.length})
+            </p>
+
+            {programs.map(prog => {
+              const hasLevels = prog.levels && prog.levels.length > 0;
+              const hasSchedule = programHasAnySchedule(prog.id);
+
+              return (
+                <button
+                  key={prog.id}
+                  onClick={() => goLevels(prog)}
+                  className="w-full flex items-center justify-between px-3 py-3 rounded-xl text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition-all text-sm group"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <GraduationCap size={16} className="text-gray-400 group-hover:text-primary-600 flex-shrink-0" />
+                    <div className="text-left min-w-0">
+                      <p className="font-semibold text-gray-900 truncate">{prog.name}</p>
+                      {hasLevels && (
+                        <p className="text-[11px] text-gray-400 mt-0.5">
+                          {prog.levels.length} level{prog.levels.length !== 1 ? 's' : ''}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    {!activeTimetable
+                      ? <NoTimetableBadge />
+                      : hasSchedule
+                        ? <ScheduledBadge />
+                        : <NotScheduledBadge />
+                    }
+                    <ChevronRight size={14} className="text-gray-300 group-hover:text-gray-500" />
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // ══════════════════════════════════════════════════════════════════════════════
+  // VIEW 2 — Level list for a program
+  // ══════════════════════════════════════════════════════════════════════════════
+  if (view === 'levels') {
+    const prog = selectedProgram;
+    const levels = [...(prog?.levels || [])].sort((a, b) => a.levelOrder - b.levelOrder);
 
     return (
       <div className="space-y-4">
-        <button onClick={() => setSelectedProgramId(null)} className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-900 transition-colors">
+        <PageHeader />
+
+        <button
+          onClick={goPrograms}
+          className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-900 transition-colors"
+        >
           <ChevronLeft size={16} /> Back to Programs
         </button>
 
-        <div className="flex items-center justify-between gap-4 flex-wrap">
-          <div>
-            <h1 className="page-title">{program?.name}</h1>
-            <p className="page-subtitle">Timetable for {activeWeek?.label}</p>
+        <Breadcrumb program={prog} onGoPrograms={goPrograms} />
+
+        <div>
+          <h2 className="text-base font-bold text-gray-900">{prog.name}</h2>
+          <p className="text-xs text-gray-400 mt-0.5">Click a level to view its timetable</p>
+        </div>
+
+        {levels.length === 0 ? (
+          // No levels — jump straight to slots
+          <button
+            onClick={() => goSlots(prog, null)}
+            className="w-full flex items-center justify-between px-3 py-3 rounded-xl hover:bg-gray-100 transition-all text-sm group"
+          >
+            <div className="flex items-center gap-3">
+              <BookOpen size={16} className="text-gray-400 group-hover:text-primary-600" />
+              <span className="font-medium text-gray-900">View all sessions</span>
+            </div>
+            <div className="flex items-center gap-2">
+              {!activeTimetable
+                ? <NoTimetableBadge />
+                : programHasAnySchedule(prog.id)
+                  ? <ScheduledBadge />
+                  : <NotScheduledBadge />
+              }
+              <ChevronRight size={14} className="text-gray-300 group-hover:text-gray-500" />
+            </div>
+          </button>
+        ) : (
+          <div className="space-y-1 mt-2">
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest px-1 mb-3">
+              Levels ({levels.length})
+            </p>
+            {levels.map(level => {
+              const hasSchedule = levelHasSchedule(prog.id, level.id);
+              return (
+                <button
+                  key={level.id}
+                  onClick={() => goSlots(prog, level)}
+                  className="w-full flex items-center justify-between px-3 py-3 rounded-xl text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition-all text-sm group"
+                >
+                  <div className="flex items-center gap-3">
+                    <BookOpen size={16} className="text-gray-400 group-hover:text-primary-600 flex-shrink-0" />
+                    <span className="font-semibold text-gray-900">{level.name}</span>
+                  </div>
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    {!activeTimetable
+                      ? <NoTimetableBadge />
+                      : hasSchedule
+                        ? <ScheduledBadge />
+                        : <NotScheduledBadge />
+                    }
+                    <ChevronRight size={14} className="text-gray-300 group-hover:text-gray-500" />
+                  </div>
+                </button>
+              );
+            })}
           </div>
-          {activeTimetable?.status === 'draft' && (
-            <button className="btn-primary btn-sm px-4" onClick={() => publish(activeTimetable.id)}>
-              <Send size={13} /> {t('timetable.publishTimetable', 'Publish')}
-            </button>
+        )}
+      </div>
+    );
+  }
+
+  // ══════════════════════════════════════════════════════════════════════════════
+  // VIEW 3 — Timetable slots for program + level
+  // ══════════════════════════════════════════════════════════════════════════════
+  if (view === 'slots') {
+    const prog = selectedProgram;
+    const level = selectedLevel;
+
+    const slots = level
+      ? getSlotsForLevel(prog.id, level.id)
+      : getSlotsForProgram(prog.id);
+
+    const title = level ? `${prog.name} — ${level.name}` : prog.name;
+
+    return (
+      <div className="space-y-4">
+        <PageHeader />
+
+        <button
+          onClick={() => setView('levels')}
+          className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-900 transition-colors"
+        >
+          <ChevronLeft size={16} /> Back to Levels
+        </button>
+
+        <Breadcrumb
+          program={prog}
+          level={level}
+          onGoPrograms={goPrograms}
+          onGoLevels={() => setView('levels')}
+        />
+
+        <div>
+          <h2 className="text-base font-bold text-gray-900">{title}</h2>
+          {activeWeek && (
+            <p className="text-xs text-gray-400 mt-0.5">
+              {activeWeek.label} · {new Date(activeWeek.startDate).toLocaleDateString()} → {new Date(activeWeek.endDate).toLocaleDateString()}
+            </p>
           )}
         </div>
 
-        {activeWeek && (
-          <div className="py-2 border-b border-gray-100 mb-2">
-            <p className="text-sm font-bold text-gray-900">{activeWeek.label}</p>
-            <p className="text-[11px] text-gray-400 mt-0.5">from {new Date(activeWeek.startDate).toLocaleDateString()} to {new Date(activeWeek.endDate).toLocaleDateString()}</p>
-          </div>
-        )}
-
-        {slots.length === 0 ? (
+        {!activeTimetable ? (
           <div className="card p-12 text-center text-gray-400 italic">
-            No sessions scheduled for this program in the active week.
+            No timetable generated yet. Click "Generate Timetable" above.
+          </div>
+        ) : slots.length === 0 ? (
+          <div className="card p-12 text-center text-gray-400 italic">
+            No sessions scheduled for {level ? 'this level' : 'this program'} yet.
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-4">
             {DAYS.map(day => {
               const daySlots = slots.filter(s => s.dayOfWeek === day);
               if (daySlots.length === 0) return null;
               return (
                 <div key={day} className="space-y-2">
-                  <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest px-1">{day}</h3>
+                  <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest px-1">
+                    {day}
+                  </h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                     {daySlots.map(s => (
-                      <div key={s.id} className="card p-4 flex items-start gap-4 hover:border-primary-300 transition-colors group">
-                        <div className="bg-gray-50 border border-gray-100 rounded-xl px-3 py-2 text-center min-w-[80px] group-hover:bg-primary-50 group-hover:border-primary-100 transition-colors">
-                          <p className="text-xs font-bold text-gray-900 group-hover:text-primary-700">{s.timeStart?.slice(0, 5)}</p>
-                          <p className="text-[10px] text-gray-400 font-medium group-hover:text-primary-400">{s.timeEnd?.slice(0, 5)}</p>
+                      <div
+                        key={s.id}
+                        className="card p-4 flex items-start gap-4 hover:border-teal-300 transition-colors group"
+                      >
+                        {/* Time */}
+                        <div className="bg-teal-50 border border-teal-100 rounded-xl px-3 py-2 text-center min-w-[78px] group-hover:bg-teal-100 transition-colors flex-shrink-0">
+                          <p className="text-xs font-bold text-teal-800">{s.timeStart?.slice(0, 5)}</p>
+                          <p className="text-[10px] text-teal-500 font-medium">{s.timeEnd?.slice(0, 5)}</p>
                         </div>
+                        {/* Info */}
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-bold text-gray-900 truncate">{s.course?.name || '—'}</p>
-                          <p className="text-xs text-gray-500 mt-1 truncate">{s.trainer?.user?.fullName || 'TBD'}</p>
-                          {s.room?.name && <p className="text-[10px] text-gray-400 mt-0.5 bg-gray-100 inline-block px-1.5 py-0.5 rounded">{s.room.name}</p>}
+                          <p className="text-sm font-bold text-gray-900 truncate">
+                            {s.course?.name || '—'}
+                          </p>
+                          <p className="text-xs text-gray-500 mt-0.5 truncate">
+                            {s.trainer?.user?.fullName || 'TBD'}
+                          </p>
+                          <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+                            {s.room?.name && (
+                              <span className="text-[10px] text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded">
+                                {s.room.name}
+                              </span>
+                            )}
+                            {s.course?.session?.semester?.name && (
+                              <span className="text-[10px] text-blue-500 bg-blue-50 px-1.5 py-0.5 rounded">
+                                {s.course.session.semester.name}
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </div>
                     ))}
@@ -26756,64 +27122,7 @@ export default function HodTimetable() {
     );
   }
 
-  return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap gap-4 items-center justify-between">
-        <div>
-          <h1 className="page-title">{t('timetable.title', 'Timetable Generator')}</h1>
-          <p className="page-subtitle">{t('timetable.subtitle', 'Manage program schedules for your department')}</p>
-        </div>
-        <button
-          className="btn-primary"
-          onClick={generate}
-          disabled={generating || !selectedWeekId || String(selectedWeekId) !== String([...weeks].sort((a, b) => b.weekNumber - a.weekNumber)[0]?.id)}
-        >
-          <Zap size={16} /> {generating ? t('common.generating', 'Generating…') : t('timetable.generateTimetable', 'Generate Timetable')}
-        </button>
-      </div>
-
-      {activeWeek && (
-        <div className="py-3 flex items-center justify-between border-b border-gray-100 mb-4">
-          <div className="flex items-center gap-4">
-            <div className="w-10 h-10 rounded-xl bg-gray-100 text-gray-600 flex items-center justify-center font-bold text-base">
-              {activeWeek.weekNumber}
-            </div>
-            <div>
-              <p className="text-sm font-bold text-gray-900 leading-tight">{activeWeek.label}</p>
-              <p className="text-[11px] text-gray-400 mt-1">from {new Date(activeWeek.startDate).toLocaleDateString()} to {new Date(activeWeek.endDate).toLocaleDateString()}</p>
-            </div>
-          </div>
-          <Badge value={activeWeek.status} />
-        </div>
-      )}
-
-      {msg && <p className="text-sm text-green-700 bg-green-50 border border-green-100 rounded-xl px-4 py-3">{msg}</p>}
-      {error && <p className="text-sm text-red-600 bg-red-50 border border-red-100 rounded-xl px-4 py-3">{error}</p>}
-
-      <div className="mt-4 space-y-1">
-        <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-3 px-1">{t('nav.programs', 'Programs')}</p>
-        {programs.map(p => (
-          <button
-            key={p.id}
-            onClick={() => setSelectedProgramId(p.id)}
-            className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition-all text-sm group"
-          >
-            <div className="flex items-center gap-3">
-              <BookOpen size={16} className="text-gray-400 group-hover:text-primary-600" />
-              <span className="font-medium">{p.name}</span>
-            </div>
-            <ChevronRight size={14} className="text-gray-300 group-hover:text-gray-500" />
-          </button>
-        ))}
-      </div>
-
-      {programs.length === 0 && (
-        <div className="card p-12 text-center text-gray-400 italic">
-          No programs found in this department.
-        </div>
-      )}
-    </div>
-  );
+  return null;
 }
 
 ------------------------------------------------------------
@@ -26941,7 +27250,7 @@ export default function HodWeeks() {
             <div><label className="label">{t('weeks.startDate', 'Start Date')}</label><input type="date" className="input" value={form.startDate} onChange={e => setForm(p => ({ ...p, startDate: e.target.value }))} /></div>
             <div><label className="label">{t('weeks.endDate', 'End Date')}</label><input type="date" className="input bg-gray-50 text-gray-500" value={form.endDate} readOnly disabled /></div>
           </div>
-          <div><label className="label">Availability Deadline (Optional)</label><input type="datetime-local" className="input" value={form.availabilityDeadline} onChange={e => setForm(p => ({ ...p, availabilityDeadline: e.target.value }))} /></div>
+          <div><label className="label">Availability Deadline :</label><input type="datetime-local" className="input" value={form.availabilityDeadline} onChange={e => setForm(p => ({ ...p, availabilityDeadline: e.target.value }))} /></div>
         </div>
       </Modal>
     </div>
@@ -27158,7 +27467,11 @@ export function ParentComplaints() {
 
   return (
     <div className="space-y-4">
-      <SectionHeader title={t('complaints.title', 'Complaints')} subtitle={t('complaints.subtitle', 'Submit and track your complaints')}>
+      <SectionHeader
+        title={t('complaints.title', 'Complaints')}
+        subtitle={t('complaints.subtitle', 'Submit and track your complaints')}
+      >
+        {/* btn-primary → inherits parent pink theme via CSS vars */}
         <button className="btn-primary" onClick={() => { setForm(EMPTY); setModal(true); }}>
           <Plus size={16} /> {t('complaints.newComplaint', 'New Complaint')}
         </button>
@@ -27171,11 +27484,16 @@ export function ParentComplaints() {
         </div>
       )}
 
-      {[{ label: t('complaints.pending', 'Pending'), items: pending }, { label: t('complaints.resolved', 'Resolved'), items: resolved }]
+      {[
+        { label: t('complaints.pending', 'Pending'), items: pending },
+        { label: t('complaints.resolved', 'Resolved'), items: resolved },
+      ]
         .filter(g => g.items.length > 0)
         .map(group => (
           <div key={group.label}>
-            <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 px-1">{group.label}</h2>
+            <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 px-1">
+              {group.label}
+            </h2>
             <div className="space-y-3">
               {group.items.map(c => (
                 <div key={c.id} className="card p-4 space-y-2">
@@ -27192,7 +27510,9 @@ export function ParentComplaints() {
                   {c.description && <p className="text-sm text-gray-600">{c.description}</p>}
                   {c.adminResponse && (
                     <div className="bg-violet-50 border border-violet-100 rounded-xl px-3 py-2">
-                      <p className="text-xs font-semibold text-violet-700 mb-1">{t('complaints.adminResponse', 'Administration response')}</p>
+                      <p className="text-xs font-semibold text-violet-700 mb-1">
+                        {t('complaints.adminResponse', 'Administration response')}
+                      </p>
                       <p className="text-sm text-violet-800">{c.adminResponse}</p>
                     </div>
                   )}
@@ -27202,25 +27522,40 @@ export function ParentComplaints() {
           </div>
         ))}
 
-      <Modal open={modal} onClose={() => setModal(false)} title={t('complaints.submitComplaint', 'Submit Complaint')}
+      <Modal
+        open={modal}
+        onClose={() => setModal(false)}
+        title={t('complaints.submitComplaint', 'Submit Complaint')}
         footer={
           <>
-            <button className="btn-secondary" onClick={() => setModal(false)}>{t('common.cancel', 'Cancel')}</button>
+            <button className="btn-secondary" onClick={() => setModal(false)}>
+              {t('common.cancel', 'Cancel')}
+            </button>
             <button className="btn-primary" onClick={handleSubmit} disabled={saving}>
               {saving ? t('common.submitting', 'Submitting…') : t('common.submit', 'Submit')}
             </button>
           </>
-        }>
+        }
+      >
         <div className="space-y-4">
           <div>
             <label className="label">{t('complaints.subjectLabel', 'Subject *')}</label>
-            <input className="input" placeholder={t('complaints.subjectPlaceholder', 'Brief title')}
-              value={form.subject} onChange={e => setForm(f => ({ ...f, subject: e.target.value }))} />
+            <input
+              className="input"
+              placeholder={t('complaints.subjectPlaceholder', 'Brief title')}
+              value={form.subject}
+              onChange={e => setForm(f => ({ ...f, subject: e.target.value }))}
+            />
           </div>
           <div>
             <label className="label">{t('complaints.details', 'Details')}</label>
-            <textarea rows={3} className="input" placeholder={t('complaints.detailsPlaceholder', 'Describe your concern…')}
-              value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} />
+            <textarea
+              rows={3}
+              className="input"
+              placeholder={t('complaints.detailsPlaceholder', 'Describe your concern…')}
+              value={form.description}
+              onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
+            />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
@@ -27236,7 +27571,9 @@ export function ParentComplaints() {
                 <label className="label">{t('complaints.regardingChild', 'Regarding Child')}</label>
                 <select className="select" value={form.studentId} onChange={e => setForm(f => ({ ...f, studentId: e.target.value }))}>
                   <option value="">{t('complaints.generalComplaint', '— General —')}</option>
-                  {children.map(c => <option key={c.id} value={c.id}>{c.user?.fullName}</option>)}
+                  {children.map(c => (
+                    <option key={c.id} value={c.id}>{c.user?.fullName}</option>
+                  ))}
                 </select>
               </div>
             )}
@@ -27277,14 +27614,15 @@ export default function ParentDashboard() {
   if (error) return <ErrorAlert message={error} />;
 
   const { children = [], latestAnnouncements = [], pendingComplaints = 0 } = data || {};
-  const firstName = user?.fullName?.split(' ')[0] || t('roles.parent', 'Parent');
+  const displayName = data?.fullName || user?.fullName || 'parent';
 
   return (
     <div className="space-y-5">
       <div>
         <h1 className="page-title">{t('dashboard.parentTitle', 'Parent Dashboard')}</h1>
         <p className="page-subtitle">
-          {t('auth.welcome', 'Welcome back')}, <span className="font-semibold">{firstName}</span>
+          {t('auth.welcome', 'Welcome back')},{' '}
+          <span className="font-semibold text-primary-600">{displayName}</span>
         </p>
       </div>
 
@@ -27357,8 +27695,17 @@ import { PageLoader, ErrorAlert } from '../../components/ui';
 import { useTranslation } from 'react-i18next';
 
 function GradePill({ letter, value }) {
+  if (value === null || value === undefined) {
+    return (
+      <div className="w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold flex-shrink-0 bg-gray-100 text-gray-400">
+        —
+      </div>
+    );
+  }
   const n = parseFloat(value);
-  const cls = n >= 70 ? 'bg-green-100 text-green-700' : n >= 50 ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700';
+  let cls = 'bg-green-100 text-green-700';
+  if (n < 50) cls = 'bg-red-100 text-red-700';
+  else if (n < 70) cls = 'bg-yellow-100 text-yellow-700';
   return (
     <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold flex-shrink-0 ${cls}`}>
       {letter || '—'}
@@ -27375,6 +27722,7 @@ export default function ParentGrades() {
   const [loading, setLoading] = useState(true);
   const [gradesLoading, setGradesLoading] = useState(false);
   const [error, setError] = useState('');
+  const [semFilter, setSemFilter] = useState('');   // ← semester filter
 
   useEffect(() => {
     parentApi.getChildren().then(r => {
@@ -27386,11 +27734,11 @@ export default function ParentGrades() {
   }, []);
 
   useEffect(() => {
-    if (!childId) { setGrades([]); return; }
+    if (!childId) { setGrades([]); setSemFilter(''); return; }
     setGradesLoading(true);
+    setSemFilter(''); // reset filter when switching child
     parentApi.getChildGrades(childId)
       .then(r => {
-
         const data = r.data;
         setGrades(Array.isArray(data) ? data : (data?.grades || []));
         setGradesLoading(false);
@@ -27402,7 +27750,18 @@ export default function ParentGrades() {
   const academic = grades.filter(g => g.courseId);
   const certGrades = grades.filter(g => g.certificationId);
 
-  const numericGrades = grades.filter(g => g.grade !== null).map(g => parseFloat(g.grade));
+  // Build semester list from academic grades (same as StudentGrades)
+  const semesters = [...new Set(
+    academic.map(g => g.course?.session?.semester?.name).filter(Boolean)
+  )];
+
+  const filteredAcademic = semFilter
+    ? academic.filter(g => g.course?.session?.semester?.name === semFilter)
+    : academic;
+
+  // Stats on graded items only
+  const gradedItems = grades.filter(g => g.grade !== null);
+  const numericGrades = gradedItems.map(g => parseFloat(g.grade));
   const avg = numericGrades.length ? (numericGrades.reduce((a, b) => a + b, 0) / numericGrades.length).toFixed(1) : null;
   const passed = numericGrades.filter(n => n >= 50).length;
   const failed = numericGrades.filter(n => n < 50).length;
@@ -27417,6 +27776,7 @@ export default function ParentGrades() {
         {child && <p className="page-subtitle">{child.user?.fullName} · {child.matricule}</p>}
       </div>
 
+      {/* Child selector */}
       {children.length > 1 && (
         <div>
           <label className="label">{t('grades.selectChild', 'Select Child')}</label>
@@ -27439,7 +27799,7 @@ export default function ParentGrades() {
 
       {!gradesLoading && grades.length > 0 && (
         <>
-          {/* Stats */}
+          {/* Summary stats */}
           <div className="grid grid-cols-3 gap-3">
             <div className="card p-3 text-center">
               <p className="text-xl font-bold text-primary-600">{avg || '—'}</p>
@@ -27455,14 +27815,26 @@ export default function ParentGrades() {
             </div>
           </div>
 
-          {/* Academic courses */}
+          {/* Academic courses — with semester filter */}
           {academic.length > 0 && (
             <div className="card overflow-hidden">
-              <div className="px-4 py-3 border-b border-gray-100 bg-gray-50">
-                <h2 className="font-semibold text-gray-900 text-sm">{t('grades.academicCourses', 'Academic Courses')}</h2>
+              <div className="px-4 py-3 border-b border-gray-100 flex items-center gap-3 flex-wrap">
+                <h2 className="font-semibold text-gray-900 text-sm flex-1">
+                  {t('grades.academicCourses', 'Academic Courses')}
+                </h2>
+                {semesters.length > 0 && (
+                  <select
+                    className="select text-xs py-1.5 w-44"
+                    value={semFilter}
+                    onChange={e => setSemFilter(e.target.value)}
+                  >
+                    <option value="">{t('grades.allSemesters', 'All Semesters')}</option>
+                    {semesters.map(s => <option key={s} value={s}>{s}</option>)}
+                  </select>
+                )}
               </div>
               <div className="divide-y divide-gray-50">
-                {academic.map(g => (
+                {filteredAcademic.map(g => (
                   <div key={g.id} className="px-4 py-3 flex items-center gap-3">
                     <GradePill letter={g.gradeLetter} value={g.grade} />
                     <div className="flex-1 min-w-0">
@@ -27473,7 +27845,13 @@ export default function ParentGrades() {
                         {g.academicYear?.name && ` · ${g.academicYear.name}`}
                       </p>
                     </div>
-                    <span className="text-sm font-bold text-gray-700 flex-shrink-0">{g.grade}%</span>
+                    {g.grade !== null ? (
+                      <span className="text-sm font-bold text-gray-700 flex-shrink-0">{g.grade}%</span>
+                    ) : (
+                      <span className="text-[10px] font-bold text-amber-600 bg-amber-50 px-2 py-1 rounded-lg uppercase tracking-wider flex-shrink-0">
+                        {t('grades.pending', 'Pending')}
+                      </span>
+                    )}
                   </div>
                 ))}
               </div>
@@ -27484,7 +27862,9 @@ export default function ParentGrades() {
           {certGrades.length > 0 && (
             <div className="card overflow-hidden">
               <div className="px-4 py-3 border-b border-violet-100 bg-violet-50">
-                <h2 className="font-semibold text-violet-900 text-sm">{t('grades.certificationGrades', 'Certifications')}</h2>
+                <h2 className="font-semibold text-violet-900 text-sm">
+                  {t('grades.certificationGrades', 'Certifications')}
+                </h2>
               </div>
               <div className="divide-y divide-gray-50">
                 {certGrades.map(g => (

@@ -21,7 +21,6 @@ export default function HodAvailability() {
         const published = (r.data || []).filter(w => w.status === 'published');
         setWeeks(published);
         if (published.length > 0) {
-
           const latest = [...published].sort((a, b) => b.weekNumber - a.weekNumber)[0];
           setWeekId(latest.id);
         }
@@ -63,8 +62,11 @@ export default function HodAvailability() {
           <p className="page-subtitle">{t('availability.subtitle', 'Monitor who has submitted availability for the active week')}</p>
         </div>
         {weekId && (
-          <button className={isLocked ? 'btn-secondary' : 'btn-primary'} onClick={toggleLock}>
-            {isLocked ? <><Unlock size={15} /> {t('availability.unlock', 'Unlock')}</> : <><Lock size={15} /> {t('availability.lockSubmissions', 'Lock Submissions')}</>}
+          /* btn-primary always — color follows the HOD teal theme via CSS vars */
+          <button className="btn-primary" onClick={toggleLock}>
+            {isLocked
+              ? <><Unlock size={15} /> {t('availability.unlock', 'Unlock Submissions')}</>
+              : <><Lock size={15} /> {t('availability.lockSubmissions', 'Lock Submissions')}</>}
           </button>
         )}
       </div>
@@ -73,11 +75,10 @@ export default function HodAvailability() {
 
       {isLocked && weekId && (
         <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
-          {t('availability.locked', ' Locked — trainers cannot edit')}
+          {t('availability.locked', '🔒 Locked — trainers cannot edit their availability')}
         </p>
       )}
 
-      {/* Generation status */}
       {weekId && loadingStatus && <PageLoader />}
 
       {weekId && !loadingStatus && status && (
@@ -86,13 +87,13 @@ export default function HodAvailability() {
             <div className="card p-10 text-center space-y-3">
               <CheckCircle size={40} className="text-green-500 mx-auto" />
               <p className="font-semibold text-gray-900">{t('availability.allSubmitted', 'All trainers have submitted!')}</p>
-              <p className="text-sm text-gray-400">The timetable for this week can now be convenientl</p>
+              <p className="text-sm text-gray-400">The timetable for this week can now be conveniently generated.</p>
             </div>
           ) : (
             <div className="card overflow-hidden">
               <div className="px-5 py-4 bg-red-50 border-b border-red-100 flex items-center gap-2">
                 <XCircle size={17} className="text-red-500" />
-                <h3 className="font-semibold text-red-700">{t('availability.notSubmitted', 'Trainers who haven\'t submitted yet')} ({notSubmitted.length})</h3>
+                <h3 className="font-semibold text-red-700">{t('availability.notSubmitted', "Trainers who haven't submitted yet")} ({notSubmitted.length})</h3>
               </div>
               <div className="divide-y divide-gray-50 max-h-[600px] overflow-y-auto">
                 {notSubmitted.map(tr => (
@@ -102,7 +103,7 @@ export default function HodAvailability() {
                         {tr.user?.fullName?.charAt(0).toUpperCase() || '?'}
                       </div>
                       <div className="min-w-0">
-                        <p className="text-sm font-semibold text-gray-900 truncate">{tr.user?.fullName || "Unknown Trainer"}</p>
+                        <p className="text-sm font-semibold text-gray-900 truncate">{tr.user?.fullName || 'Unknown Trainer'}</p>
                         <p className="text-xs text-gray-400 truncate">{tr.user?.email}</p>
                       </div>
                     </div>

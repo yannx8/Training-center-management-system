@@ -30,7 +30,7 @@ async function getHodDept(userId) {
 const getDashboard = asyncHandler(async (req, res) => {
     const dept = await getHodDept(req.user.userId);
     if (!dept) return res.status(404).json({ success: false, message: "No department assigned", code: "NO_DEPT" });
-    
+
     const programs = await prisma.program.findMany({
         where: { departmentId: dept.id },
         include: { _count: { select: { enrollments: true } } },
@@ -71,7 +71,11 @@ const getDashboard = asyncHandler(async (req, res) => {
 const getProgramsHandler = asyncHandler(async (req, res) => {
     const dept = await getHodDept(req.user.userId);
     if (!dept) return res.status(404).json({ success: false, message: "No department assigned", code: "NO_DEPT" });
-    const programs = await prisma.program.findMany({ where: { departmentId: dept.id }, orderBy: { name: "asc" } });
+    const programs = await prisma.program.findMany({
+        where: { departmentId: dept.id },
+        include: { levels: { orderBy: { levelOrder: 'asc' } } },   // <-- added
+        orderBy: { name: "asc" },
+    });
     return res.json({ success: true, data: programs });
 });
 
@@ -406,8 +410,95 @@ const getTimetablesHandler = asyncHandler(async (req, res) => {
 });
 
 const publishTimetableHandler = asyncHandler(async (req, res) => {
-    const timetable = await prisma.timetable.update({ where: { id: Number(req.params.id) }, data: { status: "published" } });
-    return res.json({ success: true, data: timetable });
+    const timetableId = Number(req.params.id);
+
+    // 1. Fetch the timetable with its week, slots, and department
+    const timetable = await prisma.timetable.findUnique({
+        where: { id: timetableId },
+        include: {
+            academicWeek: {
+                include: { department: true }
+            },
+            slots: {
+                include: {
+                    trainer: true,
+                    course: {
+                        include: {
+                            session: {
+                                include: {
+                                    program: {
+                                        include: {
+                                            enrollments: {
+                                                include: { student: true }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    if (!timetable) {
+        return res.status(404).json({ success: false, message: 'Timetable not found', code: 'NOT_FOUND' });
+    }
+
+    const dept = timetable.academicWeek?.department;
+    const weekLabel = timetable.academicWeek?.label || 'the upcoming week';
+
+    // 2. Mark as published
+    const updated = await prisma.timetable.update({
+        where: { id: timetableId },
+        data: { status: 'published' }
+    });
+
+    // 3. Collect unique trainer IDs involved in this timetable
+    const trainerIds = [...new Set(timetable.slots.map(s => s.trainerId).filter(Boolean))];
+
+    // 4. Collect unique student user IDs enrolled in programs that appear in this timetable
+    const programIds = [
+        ...new Set(
+            timetable.slots
+                .map(s => s.course?.session?.programId)
+                .filter(Boolean)
+        )
+    ];
+
+    // 5. Build announcement body
+    const dateRange = timetable.academicWeek
+        ? `${new Date(timetable.academicWeek.startDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })} – ${new Date(timetable.academicWeek.endDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}`
+        : '';
+
+    // 6. Announcement for trainers assigned in this timetable
+    if (dept && trainerIds.length > 0) {
+        await prisma.announcement.create({
+            data: {
+                title: `Your schedule for "${weekLabel}" has been published`,
+                body: `The timetable for ${weekLabel}${dateRange ? ` (${dateRange})` : ''} is now live. Please log in to view your assigned sessions.`,
+                targetRole: 'trainer',
+                departmentId: dept.id,
+                createdBy: req.user.userId,
+            }
+        });
+    }
+
+    // 7. Announcement for students in programs covered by this timetable
+    if (dept && programIds.length > 0) {
+        await prisma.announcement.create({
+            data: {
+                title: `Your class schedule for "${weekLabel}" is available`,
+                body: `The timetable for ${weekLabel}${dateRange ? ` (${dateRange})` : ''} has been published. Log in to check your sessions, rooms, and times.`,
+                targetRole: 'student',
+                departmentId: dept.id,
+                createdBy: req.user.userId,
+            }
+        });
+    }
+
+    return res.json({ success: true, data: updated });
 });
 
 //  ANNOUNCEMENTS 

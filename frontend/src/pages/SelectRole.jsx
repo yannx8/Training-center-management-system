@@ -40,7 +40,7 @@ export default function SelectRole() {
             <GraduationCap size={24} className="text-primary-600" />
           </div>
           <h2 className="text-xl font-bold text-gray-900">Select your role</h2>
-          <p className="text-sm text-gray-500 mt-1">Hello {state.fullName?.split(" ")[0]}, choose how you want to sign in to continue</p>
+          <p className="text-sm text-gray-500 mt-1">Choose how to sign in to continue</p>
         </div>
 
         {error && <div className="mb-4 text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg px-4 py-2">{error}</div>}
@@ -48,9 +48,8 @@ export default function SelectRole() {
         <div className="space-y-2 mb-6">
           {state.roles.map(role => (
             <label key={role}
-              className={`flex items-center gap-3 px-4 py-3 rounded-xl border-2 cursor-pointer transition-colors ${
-                selected === role ? "border-primary-500 bg-primary-50" : "border-gray-200 hover:border-gray-300"
-              }`}>
+              className={`flex items-center gap-3 px-4 py-3 rounded-xl border-2 cursor-pointer transition-colors ${selected === role ? "border-primary-500 bg-primary-50" : "border-gray-200 hover:border-gray-300"
+                }`}>
               <input type="radio" name="role" value={role} checked={selected === role}
                 onChange={() => setSelected(role)} className="accent-primary-600 w-4 h-4" />
               <span className="text-sm font-medium text-gray-800">{ROLE_LABELS[role] || role}</span>

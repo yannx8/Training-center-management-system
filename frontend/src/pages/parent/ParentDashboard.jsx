@@ -22,14 +22,15 @@ export default function ParentDashboard() {
   if (error) return <ErrorAlert message={error} />;
 
   const { children = [], latestAnnouncements = [], pendingComplaints = 0 } = data || {};
-  const firstName = user?.fullName?.split(' ')[0] || t('roles.parent', 'Parent');
+  const displayName = data?.fullName || user?.fullName || 'parent';
 
   return (
     <div className="space-y-5">
       <div>
         <h1 className="page-title">{t('dashboard.parentTitle', 'Parent Dashboard')}</h1>
         <p className="page-subtitle">
-          {t('auth.welcome', 'Welcome back')}, <span className="font-semibold">{firstName}</span>
+          {t('auth.welcome', 'Welcome back')},{' '}
+          <span className="font-semibold text-primary-600">{displayName}</span>
         </p>
       </div>
 

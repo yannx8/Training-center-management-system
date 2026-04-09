@@ -24,7 +24,7 @@ function passwordStrength(pwd) {
   if (/[A-Z]/.test(pwd)) s++;
   if (/[0-9]/.test(pwd)) s++;
   if (/[^A-Za-z0-9]/.test(pwd)) s++;
-  
+
   if (s <= 1) return { label: 'Weak', width: '25%', bar: 'bg-red-400', text: 'text-red-500' };
   if (s <= 2) return { label: 'Fair', width: '50%', bar: 'bg-amber-400', text: 'text-amber-600' };
   if (s <= 3) return { label: 'Good', width: '75%', bar: 'bg-blue-400', text: 'text-blue-600' };
@@ -56,17 +56,17 @@ export default function Profile() {
   // Strength label translated
   const strengthLabel = strength ? t(`profile.${strength.label.toLowerCase()}`, strength.label) : '';
 
-    // When the page loads, we fetch the latest profile data from the server 
-    // to make sure what's on screen matches our database.
-    api.get('/auth/me').then(r => {
-      const u = r.data.data;
-      setProfile({
-        fullName: u.fullName || '',
-        phone: u.phone || '',
-        dateOfBirth: u.studentInfo?.dateOfBirth ? u.studentInfo.dateOfBirth.split('T')[0] : '',
-      });
-      if (u.studentInfo) setStudentInfo(u.studentInfo);
-    }).catch(() => { });
+  // When the page loads, we fetch the latest profile data from the server 
+  // to make sure what's on screen matches our database.
+  api.get('/auth/me').then(r => {
+    const u = r.data.data;
+    setProfile({
+      fullName: u.fullName || '',
+      phone: u.phone || '',
+      dateOfBirth: u.studentInfo?.dateOfBirth ? u.studentInfo.dateOfBirth.split('T')[0] : '',
+    });
+    if (u.studentInfo) setStudentInfo(u.studentInfo);
+  }).catch(() => { });
 
   // Saves the user's updated name or phone number back to the server.
   async function saveProfile(e) {
@@ -75,10 +75,10 @@ export default function Profile() {
       const payload = { fullName: profile.fullName, phone: profile.phone };
       if (role === 'student') payload.dateOfBirth = profile.dateOfBirth;
       await api.put('/auth/profile', payload);
-      
+
       // We also update the global auth context so their name updates in the sidebar instantly.
       if (setUser) setUser(u => ({ ...u, fullName: profile.fullName }));
-      
+
       setPMsg({ type: 'ok', text: t('profile.profileUpdated', 'Profile updated.') });
     } catch (e) {
       setPMsg({ type: 'err', text: e.response?.data?.message || 'Failed to update profile.' });
@@ -139,8 +139,8 @@ export default function Profile() {
             key={item.id}
             onClick={() => setTab(item.id)}
             className={`flex-1 flex items-center justify-center gap-2 py-3 text-sm font-semibold transition-all duration-150 ${tab === item.id
-                ? `${cfg.accentBg} ${cfg.accent} border-b-2 ${cfg.accentBorder}`
-                : 'text-gray-500 hover:text-gray-700 bg-white'
+              ? `${cfg.accentBg} ${cfg.accent} border-b-2 ${cfg.accentBorder}`
+              : 'text-gray-500 hover:text-gray-700 bg-white'
               }`}
           >
             {item.icon}
