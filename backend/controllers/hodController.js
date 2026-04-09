@@ -412,29 +412,16 @@ const getTimetablesHandler = asyncHandler(async (req, res) => {
 const publishTimetableHandler = asyncHandler(async (req, res) => {
     const timetableId = Number(req.params.id);
 
-    // 1. Fetch the timetable with its week, slots, and department
     const timetable = await prisma.timetable.findUnique({
         where: { id: timetableId },
         include: {
-            academicWeek: {
-                include: { department: true }
-            },
+            academicWeek: { include: { department: true } },
             slots: {
                 include: {
                     trainer: true,
                     course: {
                         include: {
-                            session: {
-                                include: {
-                                    program: {
-                                        include: {
-                                            enrollments: {
-                                                include: { student: true }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
+                            session: { include: { program: true } }
                         }
                     }
                 }
@@ -448,36 +435,35 @@ const publishTimetableHandler = asyncHandler(async (req, res) => {
 
     const dept = timetable.academicWeek?.department;
     const weekLabel = timetable.academicWeek?.label || 'the upcoming week';
+    const weekId = timetable.academicWeekId;
 
-    // 2. Mark as published
+    // Mark as published
     const updated = await prisma.timetable.update({
         where: { id: timetableId },
         data: { status: 'published' }
     });
 
-    // 3. Collect unique trainer IDs involved in this timetable
+    // Auto-lock availability submissions for this week
+    if (weekId) {
+        await prisma.availabilityLock.upsert({
+            where: { academicWeekId: weekId },
+            update: { isLocked: true },
+            create: { academicWeekId: weekId, isLocked: true }
+        });
+    }
+
     const trainerIds = [...new Set(timetable.slots.map(s => s.trainerId).filter(Boolean))];
+    const programIds = [...new Set(timetable.slots.map(s => s.course?.session?.programId).filter(Boolean))];
 
-    // 4. Collect unique student user IDs enrolled in programs that appear in this timetable
-    const programIds = [
-        ...new Set(
-            timetable.slots
-                .map(s => s.course?.session?.programId)
-                .filter(Boolean)
-        )
-    ];
-
-    // 5. Build announcement body
     const dateRange = timetable.academicWeek
         ? `${new Date(timetable.academicWeek.startDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })} – ${new Date(timetable.academicWeek.endDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}`
         : '';
 
-    // 6. Announcement for trainers assigned in this timetable
     if (dept && trainerIds.length > 0) {
         await prisma.announcement.create({
             data: {
                 title: `Your schedule for "${weekLabel}" has been published`,
-                body: `The timetable for ${weekLabel}${dateRange ? ` (${dateRange})` : ''} is now live. Please log in to view your assigned sessions.`,
+                body: `The timetable for ${weekLabel}${dateRange ? ` (${dateRange})` : ''} is now live. Availability submissions are now locked. Log in to view your assigned sessions.`,
                 targetRole: 'trainer',
                 departmentId: dept.id,
                 createdBy: req.user.userId,
@@ -485,7 +471,6 @@ const publishTimetableHandler = asyncHandler(async (req, res) => {
         });
     }
 
-    // 7. Announcement for students in programs covered by this timetable
     if (dept && programIds.length > 0) {
         await prisma.announcement.create({
             data: {
@@ -500,6 +485,7 @@ const publishTimetableHandler = asyncHandler(async (req, res) => {
 
     return res.json({ success: true, data: updated });
 });
+
 
 //  ANNOUNCEMENTS 
 const createAnnouncementHandler = asyncHandler(async (req, res) => {

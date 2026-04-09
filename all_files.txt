@@ -12546,8 +12546,95 @@ const getTimetablesHandler = asyncHandler(async (req, res) => {
 });
 
 const publishTimetableHandler = asyncHandler(async (req, res) => {
-    const timetable = await prisma.timetable.update({ where: { id: Number(req.params.id) }, data: { status: "published" } });
-    return res.json({ success: true, data: timetable });
+    const timetableId = Number(req.params.id);
+
+    // 1. Fetch the timetable with its week, slots, and department
+    const timetable = await prisma.timetable.findUnique({
+        where: { id: timetableId },
+        include: {
+            academicWeek: {
+                include: { department: true }
+            },
+            slots: {
+                include: {
+                    trainer: true,
+                    course: {
+                        include: {
+                            session: {
+                                include: {
+                                    program: {
+                                        include: {
+                                            enrollments: {
+                                                include: { student: true }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    if (!timetable) {
+        return res.status(404).json({ success: false, message: 'Timetable not found', code: 'NOT_FOUND' });
+    }
+
+    const dept = timetable.academicWeek?.department;
+    const weekLabel = timetable.academicWeek?.label || 'the upcoming week';
+
+    // 2. Mark as published
+    const updated = await prisma.timetable.update({
+        where: { id: timetableId },
+        data: { status: 'published' }
+    });
+
+    // 3. Collect unique trainer IDs involved in this timetable
+    const trainerIds = [...new Set(timetable.slots.map(s => s.trainerId).filter(Boolean))];
+
+    // 4. Collect unique student user IDs enrolled in programs that appear in this timetable
+    const programIds = [
+        ...new Set(
+            timetable.slots
+                .map(s => s.course?.session?.programId)
+                .filter(Boolean)
+        )
+    ];
+
+    // 5. Build announcement body
+    const dateRange = timetable.academicWeek
+        ? `${new Date(timetable.academicWeek.startDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })} – ${new Date(timetable.academicWeek.endDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}`
+        : '';
+
+    // 6. Announcement for trainers assigned in this timetable
+    if (dept && trainerIds.length > 0) {
+        await prisma.announcement.create({
+            data: {
+                title: `Your schedule for "${weekLabel}" has been published`,
+                body: `The timetable for ${weekLabel}${dateRange ? ` (${dateRange})` : ''} is now live. Please log in to view your assigned sessions.`,
+                targetRole: 'trainer',
+                departmentId: dept.id,
+                createdBy: req.user.userId,
+            }
+        });
+    }
+
+    // 7. Announcement for students in programs covered by this timetable
+    if (dept && programIds.length > 0) {
+        await prisma.announcement.create({
+            data: {
+                title: `Your class schedule for "${weekLabel}" is available`,
+                body: `The timetable for ${weekLabel}${dateRange ? ` (${dateRange})` : ''} has been published. Log in to check your sessions, rooms, and times.`,
+                targetRole: 'student',
+                departmentId: dept.id,
+                createdBy: req.user.userId,
+            }
+        });
+    }
+
+    return res.json({ success: true, data: updated });
 });
 
 //  ANNOUNCEMENTS 
@@ -26663,6 +26750,7 @@ import {
 } from 'lucide-react';
 import { hodApi } from '../../api';
 import { PageLoader, Badge } from '../../components/ui';
+import TimetableGrid from '../../components/ui/TimetableGrid';
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
@@ -26783,8 +26871,6 @@ export default function HodTimetable() {
 
   const activeWeek = weeks.find(w => String(w.id) === String(selectedWeekId));
 
-  // KEY FIX: show the timetable whether it is "draft" OR "published"
-  // (previously it only showed "published" so nothing appeared after generation)
   const activeTimetable = timetables.find(
     tt => String(tt.academicWeekId) === String(selectedWeekId)
   );
@@ -26831,6 +26917,18 @@ export default function HodTimetable() {
     setSelectedProgram(prog);
     setSelectedLevel(level);
     setView('slots');
+  }
+
+  // ── normalise slots for TimetableGrid ───────────────────────────────────────
+  function normaliseSlotsForGrid(slots) {
+    return slots.map(s => ({
+      ...s,
+      type: 'academic',
+      subject: s.course?.name || '—',
+      levelName: s.course?.session?.academicLevel?.name,
+      semesterName: s.course?.session?.semester?.name,
+      weekLabel: activeWeek?.label,
+    }));
   }
 
   // ── shared header ───────────────────────────────────────────────────────────
@@ -27021,16 +27119,17 @@ export default function HodTimetable() {
   }
 
   // ══════════════════════════════════════════════════════════════════════════════
-  // VIEW 3 — Timetable slots for program + level
+  // VIEW 3 — Timetable slots (shared TimetableGrid component)
   // ══════════════════════════════════════════════════════════════════════════════
   if (view === 'slots') {
     const prog = selectedProgram;
     const level = selectedLevel;
 
-    const slots = level
+    const rawSlots = level
       ? getSlotsForLevel(prog.id, level.id)
       : getSlotsForProgram(prog.id);
 
+    const sessions = normaliseSlotsForGrid(rawSlots);
     const title = level ? `${prog.name} — ${level.name}` : prog.name;
 
     return (
@@ -27064,59 +27163,13 @@ export default function HodTimetable() {
           <div className="card p-12 text-center text-gray-400 italic">
             No timetable generated yet. Click "Generate Timetable" above.
           </div>
-        ) : slots.length === 0 ? (
-          <div className="card p-12 text-center text-gray-400 italic">
-            No sessions scheduled for {level ? 'this level' : 'this program'} yet.
-          </div>
         ) : (
-          <div className="space-y-4">
-            {DAYS.map(day => {
-              const daySlots = slots.filter(s => s.dayOfWeek === day);
-              if (daySlots.length === 0) return null;
-              return (
-                <div key={day} className="space-y-2">
-                  <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest px-1">
-                    {day}
-                  </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                    {daySlots.map(s => (
-                      <div
-                        key={s.id}
-                        className="card p-4 flex items-start gap-4 hover:border-teal-300 transition-colors group"
-                      >
-                        {/* Time */}
-                        <div className="bg-teal-50 border border-teal-100 rounded-xl px-3 py-2 text-center min-w-[78px] group-hover:bg-teal-100 transition-colors flex-shrink-0">
-                          <p className="text-xs font-bold text-teal-800">{s.timeStart?.slice(0, 5)}</p>
-                          <p className="text-[10px] text-teal-500 font-medium">{s.timeEnd?.slice(0, 5)}</p>
-                        </div>
-                        {/* Info */}
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-bold text-gray-900 truncate">
-                            {s.course?.name || '—'}
-                          </p>
-                          <p className="text-xs text-gray-500 mt-0.5 truncate">
-                            {s.trainer?.user?.fullName || 'TBD'}
-                          </p>
-                          <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
-                            {s.room?.name && (
-                              <span className="text-[10px] text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded">
-                                {s.room.name}
-                              </span>
-                            )}
-                            {s.course?.session?.semester?.name && (
-                              <span className="text-[10px] text-blue-500 bg-blue-50 px-1.5 py-0.5 rounded">
-                                {s.course.session.semester.name}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+          <TimetableGrid
+            sessions={sessions}
+            getDay={s => s.dayOfWeek}
+            getType={s => s.type}
+            emptyMessage={`No sessions scheduled for ${level ? 'this level' : 'this program'} yet.`}
+          />
         )}
       </div>
     );
