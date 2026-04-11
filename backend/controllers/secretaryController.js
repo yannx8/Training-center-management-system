@@ -12,17 +12,28 @@ function genMatricule(code, year, seq) {
 // for programs and certifications for the active year.
 const getDashboard = asyncHandler(async (req, res) => {
   const activeYear = await prisma.academicYear.findFirst({ where: { isActive: true } });
-  
+
   // We list all active programs, optionally filtered by the current academic year if one is set.
   const programs = await prisma.program.findMany({
-    where: { status: 'active', ...(activeYear ? { academicYears: { some: { id: activeYear.id } } } : {}) },
-    include: { department: { select: { name: true } }, _count: { select: { enrollments: true } } },
+    where: {
+      status: 'active',
+      ...(activeYear ? { academicYears: { some: { id: activeYear.id } } } : {}),
+    },
+    include: {
+      department: { select: { name: true } },
+      _count: { select: { enrollments: true } },
+    },
     orderBy: { name: 'asc' },
   });
 
   const certifications = await prisma.certification.findMany({
     where: { status: 'active' },
-    include: { _count: { select: { enrollments: true } }, trainerCourses: { include: { trainer: { include: { user: { select: { fullName: true } } } } } } },
+    include: {
+      _count: { select: { enrollments: true } },
+      trainerCourses: {
+        include: { trainer: { include: { user: { select: { fullName: true } } } } },
+      },
+    },
     orderBy: { name: 'asc' },
   });
 
@@ -42,7 +53,12 @@ const getAllStudentsHandler = asyncHandler(async (req, res) => {
     include: {
       user: { select: { fullName: true, email: true, phone: true, status: true, createdAt: true } },
       program: { include: { department: { select: { name: true } } } },
-      enrollments: { include: { certification: { select: { name: true } }, program: { select: { name: true } } } },
+      enrollments: {
+        include: {
+          certification: { select: { name: true } },
+          program: { select: { name: true } },
+        },
+      },
     },
     orderBy: { createdAt: 'desc' },
   });
@@ -77,13 +93,19 @@ const registerStudentHandler = asyncHandler(async (req, res) => {
 
   // Capacity check
   if (programId) {
-    const prog = await prisma.program.findUnique({ where: { id: Number(programId) }, include: { _count: { select: { enrollments: true } } } });
+    const prog = await prisma.program.findUnique({
+      where: { id: Number(programId) },
+      include: { _count: { select: { enrollments: true } } },
+    });
     if (!prog) return res.status(404).json({ success: false, message: 'Program not found' });
     if (prog.capacity && prog._count.enrollments >= prog.capacity)
       return res.status(409).json({ success: false, message: `Program is full (${prog.capacity} max)` });
   }
   if (certificationId) {
-    const cert = await prisma.certification.findUnique({ where: { id: Number(certificationId) }, include: { _count: { select: { enrollments: true } } } });
+    const cert = await prisma.certification.findUnique({
+      where: { id: Number(certificationId) },
+      include: { _count: { select: { enrollments: true } } },
+    });
     if (!cert) return res.status(404).json({ success: false, message: 'Certification not found' });
     if (cert.capacity && cert._count.enrollments >= cert.capacity)
       return res.status(409).json({ success: false, message: `Certification is full (${cert.capacity} max)` });
@@ -97,40 +119,57 @@ const registerStudentHandler = asyncHandler(async (req, res) => {
 
   // Hash parent passwords before transaction
   const parentsWithHash = await Promise.all(
-    (parents || []).filter(p => p.email).map(async p => ({
-      ...p,
-      hash: await bcrypt.hash(p.phone || phone, SALT),
-    }))
+    (parents || []).filter(function(p) { return p.email; }).map(async function(p) {
+      return Object.assign({}, p, { hash: await bcrypt.hash(p.phone || phone, SALT) });
+    })
   );
+
+  // Fetch the active academic year so we can link enrollment to it
+  const activeYear = await prisma.academicYear.findFirst({ where: { isActive: true } });
 
   let deptName = '';
   if (programId) {
-    const p = await prisma.program.findUnique({ where: { id: Number(programId) }, include: { department: true } });
-    deptName = p?.department?.name || '';
+    const prog = await prisma.program.findUnique({
+      where: { id: Number(programId) },
+      include: { department: true },
+    });
+    deptName = (prog && prog.department && prog.department.name) ? prog.department.name : '';
   }
 
   const count = await prisma.student.count();
-  const code = programId
-    ? (await prisma.program.findUnique({ where: { id: Number(programId) } }))?.code || 'STU'
-    : (await prisma.certification.findUnique({ where: { id: Number(certificationId) } }))?.code || 'CERT';
+
+  let code = 'STU';
+  if (programId) {
+    const prog = await prisma.program.findUnique({ where: { id: Number(programId) } });
+    code = (prog && prog.code) ? prog.code : 'STU';
+  } else if (certificationId) {
+    const cert = await prisma.certification.findUnique({ where: { id: Number(certificationId) } });
+    code = (cert && cert.code) ? cert.code : 'CERT';
+  }
+
   const matricule = genMatricule(code, new Date().getFullYear(), count + 1);
 
   // We use a transaction here to ensure that if anything fails (creating user, enrolling, or linking parents),
   // none of the records are saved. It's an "all or nothing" deal for data integrity.
-  const result = await prisma.$transaction(async tx => {
+  const result = await prisma.$transaction(async function(tx) {
     const studentRole = await tx.role.findUnique({ where: { name: 'student' } });
     const studentUser = await tx.user.create({
       data: {
-        fullName, email: studentEmail,
-        passwordHash: studentHash, phone,
-        department: deptName, status: 'active', passwordChanged: false,
+        fullName: fullName,
+        email: studentEmail,
+        passwordHash: studentHash,
+        phone: phone,
+        department: deptName,
+        status: 'active',
+        passwordChanged: false,
         userRoles: { create: { roleId: studentRole.id } },
       },
     });
 
     const student = await tx.student.create({
       data: {
-        userId: studentUser.id, matricule,
+        userId: studentUser.id,
+        matricule: matricule,
         dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : null,
         programId: programId ? Number(programId) : null,
       },
@@ -138,11 +177,20 @@ const registerStudentHandler = asyncHandler(async (req, res) => {
 
     if (programId) {
       await tx.enrollment.create({
-        data: { studentId: student.id, programId: Number(programId), academicYearId: activeYear?.id || null, status: 'active' },
+        data: {
+          studentId: student.id,
+          programId: Number(programId),
+          academicYearId: (activeYear && activeYear.id) ? activeYear.id : null,
+          status: 'active',
+        },
       });
     } else {
       await tx.enrollment.create({
-        data: { studentId: student.id, certificationId: Number(certificationId), status: 'active' },
+        data: {
+          studentId: student.id,
+          certificationId: Number(certificationId),
+          status: 'active',
+        },
       });
     }
 
@@ -153,18 +201,21 @@ const registerStudentHandler = asyncHandler(async (req, res) => {
       if (!parentUser) {
         parentUser = await tx.user.create({
           data: {
-            fullName: `${p.firstName || ''} ${p.lastName || ''}`.trim() || 'Parent',
+            fullName: (`${p.firstName || ''} ${p.lastName || ''}`).trim() || 'Parent',
             email: p.email.toLowerCase().trim(),
             passwordHash: p.hash,
             phone: p.phone || phone,
-            status: 'active', passwordChanged: false,
+            status: 'active',
+            passwordChanged: false,
             userRoles: { create: { roleId: parentRole.id } },
           },
         });
       }
       let parent = await tx.parent.findUnique({ where: { userId: parentUser.id } });
       if (!parent) {
-        parent = await tx.parent.create({ data: { userId: parentUser.id, relationship: p.relationship || 'Father' } });
+        parent = await tx.parent.create({
+          data: { userId: parentUser.id, relationship: p.relationship || 'Father' },
+        });
       }
       await tx.parentStudentLink.upsert({
         where: { parentId_studentId: { parentId: parent.id, studentId: student.id } },
@@ -173,7 +224,7 @@ const registerStudentHandler = asyncHandler(async (req, res) => {
       });
     }
 
-    return { student, matricule };
+    return { student: student, matricule: matricule };
   }, { timeout: 30000 });
 
   return res.status(201).json({ success: true, data: result });
@@ -185,7 +236,10 @@ const updateStudentHandler = asyncHandler(async (req, res) => {
   if (!student) return res.status(404).json({ success: false, message: 'Student not found' });
 
   if (student.userId) {
-    await prisma.user.update({ where: { id: student.userId }, data: { fullName, phone, status } });
+    await prisma.user.update({
+      where: { id: student.userId },
+      data: { fullName: fullName, phone: phone, status: status },
+    });
   }
   const updated = await prisma.student.update({
     where: { id: Number(req.params.id) },
@@ -197,7 +251,10 @@ const updateStudentHandler = asyncHandler(async (req, res) => {
 const getProgramsHandler = asyncHandler(async (req, res) => {
   const { departmentId } = req.query;
   const programs = await prisma.program.findMany({
-    where: { status: 'active', ...(departmentId ? { departmentId: Number(departmentId) } : {}) },
+    where: {
+      status: 'active',
+      ...(departmentId ? { departmentId: Number(departmentId) } : {}),
+    },
     include: {
       department: { select: { name: true } },
       _count: { select: { enrollments: true } },
@@ -218,11 +275,19 @@ const getCertificationsHandler = asyncHandler(async (req, res) => {
 });
 
 const getDepartmentsHandler = asyncHandler(async (req, res) => {
-  const depts = await prisma.department.findMany({ where: { status: 'active' }, orderBy: { name: 'asc' } });
+  const depts = await prisma.department.findMany({
+    where: { status: 'active' },
+    orderBy: { name: 'asc' },
+  });
   return res.json({ success: true, data: depts });
 });
 
 module.exports = {
-  getDashboard, getAllStudentsHandler, registerStudentHandler, updateStudentHandler,
-  getProgramsHandler, getCertificationsHandler, getDepartmentsHandler,
+  getDashboard,
+  getAllStudentsHandler,
+  registerStudentHandler,
+  updateStudentHandler,
+  getProgramsHandler,
+  getCertificationsHandler,
+  getDepartmentsHandler,
 };

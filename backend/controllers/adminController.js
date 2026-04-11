@@ -46,7 +46,7 @@ const getUsers = asyncHandler(async(req, res) => {
     return res.json({ success: true, data: users.map(u => ({...u, passwordHash: undefined, roles: u.userRoles.map(ur => ur.role.name) })) });
 });
 
-// Handles creating a new user from scratch. 
+// Handles creating a new user from scratch.
 // It automatically generates a unique email and sets their initial password to their phone number.
 const createUserHandler = asyncHandler(async(req, res) => {
     const { firstName, lastName, roleName, department, phone, status } = req.body;
@@ -191,7 +191,7 @@ const deleteProgramHandler = asyncHandler(async(req, res) => {
     return res.json({ success: true, data: { deleted: true } });
 });
 
-//  ACADEMIC LEVELS CRUD 
+//  ACADEMIC LEVELS CRUD
 const getAcademicLevelsHandler = asyncHandler(async(req, res) => {
     const { programId } = req.query;
     const levels = await prisma.academicLevel.findMany({
@@ -289,7 +289,7 @@ const assignTrainerHandler = asyncHandler(async(req, res) => {
     return res.json({ success: true, data: { assigned: !!trainerId } });
 });
 
-//CERTIFICATIONS
+// CERTIFICATIONS
 const getCertificationsHandler = asyncHandler(async(req, res) => {
     const certs = await prisma.certification.findMany({
         include: { trainerCourses: { include: { trainer: { include: { user: true } } } }, _count: { select: { enrollments: true } } },
@@ -322,8 +322,11 @@ const assignTrainerToCertHandler = asyncHandler(async(req, res) => {
     return res.json({ success: true, data: { assigned: !!trainerId } });
 });
 
-// crud rOOMS
-const getRoomsHandler = asyncHandler(async(req, res) => { const rooms = await prisma.room.findMany({ orderBy: { name: "asc" } }); return res.json({ success: true, data: rooms }); });
+// CRUD ROOMS
+const getRoomsHandler = asyncHandler(async(req, res) => {
+    const rooms = await prisma.room.findMany({ orderBy: { name: "asc" } });
+    return res.json({ success: true, data: rooms });
+});
 const createRoomHandler = asyncHandler(async(req, res) => {
     const { name, code, building, capacity, roomType, status } = req.body;
     if (!name) return res.status(400).json({ success: false, message: "name required", code: "MISSING_FIELDS" });
@@ -335,11 +338,17 @@ const updateRoomHandler = asyncHandler(async(req, res) => {
     const room = await prisma.room.update({ where: { id: Number(req.params.id) }, data: req.body });
     return res.json({ success: true, data: room });
 });
-const deleteRoomHandler = asyncHandler(async(req, res) => { await prisma.room.delete({ where: { id: Number(req.params.id) } }); return res.json({ success: true, data: { deleted: true } }); });
+const deleteRoomHandler = asyncHandler(async(req, res) => {
+    await prisma.room.delete({ where: { id: Number(req.params.id) } });
+    return res.json({ success: true, data: { deleted: true } });
+});
 
-//  ACADEMIC YEARS 
+//  ACADEMIC YEARS
 const getAcademicYearsHandler = asyncHandler(async(req, res) => {
-    const years = await prisma.academicYear.findMany({ include: { program: { select: { name: true } }, certification: { select: { name: true } } }, orderBy: { startDate: "desc" } });
+    const years = await prisma.academicYear.findMany({
+        include: { program: { select: { name: true } }, certification: { select: { name: true } } },
+        orderBy: { startDate: "desc" },
+    });
     return res.json({ success: true, data: years });
 });
 
@@ -369,20 +378,59 @@ const createAcademicYearHandler = asyncHandler(async(req, res) => {
     return res.status(201).json({ success: true, data: year });
 });
 
-//  SESSIONS 
+// Switches the active academic year — deactivates all others, activates the chosen one.
+// Only one year can be active at a time.
+const setActiveAcademicYearHandler = asyncHandler(async(req, res) => {
+    const { id } = req.params;
+    const year = await prisma.academicYear.findUnique({ where: { id: Number(id) } });
+    if (!year) return res.status(404).json({ success: false, message: "Academic year not found" });
+
+    // Deactivate all years first
+    await prisma.academicYear.updateMany({
+        where: { isActive: true },
+        data: { isActive: false },
+    });
+
+    // Activate the chosen one
+    const updated = await prisma.academicYear.update({
+        where: { id: Number(id) },
+        data: { isActive: true },
+    });
+
+    return res.json({ success: true, data: updated });
+});
+
+//  SESSIONS
 const getSessionsForProgramHandler = asyncHandler(async(req, res) => {
-    const sessions = await prisma.session.findMany({ where: { programId: Number(req.params.id) }, include: { academicLevel: true, semester: true, academicYear: true }, orderBy: [{ academicLevel: { levelOrder: "asc" } }, { semester: { semesterOrder: "asc" } }] });
+    const sessions = await prisma.session.findMany({
+        where: { programId: Number(req.params.id) },
+        include: { academicLevel: true, semester: true, academicYear: true },
+        orderBy: [{ academicLevel: { levelOrder: "asc" } }, { semester: { semesterOrder: "asc" } }],
+    });
     return res.json({ success: true, data: sessions });
 });
 const createSessionHandler = asyncHandler(async(req, res) => {
     const { programId, academicYearId, academicLevelId, semesterId } = req.body;
-    const existing = await prisma.session.findFirst({ where: { programId: Number(programId), academicLevelId: academicLevelId ? Number(academicLevelId) : null, semesterId: semesterId ? Number(semesterId) : null } });
+    const existing = await prisma.session.findFirst({
+        where: {
+            programId: Number(programId),
+            academicLevelId: academicLevelId ? Number(academicLevelId) : null,
+            semesterId: semesterId ? Number(semesterId) : null,
+        },
+    });
     if (existing) return res.json({ success: true, data: existing });
-    const session = await prisma.session.create({ data: { programId: Number(programId), academicYearId: academicYearId ? Number(academicYearId) : null, academicLevelId: academicLevelId ? Number(academicLevelId) : null, semesterId: semesterId ? Number(semesterId) : null } });
+    const session = await prisma.session.create({
+        data: {
+            programId: Number(programId),
+            academicYearId: academicYearId ? Number(academicYearId) : null,
+            academicLevelId: academicLevelId ? Number(academicLevelId) : null,
+            semesterId: semesterId ? Number(semesterId) : null,
+        },
+    });
     return res.status(201).json({ success: true, data: session });
 });
 
-//  SEMESTERS 
+//  SEMESTERS
 const getSemestersHandler = asyncHandler(async(req, res) => {
     const semesters = await prisma.semester.findMany({ orderBy: { semesterOrder: "asc" } });
     return res.json({ success: true, data: semesters });
@@ -405,19 +453,28 @@ const deleteSemesterHandler = asyncHandler(async(req, res) => {
 
 // COMPLAINTS
 const getComplaintsHandler = asyncHandler(async(req, res) => {
-    const complaints = await prisma.complaint.findMany({ include: { parent: { include: { user: { select: { fullName: true, email: true } } } } }, orderBy: { createdAt: "desc" } });
+    const complaints = await prisma.complaint.findMany({
+        include: { parent: { include: { user: { select: { fullName: true, email: true } } } } },
+        orderBy: { createdAt: "desc" },
+    });
     return res.json({ success: true, data: complaints });
 });
 const updateComplaintHandler = asyncHandler(async(req, res) => {
-    const complaint = await prisma.complaint.update({ where: { id: Number(req.params.id) }, data: { status: req.body.status, adminResponse: req.body.adminResponse } });
+    const complaint = await prisma.complaint.update({
+        where: { id: Number(req.params.id) },
+        data: { status: req.body.status, adminResponse: req.body.adminResponse },
+    });
     return res.json({ success: true, data: complaint });
 });
 
-// Some HELPERS
+// HELPERS
 const getTrainersByDeptHandler = asyncHandler(async(req, res) => {
     const dept = await prisma.department.findUnique({ where: { id: Number(req.params.id) } });
     if (!dept) return res.status(404).json({ success: false, message: "Department not found", code: "NOT_FOUND" });
-    const trainers = await prisma.trainer.findMany({ where: { user: { department: dept.name } }, include: { user: { select: { id: true, fullName: true, email: true } } } });
+    const trainers = await prisma.trainer.findMany({
+        where: { user: { department: dept.name } },
+        include: { user: { select: { id: true, fullName: true, email: true } } },
+    });
     return res.json({ success: true, data: trainers });
 });
 
@@ -465,6 +522,7 @@ module.exports = {
     deleteRoomHandler,
     getAcademicYearsHandler,
     createAcademicYearHandler,
+    setActiveAcademicYearHandler,
     getSessionsForProgramHandler,
     createSessionHandler,
     getSemestersHandler,

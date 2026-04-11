@@ -3,14 +3,17 @@ import { Save, Trash2, Info, Lock, Clock, CheckCircle } from 'lucide-react';
 import { trainerApi } from '../../api';
 import { PageLoader, ErrorAlert } from '../../components/ui';
 import { useTranslation } from 'react-i18next';
-import { cn } from "@/lib/utils";
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+// Official time slots — must match TIME_SLOTS in hodController.js exactly.
+// These are the only valid slot starts accepted by the timetable generator.
 const TIME_SLOTS = [
-  { start: '08:00', end: '12:00' },
+  { start: '08:00', end: '10:00' },
+  { start: '10:30', end: '12:00' },
   { start: '13:00', end: '15:00' },
   { start: '15:30', end: '17:00' },
-  { start: '17:00', end: '19:00' },
+  { start: '17:30', end: '19:00' },
   { start: '19:30', end: '21:30' },
 ];
 
@@ -21,20 +24,15 @@ function slotLabel(slot) {
 function DeadlineCard({ week, isLocked }) {
   const { i18n } = useTranslation();
   const locale = i18n.language.startsWith('fr') ? 'fr-FR' : 'en-GB';
-
   const now = new Date();
   const deadline = week.availabilityDeadline ? new Date(week.availabilityDeadline) : null;
   const isOverdue = deadline && deadline < now;
 
   return (
     <div className={`flex items-center justify-between px-4 py-3 rounded-xl border ${
-      isLocked
-        ? 'bg-amber-50 border-amber-200'
-        : isOverdue
-          ? 'bg-red-50 border-red-200'
-          : 'bg-white border-gray-200'
+      isLocked ? 'bg-amber-50 border-amber-200' : isOverdue ? 'bg-red-50 border-red-200' : 'bg-white border-gray-200'
     }`}>
-      <div className={cn('flex', 'items-center', 'gap-3', 'min-w-0')}>
+      <div className="flex items-center gap-3 min-w-0">
         <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
           isLocked ? 'bg-amber-100' : isOverdue ? 'bg-red-100' : 'bg-blue-100'
         }`}>
@@ -44,7 +42,7 @@ function DeadlineCard({ week, isLocked }) {
           }
         </div>
         <div className="min-w-0">
-          <p className={cn('text-sm', 'font-semibold', 'text-gray-900', 'truncate')}>
+          <p className="text-sm font-semibold text-gray-900 truncate">
             {week.department?.name || week.departmentName || '—'}
           </p>
           {deadline ? (
@@ -59,14 +57,14 @@ function DeadlineCard({ week, isLocked }) {
               }
             </p>
           ) : (
-            <p className={cn('text-xs', 'text-gray-400', 'mt-0.5')}>
+            <p className="text-xs text-gray-400 mt-0.5">
               {isLocked ? 'Submissions locked' : 'No deadline set'}
             </p>
           )}
         </div>
       </div>
       {isLocked && (
-        <span className={cn('text-xs', 'font-semibold', 'text-amber-700', 'bg-amber-100', 'px-2', 'py-0.5', 'rounded-full', 'flex-shrink-0', 'ml-2')}>
+        <span className="text-xs font-semibold text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full flex-shrink-0 ml-2">
           Locked
         </span>
       )}
@@ -76,14 +74,9 @@ function DeadlineCard({ week, isLocked }) {
 
 export default function TrainerAvailability() {
   const { t } = useTranslation();
-
-  // All published weeks across all departments this trainer has courses in
   const [allWeeks, setAllWeeks] = useState([]);
-  // Lock status per weekId: { [weekId]: boolean }
   const [lockMap, setLockMap] = useState({});
-  // The selected time slots (same grid submitted to all unlocked weeks)
   const [slots, setSlots] = useState([]);
-
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -94,10 +87,8 @@ export default function TrainerAvailability() {
       .then(async r => {
         const weeks = r.data || [];
         setAllWeeks(weeks);
-
         if (weeks.length === 0) { setLoading(false); return; }
 
-        // Load lock status for each week in parallel
         const lockResults = await Promise.all(
           weeks.map(w =>
             trainerApi.getLockStatus
@@ -109,24 +100,28 @@ export default function TrainerAvailability() {
         weeks.forEach((w, i) => { map[w.id] = lockResults[i]?.data?.isLocked || false; });
         setLockMap(map);
 
-        // Load existing availability from the first unlocked week (if any)
         const firstUnlocked = weeks.find(w => !map[w.id]);
         if (firstUnlocked) {
           const avail = await trainerApi.getAvailability({ weekId: firstUnlocked.id }).catch(() => ({ data: [] }));
-          setSlots((avail.data || []).map(a => ({
-            dayOfWeek: a.dayOfWeek,
-            timeStart: a.timeStart.slice(0, 5),
-            timeEnd: a.timeEnd.slice(0, 5),
-          })));
+          // Only load slots whose timeStart matches an official slot — filters out
+          // any stale 1-hour rows that might exist in the DB from an older build.
+          const officialStarts = new Set(TIME_SLOTS.map(s => s.start));
+          setSlots(
+            (avail.data || [])
+              .filter(a => officialStarts.has(a.timeStart.slice(0, 5)))
+              .map(a => ({
+                dayOfWeek: a.dayOfWeek,
+                timeStart: a.timeStart.slice(0, 5),
+                timeEnd:   a.timeEnd.slice(0, 5),
+              }))
+          );
         }
-
         setLoading(false);
       })
       .catch(() => { setError(t('common.failedLoad', 'Failed to load')); setLoading(false); });
   }, []);
 
-  // All weeks locked = no editing
-  const allLocked = allWeeks.length > 0 && allWeeks.every(w => lockMap[w.id]);
+  const allLocked     = allWeeks.length > 0 && allWeeks.every(w => lockMap[w.id]);
   const unlockedWeeks = allWeeks.filter(w => !lockMap[w.id]);
 
   function isSelected(day, timeStart) {
@@ -140,6 +135,7 @@ export default function TrainerAvailability() {
     if (exists) {
       setSlots(p => p.filter(x => !(x.dayOfWeek === day && x.timeStart === slot.start)));
     } else {
+      // Store the official start AND end so the backend receives the correct pair
       setSlots(p => [...p, { dayOfWeek: day, timeStart: slot.start, timeEnd: slot.end }]);
     }
   }
@@ -153,18 +149,11 @@ export default function TrainerAvailability() {
     setSlots(all);
   }
 
-  // Submit the same availability to ALL unlocked weeks
   async function handleSave() {
     if (unlockedWeeks.length === 0) return;
-    setSaving(true);
-    setMsg('');
-    setError('');
+    setSaving(true); setMsg(''); setError('');
     try {
-      await Promise.all(
-        unlockedWeeks.map(w =>
-          trainerApi.submitAvailability({ weekId: w.id, slots })
-        )
-      );
+      await Promise.all(unlockedWeeks.map(w => trainerApi.submitAvailability({ weekId: w.id, slots })));
       setMsg(
         unlockedWeeks.length === 1
           ? t('availability.saved', 'Availability saved successfully!')
@@ -191,14 +180,13 @@ export default function TrainerAvailability() {
         </p>
       </div>
 
-      {/* No published weeks at all */}
       {allWeeks.length === 0 && !error && (
-        <div className={cn('card', 'p-10', 'text-center')}>
-          <Info size={32} className={cn('mx-auto', 'text-gray-300', 'mb-3')} />
-          <p className={cn('font-medium', 'text-gray-600')}>
+        <div className="card p-10 text-center">
+          <Info size={32} className="mx-auto text-gray-300 mb-3" />
+          <p className="font-medium text-gray-600">
             {t('availability.noPublishedWeeks', 'No published weeks yet')}
           </p>
-          <p className={cn('text-sm', 'text-gray-400', 'mt-1')}>
+          <p className="text-sm text-gray-400 mt-1">
             {t('availability.noPublishedWeeksHint', 'Your HOD needs to publish an academic week before you can submit availability.')}
           </p>
         </div>
@@ -208,9 +196,8 @@ export default function TrainerAvailability() {
 
       {allWeeks.length > 0 && (
         <>
-          {/* Deadline info — one card per department, no week label */}
           <div className="space-y-2">
-            <p className={cn('text-xs', 'font-bold', 'text-gray-500', 'uppercase', 'tracking-wider', 'px-1')}>
+            <p className="text-xs font-bold text-gray-500 uppercase tracking-wider px-1">
               Active submission periods
             </p>
             {allWeeks.map(w => (
@@ -218,10 +205,9 @@ export default function TrainerAvailability() {
             ))}
           </div>
 
-          {/* Note about what will be saved */}
           {unlockedWeeks.length > 0 && (
-            <div className={cn('flex', 'items-start', 'gap-2', 'text-xs', 'text-blue-700', 'bg-blue-50', 'border', 'border-blue-200', 'rounded-xl', 'px-4', 'py-3')}>
-              <Info size={13} className={cn('flex-shrink-0', 'mt-0.5')} />
+            <div className="flex items-start gap-2 text-xs text-blue-700 bg-blue-50 border border-blue-200 rounded-xl px-4 py-3">
+              <Info size={13} className="flex-shrink-0 mt-0.5" />
               <span>
                 Your availability will be submitted for{' '}
                 <strong>{unlockedWeeks.length} department{unlockedWeeks.length > 1 ? 's' : ''}</strong>{' '}
@@ -231,20 +217,15 @@ export default function TrainerAvailability() {
           )}
 
           {allLocked && (
-            <div className={cn('flex', 'items-center', 'gap-2', 'text-sm', 'text-amber-700', 'bg-amber-50', 'border', 'border-amber-200', 'rounded-xl', 'px-4', 'py-3')}>
+            <div className="flex items-center gap-2 text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
               <Lock size={14} className="flex-shrink-0" />
               All submission periods are currently locked by your HOD.
             </div>
           )}
 
-          {/* Actions */}
           {!allLocked && (
-            <div className={cn('flex', 'flex-wrap', 'gap-2')}>
-              <button
-                className={cn('btn-primary', 'flex-1', 'justify-center')}
-                onClick={handleSave}
-                disabled={saving}
-              >
+            <div className="flex flex-wrap gap-2">
+              <button className="btn-primary flex-1 justify-center" onClick={handleSave} disabled={saving}>
                 <Save size={15} />
                 {saving ? t('common.saving', 'Saving…') : t('availability.saveAvailability', 'Save Availability')}
               </button>
@@ -258,15 +239,14 @@ export default function TrainerAvailability() {
           )}
 
           {msg && (
-            <div className={cn('flex', 'items-center', 'gap-2', 'text-sm', 'text-green-700', 'bg-green-50', 'border', 'border-green-200', 'rounded-xl', 'px-4', 'py-2')}>
+            <div className="flex items-center gap-2 text-sm text-green-700 bg-green-50 border border-green-200 rounded-xl px-4 py-2">
               <CheckCircle size={15} className="flex-shrink-0" /> {msg}
             </div>
           )}
 
-          {/* Availability grid */}
-          <div className={cn('card', 'overflow-hidden')}>
-            <div className={cn('px-4', 'py-2.5', 'bg-blue-50', 'border-b', 'border-blue-100', 'flex', 'items-start', 'gap-2', 'text-xs', 'text-blue-700')}>
-              <Info size={13} className={cn('flex-shrink-0', 'mt-0.5')} />
+          <div className="card overflow-hidden">
+            <div className="px-4 py-2.5 bg-blue-50 border-b border-blue-100 flex items-start gap-2 text-xs text-blue-700">
+              <Info size={13} className="flex-shrink-0 mt-0.5" />
               <span>
                 {allLocked
                   ? 'All availability periods are locked — no editing allowed.'
@@ -274,27 +254,27 @@ export default function TrainerAvailability() {
               </span>
             </div>
 
-            <div className={cn('px-4', 'py-2', 'border-b', 'border-gray-100', 'flex', 'items-center', 'justify-between')}>
-              <p className={cn('text-xs', 'text-gray-600')}>
-                <span className={cn('font-bold', 'text-gray-900')}>{selectedCount}</span>{' '}
+            <div className="px-4 py-2 border-b border-gray-100 flex items-center justify-between">
+              <p className="text-xs text-gray-600">
+                <span className="font-bold text-gray-900">{selectedCount}</span>{' '}
                 {t('availability.slotsSelected', 'slot(s) selected')}
               </p>
               {selectedCount > 0 && (
-                <span className={cn('text-xs', 'text-green-700', 'bg-green-50', 'px-2', 'py-0.5', 'rounded-full', 'font-medium')}>
+                <span className="text-xs text-green-700 bg-green-50 px-2 py-0.5 rounded-full font-medium">
                   {daysCovered} {daysCovered === 1 ? t('availability.dayCovered', 'day') : t('availability.daysCovered', 'days')}
                 </span>
               )}
             </div>
 
             <div className="overflow-x-auto">
-              <table className={cn('w-full', 'text-sm', 'border-collapse')} style={{ minWidth: '520px' }}>
+              <table className="w-full text-sm border-collapse" style={{ minWidth: '520px' }}>
                 <thead>
-                  <tr className={cn('bg-gray-50', 'border-b', 'border-gray-200')}>
-                    <th className={cn('px-3', 'py-2.5', 'text-left', 'text-xs', 'font-semibold', 'text-gray-500', 'w-28', 'sticky', 'left-0', 'bg-gray-50', 'z-10')}>
+                  <tr className="bg-gray-50 border-b border-gray-200">
+                    <th className="px-3 py-2.5 text-left text-xs font-semibold text-gray-500 w-36 sticky left-0 bg-gray-50 z-10">
                       {t('time.timeSlot', 'Time')}
                     </th>
                     {DAYS.map(d => (
-                      <th key={d} className={cn('px-1', 'py-2.5', 'text-center', 'text-xs', 'font-semibold', 'text-gray-600', 'min-w-[72px]')}>
+                      <th key={d} className="px-1 py-2.5 text-center text-xs font-semibold text-gray-600 min-w-[72px]">
                         {t(`days.${d}`, d)}
                       </th>
                     ))}
@@ -303,15 +283,15 @@ export default function TrainerAvailability() {
                 <tbody>
                   {TIME_SLOTS.map((slot, ri) => (
                     <tr key={slot.start} className={`border-b border-gray-100 ${ri % 2 === 0 ? 'bg-white' : 'bg-gray-50/40'}`}>
-                      <td className={cn('px-3', 'py-1.5', 'sticky', 'left-0', 'bg-inherit', 'z-10')}>
-                        <span className={cn('text-xs', 'font-mono', 'font-semibold', 'text-gray-700', 'whitespace-nowrap')}>
+                      <td className="px-3 py-1.5 sticky left-0 bg-inherit z-10">
+                        <span className="text-xs font-mono font-semibold text-gray-700 whitespace-nowrap">
                           {slotLabel(slot)}
                         </span>
                       </td>
                       {DAYS.map(day => {
                         const sel = isSelected(day, slot.start);
                         return (
-                          <td key={day} className={cn('px-1', 'py-1', 'text-center')}>
+                          <td key={day} className="px-1 py-1 text-center">
                             <button
                               onClick={() => toggleSlot(day, slot)}
                               disabled={allLocked}
@@ -336,13 +316,13 @@ export default function TrainerAvailability() {
               </table>
             </div>
 
-            <div className={cn('px-4', 'py-2.5', 'border-t', 'border-gray-100', 'flex', 'items-center', 'gap-4', 'text-xs', 'text-gray-500')}>
-              <span className={cn('flex', 'items-center', 'gap-1.5')}>
-                <span className={cn('w-4', 'h-4', 'rounded', 'bg-blue-500', 'inline-block')} />
+            <div className="px-4 py-2.5 border-t border-gray-100 flex items-center gap-4 text-xs text-gray-500">
+              <span className="flex items-center gap-1.5">
+                <span className="w-4 h-4 rounded bg-blue-500 inline-block" />
                 {t('availability.available', 'Available')}
               </span>
-              <span className={cn('flex', 'items-center', 'gap-1.5')}>
-                <span className={cn('w-4', 'h-4', 'rounded', 'bg-white', 'border', 'border-gray-200', 'inline-block')} />
+              <span className="flex items-center gap-1.5">
+                <span className="w-4 h-4 rounded bg-white border border-gray-200 inline-block" />
                 {t('availability.notAvailable', 'Not available')}
               </span>
             </div>

@@ -53,6 +53,7 @@ export const adminApi = {
     deleteRoom: id => api.delete(`/admin/rooms/${id}`).then(r => r.data),
     getAcademicYears: () => api.get('/admin/academic-years').then(r => r.data),
     createAcademicYear: b => api.post('/admin/academic-years', b).then(r => r.data),
+    setActiveAcademicYear: (id) => api.put(`/admin/academic-years/${id}/set-active`).then(r => r.data),
     getSemesters: () => api.get('/admin/semesters').then(r => r.data),
     getComplaints: () => api.get('/admin/complaints').then(r => r.data),
     updateComplaint: (id, b) => api.put(`/admin/complaints/${id}`, b).then(r => r.data),

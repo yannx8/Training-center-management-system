@@ -80,6 +80,8 @@ Training-center-management-system/
 │   │   │       └── TimetableGrid.jsx
 │   │   ├── context/
 │   │   │   └── AuthContext.jsx
+│   │   ├── lib/
+│   │   │   └── utils.js
 │   │   ├── pages/
 │   │   │   ├── admin/
 │   │   │   │   ├── AcademicYears.jsx
@@ -238,7 +240,7 @@ Training-center-management-system/
 └── vite.config.ts
 
 ============================================================
-  FILE INDEX  (194 files total)
+  FILE INDEX  (195 files total)
 ============================================================
 
 .bash_logout
@@ -323,6 +325,7 @@ frontend\src\components\ui\Table.jsx
 frontend\src\components\ui\TimetableGrid.jsx
 frontend\src\components\ui\index.jsx
 frontend\src\context\AuthContext.jsx
+frontend\src\lib\utils.js
 frontend\src\pages\Login.jsx
 frontend\src\pages\Profile.jsx
 frontend\src\pages\SelectRole.jsx
@@ -437,7 +440,7 @@ src\hooks\use-mobile.ts
 src\lib\utils.ts
 
 ============================================================
-  FILE CONTENTS  (188 readable text files)
+  FILE CONTENTS  (189 readable text files)
 ============================================================
 
 ------------------------------------------------------------
@@ -11551,7 +11554,7 @@ const { asyncHandler } = require("../middleware/errorHandler");
 
 // This pulls a high-level overview of the entire system for the admin dashboard.
 // We're grabbing counts for users, departments, and pending items to show on the landing page.
-const getDashboard = asyncHandler(async (req, res) => {
+const getDashboard = asyncHandler(async(req, res) => {
     const [totalUsers, departments, programs, certifications, trainers, students, pendingComplaints] = await Promise.all([
         prisma.user.count(),
         prisma.department.count(),
@@ -11573,7 +11576,7 @@ const getDashboard = asyncHandler(async (req, res) => {
         success: true,
         data: {
             stats: { totalUsers, departments, programs, certifications, trainers, students, pendingComplaints },
-            recentUsers: recentUsers.map(u => ({ ...u, passwordHash: undefined, roles: u.userRoles.map(ur => ur.role.name) })),
+            recentUsers: recentUsers.map(u => ({...u, passwordHash: undefined, roles: u.userRoles.map(ur => ur.role.name) })),
             deptOverview,
         }
     });
@@ -11582,19 +11585,19 @@ const getDashboard = asyncHandler(async (req, res) => {
 const { generateUniqueEmail } = require("../lib/userUtils");
 
 // CRUD users
-const getUsers = asyncHandler(async (req, res) => {
+const getUsers = asyncHandler(async(req, res) => {
     const { role, status } = req.query;
     const users = await prisma.user.findMany({
-        where: { ...(status ? { status } : {}), ...(role ? { userRoles: { some: { role: { name: role } } } } : {}) },
+        where: {...(status ? { status } : {}), ...(role ? { userRoles: { some: { role: { name: role } } } } : {}) },
         include: { userRoles: { include: { role: true } } },
         orderBy: { fullName: "asc" },
     });
-    return res.json({ success: true, data: users.map(u => ({ ...u, passwordHash: undefined, roles: u.userRoles.map(ur => ur.role.name) })) });
+    return res.json({ success: true, data: users.map(u => ({...u, passwordHash: undefined, roles: u.userRoles.map(ur => ur.role.name) })) });
 });
 
-// Handles creating a new user from scratch. 
+// Handles creating a new user from scratch.
 // It automatically generates a unique email and sets their initial password to their phone number.
-const createUserHandler = asyncHandler(async (req, res) => {
+const createUserHandler = asyncHandler(async(req, res) => {
     const { firstName, lastName, roleName, department, phone, status } = req.body;
     if (!firstName || !lastName || !roleName || !phone)
         return res.status(400).json({ success: false, message: "firstName, lastName, roleName, phone required", code: "MISSING_FIELDS" });
@@ -11616,10 +11619,10 @@ const createUserHandler = asyncHandler(async (req, res) => {
     if (roleName === "trainer") await prisma.trainer.upsert({ where: { userId: user.id }, update: {}, create: { userId: user.id } });
     if (roleName === "hod" && department) await prisma.department.updateMany({ where: { name: department }, data: { hodUserId: user.id, hodName: fullName } });
 
-    return res.status(201).json({ success: true, data: { ...user, passwordHash: undefined, roles: user.userRoles.map(ur => ur.role.name) } });
+    return res.status(201).json({ success: true, data: {...user, passwordHash: undefined, roles: user.userRoles.map(ur => ur.role.name) } });
 });
 
-const updateUserHandler = asyncHandler(async (req, res) => {
+const updateUserHandler = asyncHandler(async(req, res) => {
     const { id } = req.params;
     const { fullName, email, phone, department, status, roles } = req.body;
     const emailValue = email ? email.toLowerCase().trim() : undefined;
@@ -11640,18 +11643,18 @@ const updateUserHandler = asyncHandler(async (req, res) => {
     return res.json({ success: true, data: user });
 });
 
-const deleteUserHandler = asyncHandler(async (req, res) => {
+const deleteUserHandler = asyncHandler(async(req, res) => {
     await prisma.department.updateMany({ where: { hodUserId: Number(req.params.id) }, data: { hodUserId: null, hodName: null } });
     await prisma.user.delete({ where: { id: Number(req.params.id) } });
     return res.json({ success: true, data: { deleted: true } });
 });
 
 // CRUD Depts
-const getDepartmentsHandler = asyncHandler(async (req, res) => {
+const getDepartmentsHandler = asyncHandler(async(req, res) => {
     const depts = await prisma.department.findMany({ include: { hod: { select: { fullName: true, email: true } }, _count: { select: { programs: true } } }, orderBy: { name: "asc" } });
     return res.json({ success: true, data: depts });
 });
-const createDepartmentHandler = asyncHandler(async (req, res) => {
+const createDepartmentHandler = asyncHandler(async(req, res) => {
     const { name, code, hodUserId, status } = req.body;
     if (!name || !code) return res.status(400).json({ success: false, message: "name and code required", code: "MISSING_FIELDS" });
     let hodName = null;
@@ -11659,7 +11662,7 @@ const createDepartmentHandler = asyncHandler(async (req, res) => {
     const dept = await prisma.department.create({ data: { name, code, hodUserId: hodUserId ? Number(hodUserId) : null, hodName, status: status || "active" } });
     return res.status(201).json({ success: true, data: dept });
 });
-const updateDepartmentHandler = asyncHandler(async (req, res) => {
+const updateDepartmentHandler = asyncHandler(async(req, res) => {
     const { id } = req.params;
     const { name, code, hodUserId, status } = req.body;
 
@@ -11701,13 +11704,13 @@ const updateDepartmentHandler = asyncHandler(async (req, res) => {
 
     return res.json({ success: true, data: dept });
 });
-const deleteDepartmentHandler = asyncHandler(async (req, res) => {
+const deleteDepartmentHandler = asyncHandler(async(req, res) => {
     await prisma.department.delete({ where: { id: Number(req.params.id) } });
     return res.json({ success: true, data: { deleted: true } });
 });
 
 // CRUD programs
-const getProgramsHandler = asyncHandler(async (req, res) => {
+const getProgramsHandler = asyncHandler(async(req, res) => {
     const programs = await prisma.program.findMany({
         include: { department: { select: { name: true, code: true } }, _count: { select: { enrollments: true } } },
         orderBy: [{ department: { name: "asc" } }, { name: "asc" }],
@@ -11717,28 +11720,28 @@ const getProgramsHandler = asyncHandler(async (req, res) => {
     for (const p of programs) {
         const key = p.department ? p.department.name : "No Department";
         if (!grouped[key]) grouped[key] = { department: p.department, programs: [] };
-        grouped[key].programs.push({ ...p, enrollmentCount: p._count.enrollments });
+        grouped[key].programs.push({...p, enrollmentCount: p._count.enrollments });
     }
     return res.json({ success: true, data: programs, grouped: Object.values(grouped) });
 });
-const createProgramHandler = asyncHandler(async (req, res) => {
+const createProgramHandler = asyncHandler(async(req, res) => {
     const { name, code, departmentId, durationYears, status, capacity } = req.body;
     if (!name || !code) return res.status(400).json({ success: false, message: "name and code required", code: "MISSING_FIELDS" });
     const program = await prisma.program.create({ data: { name, code, departmentId: departmentId ? Number(departmentId) : null, durationYears: Number(durationYears) || 3, status: status || "active", capacity: capacity ? Number(capacity) : null } });
     return res.status(201).json({ success: true, data: program });
 });
-const updateProgramHandler = asyncHandler(async (req, res) => {
+const updateProgramHandler = asyncHandler(async(req, res) => {
     const { name, code, departmentId, durationYears, status, capacity } = req.body;
     const program = await prisma.program.update({ where: { id: Number(req.params.id) }, data: { name, code, departmentId: departmentId ? Number(departmentId) : null, durationYears: Number(durationYears), status, capacity: capacity ? Number(capacity) : null } });
     return res.json({ success: true, data: program });
 });
-const deleteProgramHandler = asyncHandler(async (req, res) => {
+const deleteProgramHandler = asyncHandler(async(req, res) => {
     await prisma.program.delete({ where: { id: Number(req.params.id) } });
     return res.json({ success: true, data: { deleted: true } });
 });
 
-//  ACADEMIC LEVELS CRUD 
-const getAcademicLevelsHandler = asyncHandler(async (req, res) => {
+//  ACADEMIC LEVELS CRUD
+const getAcademicLevelsHandler = asyncHandler(async(req, res) => {
     const { programId } = req.query;
     const levels = await prisma.academicLevel.findMany({
         where: programId ? { programId: Number(programId) } : {},
@@ -11747,24 +11750,24 @@ const getAcademicLevelsHandler = asyncHandler(async (req, res) => {
     });
     return res.json({ success: true, data: levels });
 });
-const createAcademicLevelHandler = asyncHandler(async (req, res) => {
+const createAcademicLevelHandler = asyncHandler(async(req, res) => {
     const { name, programId, levelOrder } = req.body;
     if (!name || !programId) return res.status(400).json({ success: false, message: "name and programId required", code: "MISSING_FIELDS" });
     const level = await prisma.academicLevel.create({ data: { name, programId: Number(programId), levelOrder: Number(levelOrder) || 1 } });
     return res.status(201).json({ success: true, data: level });
 });
-const updateAcademicLevelHandler = asyncHandler(async (req, res) => {
+const updateAcademicLevelHandler = asyncHandler(async(req, res) => {
     const { name, levelOrder } = req.body;
     const level = await prisma.academicLevel.update({ where: { id: Number(req.params.id) }, data: { name, levelOrder: Number(levelOrder) } });
     return res.json({ success: true, data: level });
 });
-const deleteAcademicLevelHandler = asyncHandler(async (req, res) => {
+const deleteAcademicLevelHandler = asyncHandler(async(req, res) => {
     await prisma.academicLevel.delete({ where: { id: Number(req.params.id) } });
     return res.json({ success: true, data: { deleted: true } });
 });
 
 // programs's courses managing
-const getProgramTreeHandler = asyncHandler(async (req, res) => {
+const getProgramTreeHandler = asyncHandler(async(req, res) => {
     const program = await prisma.program.findUnique({ where: { id: Number(req.params.id) }, include: { department: true } });
     if (!program) return res.status(404).json({ success: false, message: "Program not found", code: "NOT_FOUND" });
 
@@ -11786,7 +11789,7 @@ const getProgramTreeHandler = asyncHandler(async (req, res) => {
     return res.json({ success: true, data: { program, levels: levelTree } });
 });
 
-const getProgramCoursesHandler = asyncHandler(async (req, res) => {
+const getProgramCoursesHandler = asyncHandler(async(req, res) => {
     const program = await prisma.program.findUnique({ where: { id: Number(req.params.id) }, include: { department: true } });
     if (!program) return res.status(404).json({ success: false, message: "Program not found", code: "NOT_FOUND" });
     const sessions = await prisma.session.findMany({
@@ -11798,14 +11801,14 @@ const getProgramCoursesHandler = asyncHandler(async (req, res) => {
 });
 
 // COURSES
-const createCourseHandler = asyncHandler(async (req, res) => {
+const createCourseHandler = asyncHandler(async(req, res) => {
     const { name, code, credits, hoursPerWeek, sessionId, totalDurationHours } = req.body;
     if (!name || !code || !sessionId) return res.status(400).json({ success: false, message: "name, code, sessionId required", code: "MISSING_FIELDS" });
     const tdh = Number(totalDurationHours) || 32;
     const course = await prisma.course.create({ data: { name, code, credits: Number(credits) || 3, hoursPerWeek: Number(hoursPerWeek) || 2, sessionId: Number(sessionId), totalDurationHours: tdh, remainingHours: tdh } });
     return res.status(201).json({ success: true, data: course });
 });
-const updateCourseHandler = asyncHandler(async (req, res) => {
+const updateCourseHandler = asyncHandler(async(req, res) => {
     const { name, code, credits, hoursPerWeek, totalDurationHours } = req.body;
     const data = { name, code, credits: Number(credits), hoursPerWeek: Number(hoursPerWeek) };
     if (totalDurationHours !== undefined) {
@@ -11819,13 +11822,13 @@ const updateCourseHandler = asyncHandler(async (req, res) => {
     const course = await prisma.course.update({ where: { id: Number(req.params.id) }, data });
     return res.json({ success: true, data: course });
 });
-const deleteCourseHandler = asyncHandler(async (req, res) => {
+const deleteCourseHandler = asyncHandler(async(req, res) => {
     await prisma.course.delete({ where: { id: Number(req.params.id) } });
     return res.json({ success: true, data: { deleted: true } });
 });
 
 // trainerId here is trainers.id (trainer profile id), NOT users.id
-const assignTrainerHandler = asyncHandler(async (req, res) => {
+const assignTrainerHandler = asyncHandler(async(req, res) => {
     const courseId = Number(req.params.id);
     const { trainerId } = req.body;
     await prisma.trainerCourse.deleteMany({ where: { courseId } });
@@ -11835,32 +11838,32 @@ const assignTrainerHandler = asyncHandler(async (req, res) => {
     return res.json({ success: true, data: { assigned: !!trainerId } });
 });
 
-//CERTIFICATIONS
-const getCertificationsHandler = asyncHandler(async (req, res) => {
+// CERTIFICATIONS
+const getCertificationsHandler = asyncHandler(async(req, res) => {
     const certs = await prisma.certification.findMany({
         include: { trainerCourses: { include: { trainer: { include: { user: true } } } }, _count: { select: { enrollments: true } } },
         orderBy: { name: "asc" },
     });
     return res.json({ success: true, data: certs });
 });
-const createCertificationHandler = asyncHandler(async (req, res) => {
+const createCertificationHandler = asyncHandler(async(req, res) => {
     const { name, code, description, durationHours, status, capacity } = req.body;
     if (!name || !code) return res.status(400).json({ success: false, message: "name and code required", code: "MISSING_FIELDS" });
     const dh = Number(durationHours) || 40;
     const cert = await prisma.certification.create({ data: { name, code, description, durationHours: dh, remainingHours: dh, status: status || "active", capacity: capacity ? Number(capacity) : null } });
     return res.status(201).json({ success: true, data: cert });
 });
-const updateCertificationHandler = asyncHandler(async (req, res) => {
+const updateCertificationHandler = asyncHandler(async(req, res) => {
     const { name, code, description, durationHours, status, capacity } = req.body;
     const cert = await prisma.certification.update({ where: { id: Number(req.params.id) }, data: { name, code, description, durationHours: Number(durationHours), status, capacity: capacity ? Number(capacity) : null } });
     return res.json({ success: true, data: cert });
 });
-const deleteCertificationHandler = asyncHandler(async (req, res) => {
+const deleteCertificationHandler = asyncHandler(async(req, res) => {
     await prisma.certification.delete({ where: { id: Number(req.params.id) } });
     return res.json({ success: true, data: { deleted: true } });
 });
 // trainerId here is trainers.id (trainer profile id), NOT users.id
-const assignTrainerToCertHandler = asyncHandler(async (req, res) => {
+const assignTrainerToCertHandler = asyncHandler(async(req, res) => {
     const certId = Number(req.params.id);
     const { trainerId } = req.body;
     await prisma.trainerCourse.deleteMany({ where: { certificationId: certId } });
@@ -11868,28 +11871,37 @@ const assignTrainerToCertHandler = asyncHandler(async (req, res) => {
     return res.json({ success: true, data: { assigned: !!trainerId } });
 });
 
-// crud rOOMS
-const getRoomsHandler = asyncHandler(async (req, res) => { const rooms = await prisma.room.findMany({ orderBy: { name: "asc" } }); return res.json({ success: true, data: rooms }); });
-const createRoomHandler = asyncHandler(async (req, res) => {
+// CRUD ROOMS
+const getRoomsHandler = asyncHandler(async(req, res) => {
+    const rooms = await prisma.room.findMany({ orderBy: { name: "asc" } });
+    return res.json({ success: true, data: rooms });
+});
+const createRoomHandler = asyncHandler(async(req, res) => {
     const { name, code, building, capacity, roomType, status } = req.body;
     if (!name) return res.status(400).json({ success: false, message: "name required", code: "MISSING_FIELDS" });
     const finalCode = code || name.replace(/\s+/g, "-").toUpperCase();
     const room = await prisma.room.create({ data: { name, code: finalCode, building, capacity: Number(capacity) || 30, roomType: roomType || "Classroom", status: status || "available" } });
     return res.status(201).json({ success: true, data: room });
 });
-const updateRoomHandler = asyncHandler(async (req, res) => {
+const updateRoomHandler = asyncHandler(async(req, res) => {
     const room = await prisma.room.update({ where: { id: Number(req.params.id) }, data: req.body });
     return res.json({ success: true, data: room });
 });
-const deleteRoomHandler = asyncHandler(async (req, res) => { await prisma.room.delete({ where: { id: Number(req.params.id) } }); return res.json({ success: true, data: { deleted: true } }); });
+const deleteRoomHandler = asyncHandler(async(req, res) => {
+    await prisma.room.delete({ where: { id: Number(req.params.id) } });
+    return res.json({ success: true, data: { deleted: true } });
+});
 
-//  ACADEMIC YEARS 
-const getAcademicYearsHandler = asyncHandler(async (req, res) => {
-    const years = await prisma.academicYear.findMany({ include: { program: { select: { name: true } }, certification: { select: { name: true } } }, orderBy: { startDate: "desc" } });
+//  ACADEMIC YEARS
+const getAcademicYearsHandler = asyncHandler(async(req, res) => {
+    const years = await prisma.academicYear.findMany({
+        include: { program: { select: { name: true } }, certification: { select: { name: true } } },
+        orderBy: { startDate: "desc" },
+    });
     return res.json({ success: true, data: years });
 });
 
-const createAcademicYearHandler = asyncHandler(async (req, res) => {
+const createAcademicYearHandler = asyncHandler(async(req, res) => {
     const { name, startDate, endDate, isActive, programId, certificationId } = req.body;
     if (!name || !startDate || !endDate)
         return res.status(400).json({ success: false, message: "name, startDate, endDate required", code: "MISSING_FIELDS" });
@@ -11915,60 +11927,108 @@ const createAcademicYearHandler = asyncHandler(async (req, res) => {
     return res.status(201).json({ success: true, data: year });
 });
 
-//  SESSIONS 
-const getSessionsForProgramHandler = asyncHandler(async (req, res) => {
-    const sessions = await prisma.session.findMany({ where: { programId: Number(req.params.id) }, include: { academicLevel: true, semester: true, academicYear: true }, orderBy: [{ academicLevel: { levelOrder: "asc" } }, { semester: { semesterOrder: "asc" } }] });
+// Switches the active academic year — deactivates all others, activates the chosen one.
+// Only one year can be active at a time.
+const setActiveAcademicYearHandler = asyncHandler(async(req, res) => {
+    const { id } = req.params;
+    const year = await prisma.academicYear.findUnique({ where: { id: Number(id) } });
+    if (!year) return res.status(404).json({ success: false, message: "Academic year not found" });
+
+    // Deactivate all years first
+    await prisma.academicYear.updateMany({
+        where: { isActive: true },
+        data: { isActive: false },
+    });
+
+    // Activate the chosen one
+    const updated = await prisma.academicYear.update({
+        where: { id: Number(id) },
+        data: { isActive: true },
+    });
+
+    return res.json({ success: true, data: updated });
+});
+
+//  SESSIONS
+const getSessionsForProgramHandler = asyncHandler(async(req, res) => {
+    const sessions = await prisma.session.findMany({
+        where: { programId: Number(req.params.id) },
+        include: { academicLevel: true, semester: true, academicYear: true },
+        orderBy: [{ academicLevel: { levelOrder: "asc" } }, { semester: { semesterOrder: "asc" } }],
+    });
     return res.json({ success: true, data: sessions });
 });
-const createSessionHandler = asyncHandler(async (req, res) => {
+const createSessionHandler = asyncHandler(async(req, res) => {
     const { programId, academicYearId, academicLevelId, semesterId } = req.body;
-    const existing = await prisma.session.findFirst({ where: { programId: Number(programId), academicLevelId: academicLevelId ? Number(academicLevelId) : null, semesterId: semesterId ? Number(semesterId) : null } });
+    const existing = await prisma.session.findFirst({
+        where: {
+            programId: Number(programId),
+            academicLevelId: academicLevelId ? Number(academicLevelId) : null,
+            semesterId: semesterId ? Number(semesterId) : null,
+        },
+    });
     if (existing) return res.json({ success: true, data: existing });
-    const session = await prisma.session.create({ data: { programId: Number(programId), academicYearId: academicYearId ? Number(academicYearId) : null, academicLevelId: academicLevelId ? Number(academicLevelId) : null, semesterId: semesterId ? Number(semesterId) : null } });
+    const session = await prisma.session.create({
+        data: {
+            programId: Number(programId),
+            academicYearId: academicYearId ? Number(academicYearId) : null,
+            academicLevelId: academicLevelId ? Number(academicLevelId) : null,
+            semesterId: semesterId ? Number(semesterId) : null,
+        },
+    });
     return res.status(201).json({ success: true, data: session });
 });
 
-//  SEMESTERS 
-const getSemestersHandler = asyncHandler(async (req, res) => {
+//  SEMESTERS
+const getSemestersHandler = asyncHandler(async(req, res) => {
     const semesters = await prisma.semester.findMany({ orderBy: { semesterOrder: "asc" } });
     return res.json({ success: true, data: semesters });
 });
-const createSemesterHandler = asyncHandler(async (req, res) => {
+const createSemesterHandler = asyncHandler(async(req, res) => {
     const { name, semesterOrder } = req.body;
     if (!name) return res.status(400).json({ success: false, message: 'name required' });
     const semester = await prisma.semester.create({ data: { name, semesterOrder: Number(semesterOrder) || 1 } });
     return res.status(201).json({ success: true, data: semester });
 });
-const updateSemesterHandler = asyncHandler(async (req, res) => {
+const updateSemesterHandler = asyncHandler(async(req, res) => {
     const { name, semesterOrder } = req.body;
     const semester = await prisma.semester.update({ where: { id: Number(req.params.id) }, data: { name, semesterOrder: Number(semesterOrder) } });
     return res.json({ success: true, data: semester });
 });
-const deleteSemesterHandler = asyncHandler(async (req, res) => {
+const deleteSemesterHandler = asyncHandler(async(req, res) => {
     await prisma.semester.delete({ where: { id: Number(req.params.id) } });
     return res.json({ success: true, data: { deleted: true } });
 });
 
 // COMPLAINTS
-const getComplaintsHandler = asyncHandler(async (req, res) => {
-    const complaints = await prisma.complaint.findMany({ include: { parent: { include: { user: { select: { fullName: true, email: true } } } } }, orderBy: { createdAt: "desc" } });
+const getComplaintsHandler = asyncHandler(async(req, res) => {
+    const complaints = await prisma.complaint.findMany({
+        include: { parent: { include: { user: { select: { fullName: true, email: true } } } } },
+        orderBy: { createdAt: "desc" },
+    });
     return res.json({ success: true, data: complaints });
 });
-const updateComplaintHandler = asyncHandler(async (req, res) => {
-    const complaint = await prisma.complaint.update({ where: { id: Number(req.params.id) }, data: { status: req.body.status, adminResponse: req.body.adminResponse } });
+const updateComplaintHandler = asyncHandler(async(req, res) => {
+    const complaint = await prisma.complaint.update({
+        where: { id: Number(req.params.id) },
+        data: { status: req.body.status, adminResponse: req.body.adminResponse },
+    });
     return res.json({ success: true, data: complaint });
 });
 
-// Some HELPERS
-const getTrainersByDeptHandler = asyncHandler(async (req, res) => {
+// HELPERS
+const getTrainersByDeptHandler = asyncHandler(async(req, res) => {
     const dept = await prisma.department.findUnique({ where: { id: Number(req.params.id) } });
     if (!dept) return res.status(404).json({ success: false, message: "Department not found", code: "NOT_FOUND" });
-    const trainers = await prisma.trainer.findMany({ where: { user: { department: dept.name } }, include: { user: { select: { id: true, fullName: true, email: true } } } });
+    const trainers = await prisma.trainer.findMany({
+        where: { user: { department: dept.name } },
+        include: { user: { select: { id: true, fullName: true, email: true } } },
+    });
     return res.json({ success: true, data: trainers });
 });
 
 // Returns ALL trainers with trainer.id and user details — use trainer.id for assignments
-const getAllTrainersHandler = asyncHandler(async (req, res) => {
+const getAllTrainersHandler = asyncHandler(async(req, res) => {
     const trainers = await prisma.trainer.findMany({
         include: { user: { select: { id: true, fullName: true, email: true, department: true } } },
         orderBy: { user: { fullName: "asc" } },
@@ -12011,6 +12071,7 @@ module.exports = {
     deleteRoomHandler,
     getAcademicYearsHandler,
     createAcademicYearHandler,
+    setActiveAcademicYearHandler,
     getSessionsForProgramHandler,
     createSessionHandler,
     getSemestersHandler,
@@ -12187,32 +12248,29 @@ Path: backend\controllers\hodController.js
 const prisma = require("../lib/prisma");
 const { asyncHandler } = require("../middleware/errorHandler");
 
-
+// ── OFFICIAL TIME SLOTS ───────────────────────────────────────────────────────
 const TIME_SLOTS = [
-    { start: "08:00", end: "10:00", hours: 2 },
-    { start: "10:30", end: "12:00", hours: 1.5 },
-    { start: "13:00", end: "15:00", hours: 2 },
+    { start: "08:00", end: "10:00", hours: 2   },
+    { start: "10:30", end: "12:00", hours: 1.5 },  // ← fixed (was 10:00)
+    { start: "13:00", end: "15:00", hours: 2   },
     { start: "15:30", end: "17:00", hours: 1.5 },
-    { start: "17:00", end: "19:00", hours: 2 },
-    { start: "19:30", end: "21:30", hours: 2 },
+    { start: "17:30", end: "19:00", hours: 1.5 },  // ← fixed (was 17:00)
+    { start: "19:30", end: "21:30", hours: 2   },
 ];
 
 function slotHours(timeStart, timeEnd) {
     const found = TIME_SLOTS.find(s => s.start === timeStart && s.end === timeEnd);
     if (found) return found.hours;
-    // fallback: parse difference
     const [sh, sm] = timeStart.split(":").map(Number);
     const [eh, em] = timeEnd.split(":").map(Number);
     return (eh + em / 60) - (sh + sm / 60);
 }
 
-// Finds the department managed by the current logged-in HOD.
 async function getHodDept(userId) {
     return prisma.department.findFirst({ where: { hodUserId: userId } });
 }
 
-// Pulls together all the metrics an HOD needs to see on their main page.
-const getDashboard = asyncHandler(async (req, res) => {
+const getDashboard = asyncHandler(async(req, res) => {
     const dept = await getHodDept(req.user.userId);
     if (!dept) return res.status(404).json({ success: false, message: "No department assigned", code: "NO_DEPT" });
 
@@ -12231,13 +12289,14 @@ const getDashboard = asyncHandler(async (req, res) => {
         },
         select: { id: true }
     });
-    const trainerCount = trainersInDept.length;
 
     const activeWeek = await prisma.academicWeek.findFirst({
         where: { departmentId: dept.id, status: "published" },
         orderBy: { weekNumber: "desc" },
     });
-    const availabilityCount = activeWeek ? await prisma.availability.count({ where: { academicWeekId: activeWeek.id } }) : 0;
+    const availabilityCount = activeWeek
+        ? await prisma.availability.count({ where: { academicWeekId: activeWeek.id } })
+        : 0;
 
     return res.json({
         success: true,
@@ -12245,12 +12304,17 @@ const getDashboard = asyncHandler(async (req, res) => {
             department: dept.name,
             departmentCode: dept.code,
             programs: programs.map(p => ({ ...p, enrollmentCount: p._count.enrollments })),
-            stats: { programCount: programs.length, trainerCount, availabilityCount, activeWeek: activeWeek ? activeWeek.label : null },
+            stats: {
+                programCount: programs.length,
+                trainerCount: trainersInDept.length,
+                availabilityCount,
+                activeWeek: activeWeek ? activeWeek.label : null,
+            },
         }
     });
 });
 
-const getProgramsHandler = asyncHandler(async (req, res) => {
+const getProgramsHandler = asyncHandler(async(req, res) => {
     const dept = await getHodDept(req.user.userId);
     if (!dept) return res.status(404).json({ success: false, message: "No department assigned", code: "NO_DEPT" });
     const programs = await prisma.program.findMany({
@@ -12261,8 +12325,8 @@ const getProgramsHandler = asyncHandler(async (req, res) => {
     return res.json({ success: true, data: programs });
 });
 
-// WEEKS
-const createAcademicWeekHandler = asyncHandler(async (req, res) => {
+// ── WEEKS ─────────────────────────────────────────────────────────────────────
+const createAcademicWeekHandler = asyncHandler(async(req, res) => {
     const dept = await getHodDept(req.user.userId);
     if (!dept) return res.status(404).json({ success: false, message: "No department assigned", code: "NO_DEPT" });
     const { weekNumber, label, startDate, endDate, academicYearId, availabilityDeadline } = req.body;
@@ -12284,14 +12348,17 @@ const createAcademicWeekHandler = asyncHandler(async (req, res) => {
     return res.status(201).json({ success: true, data: week });
 });
 
-const getAcademicWeeksHandler = asyncHandler(async (req, res) => {
+const getAcademicWeeksHandler = asyncHandler(async(req, res) => {
     const dept = await getHodDept(req.user.userId);
     if (!dept) return res.status(404).json({ success: false, message: "No department assigned", code: "NO_DEPT" });
-    const weeks = await prisma.academicWeek.findMany({ where: { departmentId: dept.id }, orderBy: { weekNumber: "desc" } });
+    const weeks = await prisma.academicWeek.findMany({
+        where: { departmentId: dept.id },
+        orderBy: { weekNumber: "desc" }
+    });
     return res.json({ success: true, data: weeks });
 });
 
-const getPublishedWeeksHandler = asyncHandler(async (req, res) => {
+const getPublishedWeeksHandler = asyncHandler(async(req, res) => {
     const dept = await getHodDept(req.user.userId);
     if (!dept) return res.status(404).json({ success: false, message: "No department assigned", code: "NO_DEPT" });
     const latest = await prisma.academicWeek.findFirst({
@@ -12301,13 +12368,12 @@ const getPublishedWeeksHandler = asyncHandler(async (req, res) => {
     return res.json({ success: true, data: latest ? [latest] : [] });
 });
 
-const publishWeekHandler = asyncHandler(async (req, res) => {
+const publishWeekHandler = asyncHandler(async(req, res) => {
     const dept = await getHodDept(req.user.userId);
     if (!dept) return res.status(404).json({ success: false, message: "No department assigned", code: "NO_DEPT" });
     const existing = await prisma.academicWeek.findFirst({ where: { id: Number(req.params.id), departmentId: dept.id } });
     if (!existing) return res.status(404).json({ success: false, message: "Week not found", code: "NOT_FOUND" });
 
-    // Auto-close any currently published weeks in this department
     await prisma.academicWeek.updateMany({
         where: { departmentId: dept.id, status: "published", id: { not: Number(req.params.id) } },
         data: { status: "closed" },
@@ -12315,7 +12381,6 @@ const publishWeekHandler = asyncHandler(async (req, res) => {
 
     const week = await prisma.academicWeek.update({ where: { id: Number(req.params.id) }, data: { status: "published" } });
 
-    // Auto-create announcement targeted to trainers
     const deadlineStr = week.availabilityDeadline
         ? new Date(week.availabilityDeadline).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })
         : "as soon as possible";
@@ -12332,30 +12397,26 @@ const publishWeekHandler = asyncHandler(async (req, res) => {
     return res.json({ success: true, data: week });
 });
 
-const unpublishWeekHandler = asyncHandler(async (req, res) => {
+const unpublishWeekHandler = asyncHandler(async(req, res) => {
     const week = await prisma.academicWeek.update({ where: { id: Number(req.params.id) }, data: { status: "draft" } });
     return res.json({ success: true, data: week });
 });
 
-const deleteWeekHandler = asyncHandler(async (req, res) => {
+const deleteWeekHandler = asyncHandler(async(req, res) => {
     await prisma.academicWeek.delete({ where: { id: Number(req.params.id) } });
     return res.json({ success: true, data: { deleted: true } });
 });
 
-// Close week 
-const closeWeekHandler = asyncHandler(async (req, res) => {
+const closeWeekHandler = asyncHandler(async(req, res) => {
     const dept = await getHodDept(req.user.userId);
     if (!dept) return res.status(404).json({ success: false, message: "No department assigned", code: "NO_DEPT" });
 
     const week = await prisma.academicWeek.findFirst({ where: { id: Number(req.params.id), departmentId: dept.id } });
     if (!week) return res.status(404).json({ success: false, message: "Week not found", code: "NOT_FOUND" });
 
-    const timetable = await prisma.timetable.findFirst({
-        where: { academicWeekId: week.id, status: "published" }
-    });
-    if (!timetable) {
+    const timetable = await prisma.timetable.findFirst({ where: { academicWeekId: week.id, status: "published" } });
+    if (!timetable)
         return res.status(400).json({ success: false, message: "A timetable must be generated and published before closing the week." });
-    }
 
     const slots = await prisma.timetableSlot.findMany({
         where: { academicWeekId: week.id },
@@ -12383,8 +12444,8 @@ const closeWeekHandler = asyncHandler(async (req, res) => {
     return res.json({ success: true, data: { week: updated, deductions: courseHoursMap } });
 });
 
-// AVAILABILITY 
-const getAvailabilityHandler = asyncHandler(async (req, res) => {
+// ── AVAILABILITY ──────────────────────────────────────────────────────────────
+const getAvailabilityHandler = asyncHandler(async(req, res) => {
     const dept = await getHodDept(req.user.userId);
     if (!dept) return res.status(404).json({ success: false, message: "No department assigned", code: "NO_DEPT" });
     const { weekId } = req.query;
@@ -12408,7 +12469,7 @@ const getAvailabilityHandler = asyncHandler(async (req, res) => {
     });
 });
 
-const getTrainerAvailabilityStatusHandler = asyncHandler(async (req, res) => {
+const getTrainerAvailabilityStatusHandler = asyncHandler(async(req, res) => {
     const dept = await getHodDept(req.user.userId);
     if (!dept) return res.status(404).json({ success: false, message: "No department assigned", code: "NO_DEPT" });
     const { weekId } = req.query;
@@ -12419,16 +12480,18 @@ const getTrainerAvailabilityStatusHandler = asyncHandler(async (req, res) => {
     if (!weekId) return res.json({ success: true, data: { trainers: trainers.map(t => ({ ...t, submitted: false, slotCount: 0 })), weekId: null } });
     const result = await Promise.all(trainers.map(async t => {
         const count = await prisma.availability.count({ where: { trainerId: t.id, academicWeekId: Number(weekId) } });
-        const slots = count > 0 ? await prisma.availability.findMany({
-            where: { trainerId: t.id, academicWeekId: Number(weekId) },
-            orderBy: [{ dayOfWeek: "asc" }, { timeStart: "asc" }],
-        }) : [];
+        const slots = count > 0
+            ? await prisma.availability.findMany({
+                where: { trainerId: t.id, academicWeekId: Number(weekId) },
+                orderBy: [{ dayOfWeek: "asc" }, { timeStart: "asc" }],
+            })
+            : [];
         return { ...t, submitted: count > 0, slotCount: count, slots };
     }));
     return res.json({ success: true, data: { trainers: result, weekId: Number(weekId) } });
 });
 
-const lockAvailabilityHandler = asyncHandler(async (req, res) => {
+const lockAvailabilityHandler = asyncHandler(async(req, res) => {
     const { weekId } = req.body;
     if (!weekId) return res.status(400).json({ success: false, message: "weekId required", code: "MISSING_FIELDS" });
     await prisma.availabilityLock.upsert({
@@ -12439,7 +12502,7 @@ const lockAvailabilityHandler = asyncHandler(async (req, res) => {
     return res.json({ success: true, data: { locked: true } });
 });
 
-const unlockAvailabilityHandler = asyncHandler(async (req, res) => {
+const unlockAvailabilityHandler = asyncHandler(async(req, res) => {
     const { weekId } = req.body;
     await prisma.availabilityLock.upsert({
         where: { hodUserId_academicWeekId: { hodUserId: req.user.userId, academicWeekId: Number(weekId) } },
@@ -12449,7 +12512,7 @@ const unlockAvailabilityHandler = asyncHandler(async (req, res) => {
     return res.json({ success: true, data: { locked: false } });
 });
 
-const getLockStatus = asyncHandler(async (req, res) => {
+const getLockStatus = asyncHandler(async(req, res) => {
     const { weekId } = req.query;
     if (!weekId) return res.json({ success: true, data: { isLocked: false } });
     const lock = await prisma.availabilityLock.findUnique({
@@ -12458,8 +12521,8 @@ const getLockStatus = asyncHandler(async (req, res) => {
     return res.json({ success: true, data: { isLocked: lock ? lock.isLocked : false } });
 });
 
-//ACADEMIC TIMETABLE GENERATION (priority-based, cross-department conflict aware)
-const generateTimetable = asyncHandler(async (req, res) => {
+// ── TIMETABLE GENERATION ──────────────────────────────────────────────────────
+const generateTimetable = asyncHandler(async(req, res) => {
     const { weekId, label } = req.body;
     if (!weekId) return res.status(400).json({ success: false, message: "weekId required", code: "MISSING_FIELDS" });
     const dept = await getHodDept(req.user.userId);
@@ -12468,19 +12531,16 @@ const generateTimetable = asyncHandler(async (req, res) => {
     if (!week || week.status !== "published")
         return res.status(400).json({ success: false, message: "Week must be published first", code: "WEEK_NOT_PUBLISHED" });
 
-    // Ensure it's the latest published week for this department
     const latestPublished = await prisma.academicWeek.findFirst({
         where: { departmentId: dept.id, status: 'published' },
         orderBy: { weekNumber: 'desc' },
     });
-    if (!latestPublished || latestPublished.id !== week.id) {
+    if (!latestPublished || latestPublished.id !== week.id)
         return res.status(400).json({ success: false, message: "Timetable generation is only allowed for the active (latest published) week." });
-    }
 
     const rooms = await prisma.room.findMany({ where: { status: "available" }, orderBy: { id: "asc" } });
     if (!rooms.length) return res.status(400).json({ success: false, message: "No available rooms", code: "NO_ROOMS" });
 
-    // Get all trainer-course assignments for this department
     const trainerCourses = await prisma.trainerCourse.findMany({
         where: { courseId: { not: null }, course: { session: { program: { departmentId: dept.id } } } },
         include: { course: true, trainer: true },
@@ -12488,7 +12548,7 @@ const generateTimetable = asyncHandler(async (req, res) => {
     if (!trainerCourses.length)
         return res.status(400).json({ success: false, message: "No courses assigned to trainers in this department", code: "NO_CANDIDATES" });
 
-    // Sort courses by remainingHours descending (highest priority first)
+    // Sort by remainingHours descending (highest priority first)
     const courseEntries = trainerCourses
         .filter(tc => tc.course && tc.course.remainingHours > 0)
         .sort((a, b) => b.course.remainingHours - a.course.remainingHours);
@@ -12496,7 +12556,6 @@ const generateTimetable = asyncHandler(async (req, res) => {
     if (!courseEntries.length)
         return res.status(400).json({ success: false, message: "All courses have 0 remaining hours", code: "NO_REMAINING" });
 
-    // Get all availabilities for this week from relevant trainers
     const trainerIds = [...new Set(courseEntries.map(tc => tc.trainerId))];
     const availabilities = await prisma.availability.findMany({
         where: { academicWeekId: Number(weekId), trainerId: { in: trainerIds } },
@@ -12509,17 +12568,27 @@ const generateTimetable = asyncHandler(async (req, res) => {
     // Delete old timetable for this week
     await prisma.timetable.deleteMany({ where: { academicWeekId: Number(weekId) } });
     const timetable = await prisma.timetable.create({
-        data: { academicWeekId: Number(weekId), generatedBy: req.user.userId, label: label || `${dept.name} — ${week.label}`, status: "draft" },
+        data: {
+            academicWeekId: Number(weekId),
+            generatedBy: req.user.userId,
+            label: label || `${dept.name} — ${week.label}`,
+            status: "draft"
+        },
     });
 
-    // Core scheduling loop — prioritize courses with most remaining hours first.
-    const trainerBooked = new Set(); // in-memory guard for this run
-    const roomBooked = new Set();
+    // ── SCHEDULING LOOP ──────────────────────────────────────────────────────
+    const trainerBooked = new Set(); // trainer|day|time already used this run
+    const roomBooked = new Set();    // roomId|day|time already used this run
+    const courseScheduled = new Set(); // courseId already scheduled this run — DEDUP FIX
+
     let scheduled = 0, skipped = 0;
 
     for (const tc of courseEntries) {
         const course = tc.course;
         if (course.remainingHours <= 0) { skipped++; continue; }
+
+        // ← DEDUP: skip if this courseId was already scheduled in this pass
+        if (courseScheduled.has(tc.courseId)) { skipped++; continue; }
 
         const trainerAvail = availabilities.filter(a => a.trainerId === tc.trainerId);
 
@@ -12527,9 +12596,7 @@ const generateTimetable = asyncHandler(async (req, res) => {
             const tKey = `${tc.trainerId}|${avail.dayOfWeek}|${avail.timeStart}`;
             if (trainerBooked.has(tKey)) continue;
 
-            // Cross-department conflict check:
-            // Block trainer if they are already booked in ANY department's timetable
-            // for the same day+time, within any week whose dates overlap the current week.
+            // Cross-department trainer conflict check
             const trainerConflict = await prisma.timetableSlot.findFirst({
                 where: {
                     trainerId: tc.trainerId,
@@ -12543,7 +12610,7 @@ const generateTimetable = asyncHandler(async (req, res) => {
             });
             if (trainerConflict) continue;
 
-            // Find an available room for this slot
+            // Find an available room
             let chosenRoom = null;
             for (const room of rooms) {
                 const rKey = `${room.id}|${avail.dayOfWeek}|${avail.timeStart}`;
@@ -12580,19 +12647,31 @@ const generateTimetable = asyncHandler(async (req, res) => {
                 },
             });
             trainerBooked.add(tKey);
+            courseScheduled.add(tc.courseId); // ← mark course as scheduled
             scheduled++;
             break; // One slot per course per pass
         }
     }
+
     return res.status(201).json({ success: true, data: { timetableId: timetable.id, scheduled, count: scheduled, skipped } });
 });
 
-const getTimetablesHandler = asyncHandler(async (req, res) => {
+const getTimetablesHandler = asyncHandler(async(req, res) => {
     const dept = await getHodDept(req.user.userId);
     if (!dept) return res.status(404).json({ success: false, message: "No department assigned", code: "NO_DEPT" });
     const timetables = await prisma.timetable.findMany({
         where: { academicWeek: { departmentId: dept.id } },
-        include: { academicWeek: true, slots: { include: { room: true, trainer: { include: { user: true } }, course: { include: { session: { include: { program: true, academicLevel: true, semester: true } } } } }, orderBy: [{ dayOfWeek: "asc" }, { timeStart: "asc" }] } },
+        include: {
+            academicWeek: true,
+            slots: {
+                include: {
+                    room: true,
+                    trainer: { include: { user: true } },
+                    course: { include: { session: { include: { program: true, academicLevel: true, semester: true } } } }
+                },
+                orderBy: [{ dayOfWeek: "asc" }, { timeStart: "asc" }]
+            }
+        },
         orderBy: { generatedAt: "desc" },
     });
     const result = timetables.map(tt => {
@@ -12608,9 +12687,8 @@ const getTimetablesHandler = asyncHandler(async (req, res) => {
     return res.json({ success: true, data: result });
 });
 
-const publishTimetableHandler = asyncHandler(async (req, res) => {
+const publishTimetableHandler = asyncHandler(async(req, res) => {
     const timetableId = Number(req.params.id);
-
     const timetable = await prisma.timetable.findUnique({
         where: { id: timetableId },
         include: {
@@ -12623,28 +12701,11 @@ const publishTimetableHandler = asyncHandler(async (req, res) => {
             }
         }
     });
-
-    if (!timetable) {
-        return res.status(404).json({ success: false, message: 'Timetable not found', code: 'NOT_FOUND' });
-    }
+    if (!timetable) return res.status(404).json({ success: false, message: 'Timetable not found', code: 'NOT_FOUND' });
 
     const dept = timetable.academicWeek ? timetable.academicWeek.department : null;
     const weekLabel = timetable.academicWeek ? timetable.academicWeek.label : 'the upcoming week';
-    const weekId = timetable.academicWeekId;
-
-    const updated = await prisma.timetable.update({
-        where: { id: timetableId },
-        data: { status: 'published' }
-    });
-
-    // Auto-lock availability submissions for this week
-    if (weekId) {
-        await prisma.availabilityLock.upsert({
-            where: { academicWeekId: weekId },
-            update: { isLocked: true },
-            create: { academicWeekId: weekId, isLocked: true }
-        });
-    }
+    const updated = await prisma.timetable.update({ where: { id: timetableId }, data: { status: 'published' } });
 
     const trainerIds = [...new Set(timetable.slots.map(s => s.trainerId).filter(Boolean))];
     const programIds = [...new Set(timetable.slots.map(s => s.course && s.course.session ? s.course.session.programId : null).filter(Boolean))];
@@ -12664,7 +12725,6 @@ const publishTimetableHandler = asyncHandler(async (req, res) => {
             }
         });
     }
-
     if (dept && programIds.length > 0) {
         await prisma.announcement.create({
             data: {
@@ -12676,13 +12736,11 @@ const publishTimetableHandler = asyncHandler(async (req, res) => {
             }
         });
     }
-
     return res.json({ success: true, data: updated });
 });
 
-
-//  ANNOUNCEMENTS 
-const createAnnouncementHandler = asyncHandler(async (req, res) => {
+// ── ANNOUNCEMENTS ─────────────────────────────────────────────────────────────
+const createAnnouncementHandler = asyncHandler(async(req, res) => {
     const { title, body, targetRole } = req.body;
     if (!title || !body) return res.status(400).json({ success: false, message: "title and body required", code: "MISSING_FIELDS" });
     const dept = await getHodDept(req.user.userId);
@@ -12693,7 +12751,7 @@ const createAnnouncementHandler = asyncHandler(async (req, res) => {
     return res.status(201).json({ success: true, data: announcement });
 });
 
-const getAnnouncementsHandler = asyncHandler(async (req, res) => {
+const getAnnouncementsHandler = asyncHandler(async(req, res) => {
     const dept = await getHodDept(req.user.userId);
     if (!dept) return res.status(404).json({ success: false, message: "No department assigned", code: "NO_DEPT" });
     const announcements = await prisma.announcement.findMany({
@@ -12704,7 +12762,7 @@ const getAnnouncementsHandler = asyncHandler(async (req, res) => {
     return res.json({ success: true, data: announcements });
 });
 
-const deleteAnnouncementHandler = asyncHandler(async (req, res) => {
+const deleteAnnouncementHandler = asyncHandler(async(req, res) => {
     await prisma.announcement.delete({ where: { id: Number(req.params.id) } });
     return res.json({ success: true, data: { deleted: true } });
 });
@@ -12960,17 +13018,28 @@ function genMatricule(code, year, seq) {
 // for programs and certifications for the active year.
 const getDashboard = asyncHandler(async (req, res) => {
   const activeYear = await prisma.academicYear.findFirst({ where: { isActive: true } });
-  
+
   // We list all active programs, optionally filtered by the current academic year if one is set.
   const programs = await prisma.program.findMany({
-    where: { status: 'active', ...(activeYear ? { academicYears: { some: { id: activeYear.id } } } : {}) },
-    include: { department: { select: { name: true } }, _count: { select: { enrollments: true } } },
+    where: {
+      status: 'active',
+      ...(activeYear ? { academicYears: { some: { id: activeYear.id } } } : {}),
+    },
+    include: {
+      department: { select: { name: true } },
+      _count: { select: { enrollments: true } },
+    },
     orderBy: { name: 'asc' },
   });
 
   const certifications = await prisma.certification.findMany({
     where: { status: 'active' },
-    include: { _count: { select: { enrollments: true } }, trainerCourses: { include: { trainer: { include: { user: { select: { fullName: true } } } } } } },
+    include: {
+      _count: { select: { enrollments: true } },
+      trainerCourses: {
+        include: { trainer: { include: { user: { select: { fullName: true } } } } },
+      },
+    },
     orderBy: { name: 'asc' },
   });
 
@@ -12990,7 +13059,12 @@ const getAllStudentsHandler = asyncHandler(async (req, res) => {
     include: {
       user: { select: { fullName: true, email: true, phone: true, status: true, createdAt: true } },
       program: { include: { department: { select: { name: true } } } },
-      enrollments: { include: { certification: { select: { name: true } }, program: { select: { name: true } } } },
+      enrollments: {
+        include: {
+          certification: { select: { name: true } },
+          program: { select: { name: true } },
+        },
+      },
     },
     orderBy: { createdAt: 'desc' },
   });
@@ -13025,13 +13099,19 @@ const registerStudentHandler = asyncHandler(async (req, res) => {
 
   // Capacity check
   if (programId) {
-    const prog = await prisma.program.findUnique({ where: { id: Number(programId) }, include: { _count: { select: { enrollments: true } } } });
+    const prog = await prisma.program.findUnique({
+      where: { id: Number(programId) },
+      include: { _count: { select: { enrollments: true } } },
+    });
     if (!prog) return res.status(404).json({ success: false, message: 'Program not found' });
     if (prog.capacity && prog._count.enrollments >= prog.capacity)
       return res.status(409).json({ success: false, message: `Program is full (${prog.capacity} max)` });
   }
   if (certificationId) {
-    const cert = await prisma.certification.findUnique({ where: { id: Number(certificationId) }, include: { _count: { select: { enrollments: true } } } });
+    const cert = await prisma.certification.findUnique({
+      where: { id: Number(certificationId) },
+      include: { _count: { select: { enrollments: true } } },
+    });
     if (!cert) return res.status(404).json({ success: false, message: 'Certification not found' });
     if (cert.capacity && cert._count.enrollments >= cert.capacity)
       return res.status(409).json({ success: false, message: `Certification is full (${cert.capacity} max)` });
@@ -13045,40 +13125,57 @@ const registerStudentHandler = asyncHandler(async (req, res) => {
 
   // Hash parent passwords before transaction
   const parentsWithHash = await Promise.all(
-    (parents || []).filter(p => p.email).map(async p => ({
-      ...p,
-      hash: await bcrypt.hash(p.phone || phone, SALT),
-    }))
+    (parents || []).filter(function(p) { return p.email; }).map(async function(p) {
+      return Object.assign({}, p, { hash: await bcrypt.hash(p.phone || phone, SALT) });
+    })
   );
+
+  // Fetch the active academic year so we can link enrollment to it
+  const activeYear = await prisma.academicYear.findFirst({ where: { isActive: true } });
 
   let deptName = '';
   if (programId) {
-    const p = await prisma.program.findUnique({ where: { id: Number(programId) }, include: { department: true } });
-    deptName = p?.department?.name || '';
+    const prog = await prisma.program.findUnique({
+      where: { id: Number(programId) },
+      include: { department: true },
+    });
+    deptName = (prog && prog.department && prog.department.name) ? prog.department.name : '';
   }
 
   const count = await prisma.student.count();
-  const code = programId
-    ? (await prisma.program.findUnique({ where: { id: Number(programId) } }))?.code || 'STU'
-    : (await prisma.certification.findUnique({ where: { id: Number(certificationId) } }))?.code || 'CERT';
+
+  let code = 'STU';
+  if (programId) {
+    const prog = await prisma.program.findUnique({ where: { id: Number(programId) } });
+    code = (prog && prog.code) ? prog.code : 'STU';
+  } else if (certificationId) {
+    const cert = await prisma.certification.findUnique({ where: { id: Number(certificationId) } });
+    code = (cert && cert.code) ? cert.code : 'CERT';
+  }
+
   const matricule = genMatricule(code, new Date().getFullYear(), count + 1);
 
   // We use a transaction here to ensure that if anything fails (creating user, enrolling, or linking parents),
   // none of the records are saved. It's an "all or nothing" deal for data integrity.
-  const result = await prisma.$transaction(async tx => {
+  const result = await prisma.$transaction(async function(tx) {
     const studentRole = await tx.role.findUnique({ where: { name: 'student' } });
     const studentUser = await tx.user.create({
       data: {
-        fullName, email: studentEmail,
-        passwordHash: studentHash, phone,
-        department: deptName, status: 'active', passwordChanged: false,
+        fullName: fullName,
+        email: studentEmail,
+        passwordHash: studentHash,
+        phone: phone,
+        department: deptName,
+        status: 'active',
+        passwordChanged: false,
         userRoles: { create: { roleId: studentRole.id } },
       },
     });
 
     const student = await tx.student.create({
       data: {
-        userId: studentUser.id, matricule,
+        userId: studentUser.id,
+        matricule: matricule,
         dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : null,
         programId: programId ? Number(programId) : null,
       },
@@ -13086,11 +13183,20 @@ const registerStudentHandler = asyncHandler(async (req, res) => {
 
     if (programId) {
       await tx.enrollment.create({
-        data: { studentId: student.id, programId: Number(programId), academicYearId: activeYear?.id || null, status: 'active' },
+        data: {
+          studentId: student.id,
+          programId: Number(programId),
+          academicYearId: (activeYear && activeYear.id) ? activeYear.id : null,
+          status: 'active',
+        },
       });
     } else {
       await tx.enrollment.create({
-        data: { studentId: student.id, certificationId: Number(certificationId), status: 'active' },
+        data: {
+          studentId: student.id,
+          certificationId: Number(certificationId),
+          status: 'active',
+        },
       });
     }
 
@@ -13101,18 +13207,21 @@ const registerStudentHandler = asyncHandler(async (req, res) => {
       if (!parentUser) {
         parentUser = await tx.user.create({
           data: {
-            fullName: `${p.firstName || ''} ${p.lastName || ''}`.trim() || 'Parent',
+            fullName: (`${p.firstName || ''} ${p.lastName || ''}`).trim() || 'Parent',
             email: p.email.toLowerCase().trim(),
             passwordHash: p.hash,
             phone: p.phone || phone,
-            status: 'active', passwordChanged: false,
+            status: 'active',
+            passwordChanged: false,
             userRoles: { create: { roleId: parentRole.id } },
           },
         });
       }
       let parent = await tx.parent.findUnique({ where: { userId: parentUser.id } });
       if (!parent) {
-        parent = await tx.parent.create({ data: { userId: parentUser.id, relationship: p.relationship || 'Father' } });
+        parent = await tx.parent.create({
+          data: { userId: parentUser.id, relationship: p.relationship || 'Father' },
+        });
       }
       await tx.parentStudentLink.upsert({
         where: { parentId_studentId: { parentId: parent.id, studentId: student.id } },
@@ -13121,7 +13230,7 @@ const registerStudentHandler = asyncHandler(async (req, res) => {
       });
     }
 
-    return { student, matricule };
+    return { student: student, matricule: matricule };
   }, { timeout: 30000 });
 
   return res.status(201).json({ success: true, data: result });
@@ -13133,7 +13242,10 @@ const updateStudentHandler = asyncHandler(async (req, res) => {
   if (!student) return res.status(404).json({ success: false, message: 'Student not found' });
 
   if (student.userId) {
-    await prisma.user.update({ where: { id: student.userId }, data: { fullName, phone, status } });
+    await prisma.user.update({
+      where: { id: student.userId },
+      data: { fullName: fullName, phone: phone, status: status },
+    });
   }
   const updated = await prisma.student.update({
     where: { id: Number(req.params.id) },
@@ -13145,7 +13257,10 @@ const updateStudentHandler = asyncHandler(async (req, res) => {
 const getProgramsHandler = asyncHandler(async (req, res) => {
   const { departmentId } = req.query;
   const programs = await prisma.program.findMany({
-    where: { status: 'active', ...(departmentId ? { departmentId: Number(departmentId) } : {}) },
+    where: {
+      status: 'active',
+      ...(departmentId ? { departmentId: Number(departmentId) } : {}),
+    },
     include: {
       department: { select: { name: true } },
       _count: { select: { enrollments: true } },
@@ -13166,13 +13281,21 @@ const getCertificationsHandler = asyncHandler(async (req, res) => {
 });
 
 const getDepartmentsHandler = asyncHandler(async (req, res) => {
-  const depts = await prisma.department.findMany({ where: { status: 'active' }, orderBy: { name: 'asc' } });
+  const depts = await prisma.department.findMany({
+    where: { status: 'active' },
+    orderBy: { name: 'asc' },
+  });
   return res.json({ success: true, data: depts });
 });
 
 module.exports = {
-  getDashboard, getAllStudentsHandler, registerStudentHandler, updateStudentHandler,
-  getProgramsHandler, getCertificationsHandler, getDepartmentsHandler,
+  getDashboard,
+  getAllStudentsHandler,
+  registerStudentHandler,
+  updateStudentHandler,
+  getProgramsHandler,
+  getCertificationsHandler,
+  getDepartmentsHandler,
 };
 
 ------------------------------------------------------------
@@ -13513,68 +13636,18 @@ module.exports = {
 File: trainerController.js
 Path: backend\controllers\trainerController.js
 ------------------------------------------------------------
+// FILE: backend/controllers/trainerController.js
 const prisma = require('../lib/prisma');
 const { asyncHandler } = require('../middleware/errorHandler');
 
-
-const TIME_SLOTS = [
-    { start: "08:00", end: "12:00", hours: 4 },
-    { start: "13:00", end: "15:00", hours: 2 },
-    { start: "15:30", end: "17:00", hours: 1.5 },
-    { start: "17:00", end: "19:00", hours: 2 },
-    { start: "19:30", end: "21:30", hours: 2 },
-];
-
-function slotHours(timeStart, timeEnd) {
-    const found = TIME_SLOTS.find(s => s.start === timeStart && s.end === timeEnd);
-    if (found) return found.hours;
-    const [sh, sm] = timeStart.split(":").map(Number);
-    const [eh, em] = timeEnd.split(":").map(Number);
-    return (eh + em / 60) - (sh + sm / 60);
-}
-
-// Small helper to fetch the trainer profile based on their linked user ID.
 async function getTrainer(userId) {
     return prisma.trainer.findUnique({ where: { userId } });
 }
 
-// This builds the summary data for the trainer's landing page.
-// We look up their courses, active weeks for their department, and any pending complaints.
-const getDashboard = asyncHandler(async (req, res) => {
+// ── DASHBOARD ─────────────────────────────────────────────────────
+const getDashboard = asyncHandler(async(req, res) => {
     const trainer = await getTrainer(req.user.userId);
     if (!trainer) return res.status(404).json({ success: false, message: 'Trainer not found' });
-
-    // We need to know which departments this trainer is associated with to show relevant info.
-    const trainerUser = await prisma.user.findUnique({ where: { id: req.user.userId } });
-    const deptNames = new Set();
-    if (trainerUser && trainerUser.department) deptNames.add(trainerUser.department);
-    
-    // Check their assigned courses to find other departments they might be helping out in.
-    const trainerCourses = await prisma.trainerCourse.findMany({
-        where: { trainerId: trainer.id, courseId: { not: null } },
-        include: { course: { include: { session: { include: { program: { include: { department: true } } } } } } },
-    });
-    trainerCourses.forEach(tc => {
-        const d = tc.course?.session?.program?.department?.name;
-        if (d) deptNames.add(d);
-    });
-
-    // Grab the active (published) academic weeks so the trainer knows what's currently running.
-    const activeWeeks = await prisma.academicWeek.findMany({
-        where: { department: { name: { in: Array.from(deptNames) } }, status: 'published', certificationId: null },
-        orderBy: { weekNumber: 'desc' },
-    });
-
-    // Check submission for the latest active week
-    let activeWeekSubmission = false;
-    let latestActiveWeek = null;
-    if (activeWeeks.length > 0) {
-        latestActiveWeek = activeWeeks[0];
-        const count = await prisma.availability.count({
-            where: { trainerId: trainer.id, academicWeekId: latestActiveWeek.id }
-        });
-        activeWeekSubmission = count > 0;
-    }
 
     const [courseCount, certCount, pendingComplaints, availabilitySlots] = await Promise.all([
         prisma.trainerCourse.count({ where: { trainerId: trainer.id, courseId: { not: null } } }),
@@ -13595,13 +13668,12 @@ const getDashboard = asyncHandler(async (req, res) => {
             trainerId: trainer.id,
             stats: { courseCount, certCount, pendingComplaints, availabilitySlots },
             recentCourses: recentCourses.map(tc => tc.course),
-            activeWeek: latestActiveWeek ? { id: latestActiveWeek.id, label: latestActiveWeek.label, submitted: activeWeekSubmission } : null,
         }
     });
 });
 
-//  COURSES 
-const getCoursesHandler = asyncHandler(async (req, res) => {
+// ── COURSES ───────────────────────────────────────────────────────
+const getCoursesHandler = asyncHandler(async(req, res) => {
     const trainer = await getTrainer(req.user.userId);
     if (!trainer) return res.status(404).json({ success: false, message: 'Trainer not found' });
     const tcs = await prisma.trainerCourse.findMany({
@@ -13611,8 +13683,8 @@ const getCoursesHandler = asyncHandler(async (req, res) => {
     return res.json({ success: true, data: tcs.map(tc => tc.course) });
 });
 
-//  CERTIFICATIONS 
-const getCertificationsHandler = asyncHandler(async (req, res) => {
+// ── CERTIFICATIONS ────────────────────────────────────────────────
+const getCertificationsHandler = asyncHandler(async(req, res) => {
     const trainer = await getTrainer(req.user.userId);
     if (!trainer) return res.status(404).json({ success: false, message: 'Trainer not found' });
     const tcs = await prisma.trainerCourse.findMany({
@@ -13622,16 +13694,19 @@ const getCertificationsHandler = asyncHandler(async (req, res) => {
     return res.json({ success: true, data: tcs.map(tc => tc.certification) });
 });
 
-//  CERT WEEKS 
-const getCertWeeksHandler = asyncHandler(async (req, res) => {
+// ── CERT WEEKS (trainer creates cert-specific weeks) ──────────────
+const getCertWeeksHandler = asyncHandler(async(req, res) => {
     const trainer = await getTrainer(req.user.userId);
     if (!trainer) return res.status(404).json({ success: false, message: 'Trainer not found' });
+
     const { certificationId } = req.query;
     if (!certificationId) return res.status(400).json({ success: false, message: 'certificationId required' });
+
     const assignment = await prisma.trainerCourse.findFirst({
         where: { trainerId: trainer.id, certificationId: Number(certificationId) },
     });
     if (!assignment) return res.status(403).json({ success: false, message: 'Not assigned to this certification' });
+
     const weeks = await prisma.academicWeek.findMany({
         where: { certificationId: Number(certificationId), createdBy: req.user.userId },
         orderBy: { weekNumber: 'desc' },
@@ -13639,16 +13714,19 @@ const getCertWeeksHandler = asyncHandler(async (req, res) => {
     return res.json({ success: true, data: weeks });
 });
 
-const createCertWeekHandler = asyncHandler(async (req, res) => {
+const createCertWeekHandler = asyncHandler(async(req, res) => {
     const trainer = await getTrainer(req.user.userId);
     if (!trainer) return res.status(404).json({ success: false, message: 'Trainer not found' });
-    const { certificationId, weekNumber, label, startDate, endDate, availabilityDeadline } = req.body;
+
+    const { certificationId, weekNumber, label, startDate, endDate } = req.body;
     if (!certificationId || !weekNumber || !label || !startDate || !endDate)
         return res.status(400).json({ success: false, message: 'certificationId, weekNumber, label, startDate, endDate required' });
+
     const assignment = await prisma.trainerCourse.findFirst({
         where: { trainerId: trainer.id, certificationId: Number(certificationId) },
     });
     if (!assignment) return res.status(403).json({ success: false, message: 'Not assigned to this certification' });
+
     const week = await prisma.academicWeek.create({
         data: {
             certificationId: Number(certificationId),
@@ -13656,7 +13734,6 @@ const createCertWeekHandler = asyncHandler(async (req, res) => {
             label,
             startDate: new Date(startDate),
             endDate: new Date(endDate),
-            availabilityDeadline: availabilityDeadline ? new Date(availabilityDeadline) : null,
             status: 'draft',
             createdBy: req.user.userId,
         },
@@ -13664,99 +13741,69 @@ const createCertWeekHandler = asyncHandler(async (req, res) => {
     return res.status(201).json({ success: true, data: week });
 });
 
-const publishCertWeekHandler = asyncHandler(async (req, res) => {
+const publishCertWeekHandler = asyncHandler(async(req, res) => {
     const trainer = await getTrainer(req.user.userId);
     if (!trainer) return res.status(404).json({ success: false, message: 'Trainer not found' });
+
     const week = await prisma.academicWeek.findUnique({ where: { id: Number(req.params.id) } });
     if (!week || week.createdBy !== req.user.userId)
         return res.status(403).json({ success: false, message: 'Not authorized for this week' });
-
-
-    if (week.certificationId) {
-        await prisma.academicWeek.updateMany({
-            where: { certificationId: week.certificationId, status: 'published', id: { not: week.id }, createdBy: req.user.userId },
-            data: { status: 'closed' },
-        });
-    }
 
     const updated = await prisma.academicWeek.update({
         where: { id: Number(req.params.id) },
         data: { status: 'published' },
     });
-    if (week.certificationId) {
-        const cert = await prisma.certification.findUnique({ where: { id: week.certificationId } });
-        const deadlineStr = updated.availabilityDeadline
-            ? new Date(updated.availabilityDeadline).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })
-            : "as soon as possible";
-
-        await prisma.announcement.create({
-            data: {
-                title: ` ${cert ? cert.name : 'Certification'} — ${updated.label}`,
-                body: `Certification week "${updated.label}" is now active. Submit your availability before ${deadlineStr}.`,
-                targetRole: 'student',
-                createdBy: req.user.userId,
-            },
-        });
-    }
-
     return res.json({ success: true, data: updated });
 });
 
-const unpublishCertWeekHandler = asyncHandler(async (req, res) => {
-    const week = await prisma.academicWeek.update({
-        where: { id: Number(req.params.id) },
-        data: { status: 'draft' },
-    });
-    return res.json({ success: true, data: week });
-});
-
-const deleteCertWeekHandler = asyncHandler(async (req, res) => {
-    await prisma.academicWeek.delete({ where: { id: Number(req.params.id) } });
-    return res.json({ success: true, data: { deleted: true } });
-});
-
-//  CLOSE CERT WEEK 
-const closeCertWeekHandler = asyncHandler(async (req, res) => {
+const unpublishCertWeekHandler = asyncHandler(async(req, res) => {
     const trainer = await getTrainer(req.user.userId);
     if (!trainer) return res.status(404).json({ success: false, message: 'Trainer not found' });
+
     const week = await prisma.academicWeek.findUnique({ where: { id: Number(req.params.id) } });
     if (!week || week.createdBy !== req.user.userId)
         return res.status(403).json({ success: false, message: 'Not authorized for this week' });
 
-    // Find cert timetable slots for this week
-    const slots = await prisma.certTimetableSlot.findMany({
-        where: { academicWeekId: week.id, certificationId: week.certificationId },
+    const updated = await prisma.academicWeek.update({
+        where: { id: Number(req.params.id) },
+        data: { status: 'draft' },
     });
-
-    // We won't allow closing a week if the timetable is empty.
-    // It prevents accidental closures before the schedule is actually set.
-    if (slots.length === 0) {
-        return res.status(400).json({ success: false, message: 'A timetable must be generated with at least one scheduled slot before closing the week.' });
-    }
-
-    // Calculate total hours scheduled
-    let totalHours = 0;
-    for (const slot of slots) {
-        totalHours += slotHours(slot.timeStart, slot.timeEnd);
-    }
-
-    // Deduct from certification remainingHours
-    if (week.certificationId && totalHours > 0) {
-        const cert = await prisma.certification.findUnique({ where: { id: week.certificationId } });
-        if (cert) {
-            await prisma.certification.update({
-                where: { id: cert.id },
-                data: { remainingHours: Math.max(0, cert.remainingHours - totalHours) },
-            });
-        }
-    }
-
-    const updated = await prisma.academicWeek.update({ where: { id: week.id }, data: { status: 'closed' } });
-    return res.json({ success: true, data: { week: updated, hoursDeducted: totalHours } });
+    return res.json({ success: true, data: updated });
 });
 
-//  PUBLISHED WEEKS for academic avail submission
-const getPublishedWeeksHandler = asyncHandler(async (req, res) => {
+// ── CLOSE CERT WEEK ───────────────────────────────────────────────
+const closeCertWeekHandler = asyncHandler(async(req, res) => {
+    const trainer = await getTrainer(req.user.userId);
+    if (!trainer) return res.status(404).json({ success: false, message: 'Trainer not found' });
+
+    const week = await prisma.academicWeek.findUnique({ where: { id: Number(req.params.id) } });
+    if (!week || week.createdBy !== req.user.userId)
+        return res.status(403).json({ success: false, message: 'Not authorized for this week' });
+
+    if (week.status !== 'published')
+        return res.status(400).json({ success: false, message: 'Only published weeks can be closed' });
+
+    const updated = await prisma.academicWeek.update({
+        where: { id: Number(req.params.id) },
+        data: { status: 'closed' },
+    });
+    return res.json({ success: true, data: updated });
+});
+
+const deleteCertWeekHandler = asyncHandler(async(req, res) => {
+    const trainer = await getTrainer(req.user.userId);
+    if (!trainer) return res.status(404).json({ success: false, message: 'Trainer not found' });
+
+    const week = await prisma.academicWeek.findUnique({ where: { id: Number(req.params.id) } });
+    if (!week || week.createdBy !== req.user.userId)
+        return res.status(403).json({ success: false, message: 'Not authorized for this week' });
+
+    await prisma.academicWeek.delete({ where: { id: Number(req.params.id) } });
+    return res.json({ success: true, data: { deleted: true } });
+});
+
+// ── PUBLISHED WEEKS (for availability submission — HOD academic weeks) ──
+const getPublishedWeeksHandler = asyncHandler(async(req, res) => {
     const trainer = await getTrainer(req.user.userId);
     if (!trainer) return res.status(404).json({ success: false, message: 'Trainer not found' });
 
@@ -13789,8 +13836,8 @@ const getPublishedWeeksHandler = asyncHandler(async (req, res) => {
     return res.json({ success: true, data: weeks });
 });
 
-//  AVAILABILITY 
-const getAvailabilityHandler = asyncHandler(async (req, res) => {
+// ── AVAILABILITY ──────────────────────────────────────────────────
+const getAvailabilityHandler = asyncHandler(async(req, res) => {
     const trainer = await getTrainer(req.user.userId);
     if (!trainer) return res.status(404).json({ success: false, message: 'Trainer not found' });
     const { weekId } = req.query;
@@ -13802,7 +13849,7 @@ const getAvailabilityHandler = asyncHandler(async (req, res) => {
     return res.json({ success: true, data: avail });
 });
 
-const submitAvailabilityHandler = asyncHandler(async (req, res) => {
+const submitAvailabilityHandler = asyncHandler(async(req, res) => {
     const trainer = await getTrainer(req.user.userId);
     if (!trainer) return res.status(404).json({ success: false, message: 'Trainer not found' });
     const { weekId, slots } = req.body;
@@ -13815,10 +13862,7 @@ const submitAvailabilityHandler = asyncHandler(async (req, res) => {
         const lock = await prisma.availabilityLock.findFirst({ where: { academicWeekId: Number(weekId), isLocked: true } });
         if (lock) return res.status(403).json({ success: false, message: 'Availability locked by HOD' });
     }
-    // First, clear out any old availability for this week to avoid double-entries.
     await prisma.availability.deleteMany({ where: { trainerId: trainer.id, academicWeekId: Number(weekId) } });
-    
-    // Now save the new list of time slots they provided.
     const created = await prisma.availability.createMany({
         data: slots.map(s => ({ trainerId: trainer.id, academicWeekId: Number(weekId), dayOfWeek: s.dayOfWeek, timeStart: s.timeStart, timeEnd: s.timeEnd })),
         skipDuplicates: true,
@@ -13826,7 +13870,7 @@ const submitAvailabilityHandler = asyncHandler(async (req, res) => {
     return res.status(201).json({ success: true, data: { created: created.count } });
 });
 
-const clearAvailabilityHandler = asyncHandler(async (req, res) => {
+const clearAvailabilityHandler = asyncHandler(async(req, res) => {
     const trainer = await getTrainer(req.user.userId);
     if (!trainer) return res.status(404).json({ success: false, message: 'Trainer not found' });
     const week = await prisma.academicWeek.findUnique({ where: { id: Number(req.params.weekId) } });
@@ -13838,8 +13882,8 @@ const clearAvailabilityHandler = asyncHandler(async (req, res) => {
     return res.json({ success: true, data: { cleared: true } });
 });
 
-//  GRADING 
-const getStudentsForGradingHandler = asyncHandler(async (req, res) => {
+// ── GRADING ───────────────────────────────────────────────────────
+const getStudentsForGradingHandler = asyncHandler(async(req, res) => {
     const trainer = await getTrainer(req.user.userId);
     if (!trainer) return res.status(404).json({ success: false, message: 'Trainer not found' });
 
@@ -13852,8 +13896,6 @@ const getStudentsForGradingHandler = asyncHandler(async (req, res) => {
         include: { certification: true },
     });
 
-    // This is a big one. We need to find every student who should be graded by this trainer,
-    // whether it's for a standard course or a special certification.
     const result = [];
     for (const tc of trainerCourses) {
         const course = tc.course;
@@ -13911,8 +13953,8 @@ const getStudentsForGradingHandler = asyncHandler(async (req, res) => {
     return res.json({ success: true, data: result });
 });
 
-//  CERT TIMETABLE GENERATION (priority-based + student avail) 
-const generateCertTimetableHandler = asyncHandler(async (req, res) => {
+// ── CERT TIMETABLE GENERATION ─────────────────────────────────────
+const generateCertTimetableHandler = asyncHandler(async(req, res) => {
     const trainer = await getTrainer(req.user.userId);
     if (!trainer) return res.status(404).json({ success: false, message: 'Trainer not found' });
 
@@ -13924,10 +13966,6 @@ const generateCertTimetableHandler = asyncHandler(async (req, res) => {
         where: { trainerId: trainer.id, certificationId: Number(certificationId) },
     });
     if (!assignment) return res.status(403).json({ success: false, message: 'You are not assigned to this certification' });
-
-    const cert = await prisma.certification.findUnique({ where: { id: Number(certificationId) } });
-    if (!cert || cert.remainingHours <= 0)
-        return res.status(400).json({ success: false, message: 'This certification has 0 remaining hours' });
 
     const rooms = await prisma.room.findMany({ where: { status: 'available' }, orderBy: { id: 'asc' } });
     await prisma.certTimetableSlot.deleteMany({ where: { certificationId: Number(certificationId), academicWeekId: Number(weekId) } });
@@ -13946,13 +13984,10 @@ const generateCertTimetableHandler = asyncHandler(async (req, res) => {
         skipped = 0;
 
     for (const slot of trainerAvail) {
-        // Check trainer not double-booked
         const tc = await prisma.timetableSlot.findFirst({ where: { trainerId: trainer.id, dayOfWeek: slot.dayOfWeek, timeStart: slot.timeStart, academicWeekId: Number(weekId) } });
         if (tc) { skipped++; continue; }
         const cc = await prisma.certTimetableSlot.findFirst({ where: { trainerId: trainer.id, dayOfWeek: slot.dayOfWeek, timeStart: slot.timeStart, academicWeekId: Number(weekId) } });
         if (cc) { skipped++; continue; }
-
-        // Check all students available
         let allAvail = true;
         for (const sid of studentIds) {
             const sa = await prisma.studentAvailability.findFirst({
@@ -13961,16 +13996,12 @@ const generateCertTimetableHandler = asyncHandler(async (req, res) => {
             if (!sa) { allAvail = false; break; }
         }
         if (!allAvail) { skipped++; continue; }
-
-        // Find room
         let room = null;
         for (const r of rooms) {
             const ra = await prisma.timetableSlot.findFirst({ where: { roomId: r.id, dayOfWeek: slot.dayOfWeek, timeStart: slot.timeStart, academicWeekId: Number(weekId) } });
             const rc = await prisma.certTimetableSlot.findFirst({ where: { roomId: r.id, dayOfWeek: slot.dayOfWeek, timeStart: slot.timeStart, academicWeekId: Number(weekId) } });
             if (!ra && !rc) { room = r; break; }
         }
-
-        // Once we find a valid room and trainer isn't busy, we lock in the slot.
         await prisma.certTimetableSlot.create({
             data: { certificationId: Number(certificationId), trainerId: trainer.id, academicWeekId: Number(weekId), dayOfWeek: slot.dayOfWeek, timeStart: slot.timeStart, timeEnd: slot.timeEnd, roomId: room ? room.id : null, status: 'scheduled' },
         });
@@ -13979,7 +14010,7 @@ const generateCertTimetableHandler = asyncHandler(async (req, res) => {
     return res.status(201).json({ success: true, data: { scheduled, skipped } });
 });
 
-const getCertStudentAvailabilityStatusHandler = asyncHandler(async (req, res) => {
+const getCertStudentAvailabilityStatusHandler = asyncHandler(async(req, res) => {
     const trainer = await getTrainer(req.user.userId);
     if (!trainer) return res.status(404).json({ success: false, message: 'Trainer not found' });
     const { weekId, certificationId } = req.query;
@@ -14001,8 +14032,8 @@ const getCertStudentAvailabilityStatusHandler = asyncHandler(async (req, res) =>
     return res.json({ success: true, data: result });
 });
 
-//  TIMETABLE (academic + cert) 
-const getTimetableHandler = asyncHandler(async (req, res) => {
+// ── TIMETABLE (academic + cert) ───────────────────────────────────
+const getTimetableHandler = asyncHandler(async(req, res) => {
     const trainer = await getTrainer(req.user.userId);
     if (!trainer) return res.status(404).json({ success: false, message: 'Trainer not found' });
     const { weekId } = req.query;
@@ -14021,8 +14052,8 @@ const getTimetableHandler = asyncHandler(async (req, res) => {
     return res.json({ success: true, data: { academicSlots: academic, certSlots: certs } });
 });
 
-//  GRADES 
-const getGradesHandler = asyncHandler(async (req, res) => {
+// ── GRADES ────────────────────────────────────────────────────────
+const getGradesHandler = asyncHandler(async(req, res) => {
     const trainer = await getTrainer(req.user.userId);
     if (!trainer) return res.status(404).json({ success: false, message: 'Trainer not found' });
     const grades = await prisma.grade.findMany({
@@ -14033,7 +14064,7 @@ const getGradesHandler = asyncHandler(async (req, res) => {
     return res.json({ success: true, data: grades });
 });
 
-const upsertGradeHandler = asyncHandler(async (req, res) => {
+const upsertGradeHandler = asyncHandler(async(req, res) => {
     const trainer = await getTrainer(req.user.userId);
     if (!trainer) return res.status(404).json({ success: false, message: 'Trainer not found' });
     const { studentId, courseId, certificationId, grade, academicYearId } = req.body;
@@ -14056,16 +14087,19 @@ const upsertGradeHandler = asyncHandler(async (req, res) => {
     return res.json({ success: true, data: result });
 });
 
-//  COMPLAINTS 
-const getComplaintsHandler = asyncHandler(async (req, res) => {
+// ── COMPLAINTS ────────────────────────────────────────────────────
+const getComplaintsHandler = asyncHandler(async(req, res) => {
     const trainer = await getTrainer(req.user.userId);
     if (!trainer) return res.status(404).json({ success: false, message: 'Trainer not found' });
+
     const trainerCourses = await prisma.trainerCourse.findMany({
         where: { trainerId: trainer.id },
         select: { courseId: true, certificationId: true },
     });
+
     const courseIds = trainerCourses.map(tc => tc.courseId).filter(Boolean);
     const certIds = trainerCourses.map(tc => tc.certificationId).filter(Boolean);
+
     const complaints = await prisma.markComplaint.findMany({
         where: {
             OR: [
@@ -14081,10 +14115,11 @@ const getComplaintsHandler = asyncHandler(async (req, res) => {
         },
         orderBy: { createdAt: 'desc' },
     });
+
     return res.json({ success: true, data: complaints });
 });
 
-const respondToComplaintHandler = asyncHandler(async (req, res) => {
+const respondToComplaintHandler = asyncHandler(async(req, res) => {
     const { trainerResponse, status } = req.body;
     const c = await prisma.markComplaint.update({
         where: { id: Number(req.params.id) },
@@ -14093,8 +14128,8 @@ const respondToComplaintHandler = asyncHandler(async (req, res) => {
     return res.json({ success: true, data: c });
 });
 
-//  ANNOUNCEMENTS 
-const getAnnouncementsHandler = asyncHandler(async (req, res) => {
+// ── ANNOUNCEMENTS ─────────────────────────────────────────────────
+const getAnnouncementsHandler = asyncHandler(async(req, res) => {
     const trainer = await getTrainer(req.user.userId);
     const trainerUser = await prisma.user.findUnique({ where: { id: req.user.userId } });
     const names = new Set();
@@ -14127,8 +14162,8 @@ module.exports = {
     createCertWeekHandler,
     publishCertWeekHandler,
     unpublishCertWeekHandler,
+    closeCertWeekHandler,       // ← ADDED
     deleteCertWeekHandler,
-    closeCertWeekHandler,
     getPublishedWeeksHandler,
     getAvailabilityHandler,
     submitAvailabilityHandler,
@@ -16012,6 +16047,7 @@ router.put("/rooms/:id", a.updateRoomHandler);
 router.delete("/rooms/:id", a.deleteRoomHandler);
 router.get("/academic-years", a.getAcademicYearsHandler);
 router.post("/academic-years", a.createAcademicYearHandler);
+router.put('/academic-years/:id/set-active', a.setActiveAcademicYearHandler);
 router.get("/semesters", a.getSemestersHandler);
 router.get("/complaints", a.getComplaintsHandler);
 router.put("/complaints/:id", a.updateComplaintHandler);
@@ -16139,12 +16175,12 @@ router.get('/dashboard', t.getDashboard);
 router.get('/courses', t.getCoursesHandler);
 router.get('/certifications', t.getCertificationsHandler);
 
-// Cert weeks 
+// Cert weeks
 router.get('/cert-weeks', t.getCertWeeksHandler);
 router.post('/cert-weeks', t.createCertWeekHandler);
 router.put('/cert-weeks/:id/publish', t.publishCertWeekHandler);
 router.put('/cert-weeks/:id/unpublish', t.unpublishCertWeekHandler);
-router.put('/cert-weeks/:id/close', t.closeCertWeekHandler);
+router.put('/cert-weeks/:id/close', t.closeCertWeekHandler); // ← NOW WORKS
 router.delete('/cert-weeks/:id', t.deleteCertWeekHandler);
 
 // HOD-published academic weeks (for trainer availability submission)
@@ -23339,6 +23375,7 @@ export const adminApi = {
     deleteRoom: id => api.delete(`/admin/rooms/${id}`).then(r => r.data),
     getAcademicYears: () => api.get('/admin/academic-years').then(r => r.data),
     createAcademicYear: b => api.post('/admin/academic-years', b).then(r => r.data),
+    setActiveAcademicYear: (id) => api.put(`/admin/academic-years/${id}/set-active`).then(r => r.data),
     getSemesters: () => api.get('/admin/semesters').then(r => r.data),
     getComplaints: () => api.get('/admin/complaints').then(r => r.data),
     updateComplaint: (id, b) => api.put(`/admin/complaints/${id}`, b).then(r => r.data),
@@ -23964,6 +24001,26 @@ export function SessionCard({ session, type = 'academic' }) {
   );
 }
 
+// Group sessions by time slot for visual clarity
+function groupByTimeSlot(sessions) {
+  const groups = {};
+  for (const session of sessions) {
+    const timeKey = `${session.timeStart}-${session.timeEnd}`;
+    if (!groups[timeKey]) {
+      groups[timeKey] = {
+        timeStart: session.timeStart,
+        timeEnd: session.timeEnd,
+        sessions: []
+      };
+    }
+    groups[timeKey].sessions.push(session);
+  }
+  // Sort by time start
+  return Object.values(groups).sort((a, b) => 
+    (a.timeStart || '').localeCompare(b.timeStart || '')
+  );
+}
+
 export default function TimetableGrid({ sessions = [], getDay, getType, emptyMessage }) {
   const { t } = useTranslation();
   const empty = emptyMessage || t('timetable.noTimetableYet', 'No sessions scheduled yet.');
@@ -23996,6 +24053,9 @@ export default function TimetableGrid({ sessions = [], getDay, getType, emptyMes
         const count = byDay[day].length;
         const countLabel = t(`timetable.sessionCount${count > 1 ? '_plural' : ''}`, `{{count}} session${count > 1 ? 's' : ''}`, { count });
 
+        // Group sessions by time slot for this day
+        const timeSlotGroups = groupByTimeSlot(byDay[day]);
+
         return (
           <div key={day} className="card overflow-hidden">
             {/* Day header */}
@@ -24004,14 +24064,34 @@ export default function TimetableGrid({ sessions = [], getDay, getType, emptyMes
               <h3 className="font-bold text-sm text-gray-800">{dayLabel}</h3>
               <span className="ml-auto text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">{countLabel}</span>
             </div>
-            {/* Session cards — responsive grid */}
-            <div className="p-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-              {byDay[day].map((s, i) => (
-                <SessionCard
-                  key={s.id || i}
-                  session={s}
-                  type={getType ? getType(s) : (s.type || 'academic')}
-                />
+
+            {/* Sessions grouped by time slot */}
+            <div className="p-3 space-y-4">
+              {timeSlotGroups.map((timeGroup, groupIndex) => (
+                <div key={groupIndex} className="space-y-2">
+                  {/* Time slot header */}
+                  <div className="flex items-center gap-2 text-xs text-gray-500">
+                    <Clock size={12} className="text-primary-500" />
+                    <span className="font-mono font-semibold text-gray-700">
+                      {timeGroup.timeStart?.slice(0, 5)} – {timeGroup.timeEnd?.slice(0, 5)}
+                    </span>
+                    <div className="flex-1 h-px bg-gray-200"></div>
+                    <span className="text-gray-400">
+                      {timeGroup.sessions.length} course{timeGroup.sessions.length > 1 ? 's' : ''}
+                    </span>
+                  </div>
+
+                  {/* Session cards for this time slot */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 pl-4">
+                    {timeGroup.sessions.map((s, i) => (
+                      <SessionCard
+                        key={s.id || i}
+                        session={s}
+                        type={getType ? getType(s) : (s.type || 'academic')}
+                      />
+                    ))}
+                  </div>
+                </div>
               ))}
             </div>
           </div>
@@ -24202,6 +24282,23 @@ export function useAuth() {
   const ctx = useContext(AuthContext);
   if (!ctx) throw new Error('useAuth must be used inside AuthProvider');
   return ctx;
+}
+
+------------------------------------------------------------
+File: utils.js
+Path: frontend\src\lib\utils.js
+------------------------------------------------------------
+/**
+ * cn() — minimal className joiner
+ * Filters falsy values and joins with a space.
+ * Compatible with the shadcn/ui import path (@/lib/utils).
+ *
+ * Usage:
+ *   cn('card', 'p-4')              → 'card p-4'
+ *   cn('btn', isActive && 'active') → 'btn active'  (or 'btn' if falsy)
+ */
+export function cn(...classes) {
+  return classes.filter(Boolean).join(' ');
 }
 
 ------------------------------------------------------------
@@ -24749,13 +24846,20 @@ File: AcademicYears.jsx
 Path: frontend\src\pages\admin\AcademicYears.jsx
 ------------------------------------------------------------
 import { useEffect, useState } from 'react';
-import { Plus, Star } from 'lucide-react';
+import { Plus, Star, CalendarRange, CheckCircle2 } from 'lucide-react';
 import { adminApi } from '../../api';
 import Modal from '../../components/ui/Modal';
 import { PageLoader, SectionHeader, ErrorAlert, Badge } from '../../components/ui';
 import { useTranslation } from 'react-i18next';
 
-const EMPTY = { name:'', startDate:'', endDate:'', isActive:false, programId:'', certificationId:'' };
+const EMPTY = {
+  name: '',
+  startDate: '',
+  endDate: '',
+  isActive: false,
+  programId: '',
+  certificationId: '',
+};
 
 export default function AcademicYears() {
   const { t } = useTranslation();
@@ -24767,21 +24871,48 @@ export default function AcademicYears() {
   const [modal, setModal]       = useState(false);
   const [form, setForm]         = useState(EMPTY);
   const [saving, setSaving]     = useState(false);
+  const [activating, setActivating] = useState(null); // id of year being activated
 
   function load() {
-    Promise.all([adminApi.getAcademicYears(), adminApi.getPrograms(), adminApi.getCertifications()])
-      .then(([y,p,c]) => { setYears(y.data||[]); setPrograms(p.data||[]); setCerts(c.data||[]); setLoading(false); })
-      .catch(() => setError(t('common.failedLoad','Failed to load')));
+    Promise.all([
+      adminApi.getAcademicYears(),
+      adminApi.getPrograms(),
+      adminApi.getCertifications(),
+    ])
+      .then(([y, p, c]) => {
+        setYears(y.data || []);
+        setPrograms(p.data || []);
+        setCerts(c.data || []);
+        setLoading(false);
+      })
+      .catch(() => setError(t('common.failedLoad', 'Failed to load')));
   }
+
   useEffect(load, []);
 
   async function handleSave() {
     setSaving(true);
     try {
       await adminApi.createAcademicYear(form);
-      setModal(false); load();
-    } catch (e) { alert(e.response?.data?.message || t('common.failedSave','Failed')); }
-    finally { setSaving(false); }
+      setModal(false);
+      load();
+    } catch (e) {
+      alert(e.response?.data?.message || t('common.failedSave', 'Failed'));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleSetActive(id) {
+    setActivating(id);
+    try {
+      await adminApi.setActiveAcademicYear(id);
+      load();
+    } catch (e) {
+      alert(e.response?.data?.message || t('common.failedSave', 'Failed to set active year'));
+    } finally {
+      setActivating(null);
+    }
   }
 
   const active   = years.filter(y => y.isActive);
@@ -24793,22 +24924,34 @@ export default function AcademicYears() {
   return (
     <div className="space-y-4">
       <SectionHeader
-        title={t('academicYears.title','Academic Years')}
-        subtitle={t('academicYears.subtitle','{{count}} academic years configured', { count: years.length })}
+        title={t('academicYears.title', 'Academic Years')}
+        subtitle={t('academicYears.subtitle', '{{count}} academic years configured', { count: years.length })}
       >
-        <button className="btn-primary" onClick={() => { setForm(EMPTY); setModal(true); }}><Plus size={16}/> {t('academicYears.addAcademicYear','Add Academic Year')}</button>
+        <button
+          className="btn-primary"
+          onClick={() => { setForm(EMPTY); setModal(true); }}
+        >
+          <Plus size={16} /> {t('academicYears.addAcademicYear', 'Add Academic Year')}
+        </button>
       </SectionHeader>
 
-      {years.length === 0 && <div className="card p-10 text-center text-gray-400">{t('academicYears.noYears','No academic years configured yet.')}</div>}
+      {years.length === 0 && (
+        <div className="card p-10 text-center text-gray-400">
+          {t('academicYears.noYears', 'No academic years configured yet.')}
+        </div>
+      )}
 
       {/* Active years */}
       {active.length > 0 && (
         <div>
           <h2 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 px-1 flex items-center gap-1.5">
-            <Star size={12} className="text-amber-500"/> {t('academicYears.active','Active')}
+            <Star size={12} className="text-amber-500" />
+            {t('academicYears.active', 'Active')}
           </h2>
           <div className="space-y-2">
-            {active.map(y => <YearCard key={y.id} y={y} t={t}/>)}
+            {active.map(y => (
+              <YearCard key={y.id} y={y} t={t} />
+            ))}
           </div>
         </div>
       )}
@@ -24816,58 +24959,165 @@ export default function AcademicYears() {
       {/* Inactive years */}
       {inactive.length > 0 && (
         <div>
-          <h2 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 px-1">{t('academicYears.total','All Years')}</h2>
+          <h2 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 px-1">
+            {t('academicYears.total', 'All Years')}
+          </h2>
           <div className="space-y-2">
-            {inactive.map(y => <YearCard key={y.id} y={y} t={t}/>)}
+            {inactive.map(y => (
+              <YearCard
+                key={y.id}
+                y={y}
+                t={t}
+                onSetActive={() => handleSetActive(y.id)}
+                activating={activating === y.id}
+              />
+            ))}
           </div>
         </div>
       )}
 
-      <Modal open={modal} onClose={() => setModal(false)} title={t('academicYears.addAcademicYear','Add Academic Year')}
-        footer={<><button className="btn-secondary" onClick={() => setModal(false)}>{t('common.cancel','Cancel')}</button><button className="btn-primary" onClick={handleSave} disabled={saving}>{saving ? t('common.saving','Saving…') : t('common.save','Save')}</button></>}>
+      {/* Add Academic Year Modal */}
+      <Modal
+        open={modal}
+        onClose={() => setModal(false)}
+        title={t('academicYears.addAcademicYear', 'Add Academic Year')}
+        footer={
+          <>
+            <button className="btn-secondary" onClick={() => setModal(false)}>
+              {t('common.cancel', 'Cancel')}
+            </button>
+            <button className="btn-primary" onClick={handleSave} disabled={saving}>
+              {saving ? t('common.saving', 'Saving…') : t('common.save', 'Save')}
+            </button>
+          </>
+        }
+      >
         <div className="space-y-4">
-          <div><label className="label">{t('academicYears.yearName','Year Name *')}</label><input className="input" placeholder={t('academicYears.yearNamePlaceholder','e.g. 2025-2026')} value={form.name} onChange={e=>setForm(f=>({...f,name:e.target.value}))}/></div>
+          <div>
+            <label className="label">{t('academicYears.yearName', 'Year Name *')}</label>
+            <input
+              className="input"
+              placeholder={t('academicYears.yearNamePlaceholder', 'e.g. 2025-2026')}
+              value={form.name}
+              onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+            />
+          </div>
+
           <div className="grid grid-cols-2 gap-3">
-            <div><label className="label">{t('academicYears.startDate','Start Date *')}</label><input type="date" className="input" value={form.startDate} onChange={e=>setForm(f=>({...f,startDate:e.target.value}))}/></div>
-            <div><label className="label">{t('academicYears.endDate','End Date *')}</label><input type="date" className="input" value={form.endDate} onChange={e=>setForm(f=>({...f,endDate:e.target.value}))}/></div>
+            <div>
+              <label className="label">{t('academicYears.startDate', 'Start Date *')}</label>
+              <input
+                type="date"
+                className="input"
+                value={form.startDate}
+                onChange={e => setForm(f => ({ ...f, startDate: e.target.value }))}
+              />
+            </div>
+            <div>
+              <label className="label">{t('academicYears.endDate', 'End Date *')}</label>
+              <input
+                type="date"
+                className="input"
+                value={form.endDate}
+                onChange={e => setForm(f => ({ ...f, endDate: e.target.value }))}
+              />
+            </div>
           </div>
-          <div><label className="label">{t('academicYears.linkedProgram','Linked to Program (optional)')}</label>
-            <select className="select" value={form.programId} onChange={e=>setForm(f=>({...f,programId:e.target.value}))}>
-              <option value="">{t('academicYears.notLinkedProgram','— Not linked to a program —')}</option>
-              {programs.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}
+
+          <div>
+            <label className="label">{t('academicYears.linkedProgram', 'Linked to Program (optional)')}</label>
+            <select
+              className="select"
+              value={form.programId}
+              onChange={e => setForm(f => ({ ...f, programId: e.target.value }))}
+            >
+              <option value="">{t('academicYears.notLinkedProgram', '— Not linked to a program —')}</option>
+              {programs.map(p => (
+                <option key={p.id} value={p.id}>{p.name}</option>
+              ))}
             </select>
           </div>
-          <div><label className="label">{t('academicYears.linkedCert','Linked to Certification (optional)')}</label>
-            <select className="select" value={form.certificationId} onChange={e=>setForm(f=>({...f,certificationId:e.target.value}))}>
-              <option value="">{t('academicYears.notLinkedCert','— Not linked to a certification —')}</option>
-              {certs.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}
+
+          <div>
+            <label className="label">{t('academicYears.linkedCert', 'Linked to Certification (optional)')}</label>
+            <select
+              className="select"
+              value={form.certificationId}
+              onChange={e => setForm(f => ({ ...f, certificationId: e.target.value }))}
+            >
+              <option value="">{t('academicYears.notLinkedCert', '— Not linked to a certification —')}</option>
+              {certs.map(c => (
+                <option key={c.id} value={c.id}>{c.name}</option>
+              ))}
             </select>
           </div>
+
           <label className="flex items-center gap-3 cursor-pointer">
-            <input type="checkbox" className="w-4 h-4 rounded" checked={form.isActive} onChange={e=>setForm(f=>({...f,isActive:e.target.checked}))}/>
-            <span className="text-sm text-gray-700">{t('academicYears.setActive','Set as active academic year')}</span>
+            <input
+              type="checkbox"
+              className="w-4 h-4 rounded"
+              checked={form.isActive}
+              onChange={e => setForm(f => ({ ...f, isActive: e.target.checked }))}
+            />
+            <span className="text-sm text-gray-700">
+              {t('academicYears.setActive', 'Set as active academic year')}
+            </span>
           </label>
+
+          {form.isActive && (
+            <p className="text-xs text-amber-600 bg-amber-50 border border-amber-100 rounded-xl px-3 py-2">
+              ⚠ {t(
+                'academicYears.activeWarning',
+                'Setting this year as active will automatically deactivate the current active year.'
+              )}
+            </p>
+          )}
         </div>
       </Modal>
     </div>
   );
 }
 
-function YearCard({ y, t }) {
+function YearCard({ y, t, onSetActive, activating }) {
   return (
     <div className={`card px-4 py-3 flex items-center gap-3 ${y.isActive ? 'border-amber-300 bg-amber-50/30' : ''}`}>
+      {/* Icon */}
+      <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${y.isActive ? 'bg-amber-100' : 'bg-gray-100'}`}>
+        <CalendarRange size={16} className={y.isActive ? 'text-amber-600' : 'text-gray-400'} />
+      </div>
+
+      {/* Info */}
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
           <p className="text-sm font-semibold text-gray-900">{y.name}</p>
-          {y.isActive && <Star size={13} className="text-amber-500 fill-amber-500"/>}
+          {y.isActive && <Star size={13} className="text-amber-500 fill-amber-500" />}
         </div>
         <p className="text-xs text-gray-400">
           {new Date(y.startDate).toLocaleDateString()} – {new Date(y.endDate).toLocaleDateString()}
-          {y.program?.name && ` · ${y.program.name}`}
+          {y.program?.name      && ` · ${y.program.name}`}
           {y.certification?.name && ` · ${y.certification.name}`}
         </p>
       </div>
-      {y.isActive && <span className="badge-yellow text-xs">{t('academicYears.active','Active')}</span>}
+
+      {/* Badge / Action */}
+      {y.isActive ? (
+        <span className="badge-yellow text-xs flex items-center gap-1">
+          <CheckCircle2 size={11} />
+          {t('academicYears.active', 'Active')}
+        </span>
+      ) : onSetActive ? (
+        <button
+          className="btn-secondary btn-sm text-xs flex items-center gap-1.5"
+          onClick={onSetActive}
+          disabled={activating}
+          title={t('academicYears.setActive', 'Set as active academic year')}
+        >
+          <Star size={12} />
+          {activating
+            ? t('common.saving', 'Saving…')
+            : t('academicYears.setActive', 'Set Active')}
+        </button>
+      ) : null}
     </div>
   );
 }
@@ -26059,8 +26309,7 @@ export default function Programs() {
         </div>
       </Modal>
 
-      {/* FIX: was tr.fullName — must use tr.user?.fullName since getAllTrainers returns { id, user: { fullName } } */}
-      <Modal open={!!assignModal} onClose={() => setAssignModal(null)} title={t('programs.assignTrainer', 'Assign Trainer')}
+       <Modal open={!!assignModal} onClose={() => setAssignModal(null)} title={t('programs.assignTrainer', 'Assign Trainer')}
         footer={<><button className="btn-secondary" onClick={() => setAssignModal(null)}>{t('common.cancel', 'Cancel')}</button><button className="btn-primary" onClick={handleAssignTrainer}>{t('common.assign', 'Assign')}</button></>}>
         <div>
           <label className="label">{t('programs.selectTrainer', 'Select Trainer')}</label>
@@ -28827,11 +29076,13 @@ import { PageLoader, ErrorAlert } from '../../components/ui';
 import { useTranslation } from 'react-i18next';
 
 const DAYS_EN = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
 const TIME_SLOTS = [
-  { start: '08:00', end: '12:00' },
+  { start: '08:00', end: '10:00' },
+  { start: '10:30', end: '12:00' },  
   { start: '13:00', end: '15:00' },
   { start: '15:30', end: '17:00' },
-  { start: '17:00', end: '19:00' },
+  { start: '17:30', end: '19:00' },  
   { start: '19:30', end: '21:30' },
 ];
 
@@ -28874,20 +29125,29 @@ export default function StudentCertAvailability() {
         setActiveWeek(latest);
         if (latest) {
           const avail = await studentApi.getCertAvailability({ certificationId: certId, weekId: latest.id }).catch(() => ({ data: [] }));
-          setSlots((avail.data || []).map(a => ({ dayOfWeek: a.dayOfWeek, timeStart: a.timeStart.slice(0, 5), timeEnd: a.timeEnd.slice(0, 5) })));
+          setSlots((avail.data || []).map(a => ({
+            dayOfWeek: a.dayOfWeek,
+            timeStart: a.timeStart.slice(0, 5),
+            timeEnd: a.timeEnd.slice(0, 5)
+          })));
         }
         setWeekLoading(false);
       })
       .catch(() => setWeekLoading(false));
   }, [certId]);
 
-  function isSelected(day, time) { return slots.some(s => s.dayOfWeek === day && s.timeStart === time); }
+  function isSelected(day, time) {
+    return slots.some(s => s.dayOfWeek === day && s.timeStart === time);
+  }
 
   function toggleSlot(day, slot) {
     setMsg(''); setError('');
     const exists = slots.find(s => s.dayOfWeek === day && s.timeStart === slot.start);
-    if (exists) { setSlots(p => p.filter(x => !(x.dayOfWeek === day && x.timeStart === slot.start))); }
-    else { setSlots(p => [...p, { dayOfWeek: day, timeStart: slot.start, timeEnd: slot.end }]); }
+    if (exists) {
+      setSlots(p => p.filter(x => !(x.dayOfWeek === day && x.timeStart === slot.start)));
+    } else {
+      setSlots(p => [...p, { dayOfWeek: day, timeStart: slot.start, timeEnd: slot.end }]);
+    }
   }
 
   async function handleSave() {
@@ -28896,8 +29156,11 @@ export default function StudentCertAvailability() {
     try {
       await studentApi.submitCertAvailability({ certificationId: certId, weekId: activeWeek.id, slots });
       setMsg(t('availability.certSaved', 'Availability saved!'));
-    } catch (e) { setError(e.response?.data?.message || t('common.failedSave', 'Failed to save')); }
-    finally { setSaving(false); }
+    } catch (e) {
+      setError(e.response?.data?.message || t('common.failedSave', 'Failed to save'));
+    } finally {
+      setSaving(false);
+    }
   }
 
   const certName = certs.find(c => String(c.certificationId) === String(certId))?.certification?.name || '';
@@ -28928,7 +29191,9 @@ export default function StudentCertAvailability() {
       )}
 
       {!certId && certs.length > 1 && (
-        <div className="card p-8 text-center text-gray-400"><p>{t('availability.chooseCert', 'Select a certification above.')}</p></div>
+        <div className="card p-8 text-center text-gray-400">
+          <p>{t('availability.chooseCert', 'Select a certification above.')}</p>
+        </div>
       )}
 
       {certId && weekLoading && <PageLoader />}
@@ -28945,14 +29210,18 @@ export default function StudentCertAvailability() {
         <>
           <div className="card px-4 py-3">
             <p className="text-sm font-semibold text-gray-900">{certName} — {activeWeek.label}</p>
-            <p className="text-xs text-gray-400 mt-0.5">Week {activeWeek.weekNumber} · {new Date(activeWeek.startDate).toLocaleDateString()} – {new Date(activeWeek.endDate).toLocaleDateString()}</p>
+            <p className="text-xs text-gray-400 mt-0.5">
+              Week {activeWeek.weekNumber} · {new Date(activeWeek.startDate).toLocaleDateString()} – {new Date(activeWeek.endDate).toLocaleDateString()}
+            </p>
           </div>
 
           <div className="flex flex-wrap gap-2">
             <button className="btn-primary flex-1 justify-center" onClick={handleSave} disabled={saving}>
               <Save size={15} /> {saving ? t('common.saving', 'Saving…') : t('availability.saveAvailability', 'Save Availability')}
             </button>
-            <button className="btn-secondary" onClick={() => setSlots([])}><Trash2 size={15} /> {t('availability.clearAll', 'Clear')}</button>
+            <button className="btn-secondary" onClick={() => setSlots([])}>
+              <Trash2 size={15} /> {t('availability.clearAll', 'Clear')}
+            </button>
           </div>
 
           {msg && <div className="text-sm text-green-700 bg-green-50 border border-green-200 rounded-xl px-4 py-2">✓ {msg}</div>}
@@ -28964,28 +29233,44 @@ export default function StudentCertAvailability() {
               {t('availability.howToUse', 'Click a cell to mark it as available. Click again to remove. Then save.')}
             </div>
             <div className="px-4 py-2 border-b border-gray-100">
-              <p className="text-xs text-gray-600"><span className="font-bold text-gray-900">{slots.length}</span> {t('availability.slotsSelected', 'slot(s) selected')}</p>
+              <p className="text-xs text-gray-600">
+                <span className="font-bold text-gray-900">{slots.length}</span> {t('availability.slotsSelected', 'slot(s) selected')}
+              </p>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-sm border-collapse" style={{ minWidth: '520px' }}>
                 <thead>
                   <tr className="bg-gray-50 border-b border-gray-200">
-                    <th className="px-3 py-2.5 text-left text-xs font-semibold text-gray-500 w-28 sticky left-0 bg-gray-50 z-10">{t('time.timeSlot', 'Time')}</th>
-                    {DAYS_EN.map(d => <th key={d} className="px-1 py-2.5 text-center text-xs font-semibold text-gray-600 min-w-[72px]">{t(`days.${d}`, d)}</th>)}
+                    <th className="px-3 py-2.5 text-left text-xs font-semibold text-gray-500 w-28 sticky left-0 bg-gray-50 z-10">
+                      {t('time.timeSlot', 'Time')}
+                    </th>
+                    {DAYS_EN.map(d => (
+                      <th key={d} className="px-1 py-2.5 text-center text-xs font-semibold text-gray-600 min-w-[72px]">
+                        {t(`days.${d}`, d)}
+                      </th>
+                    ))}
                   </tr>
                 </thead>
                 <tbody>
                   {TIME_SLOTS.map((slot, ri) => (
                     <tr key={slot.start} className={`border-b border-gray-100 ${ri % 2 === 0 ? 'bg-white' : 'bg-gray-50/40'}`}>
                       <td className="px-3 py-1.5 sticky left-0 bg-inherit z-10">
-                        <span className="text-xs font-mono font-semibold text-gray-700 whitespace-nowrap">{slotLabel(slot)}</span>
+                        <span className="text-xs font-mono font-semibold text-gray-700 whitespace-nowrap">
+                          {slotLabel(slot)}
+                        </span>
                       </td>
                       {DAYS_EN.map(day => {
                         const sel = isSelected(day, slot.start);
                         return (
                           <td key={day} className="px-1 py-1 text-center">
-                            <button onClick={() => toggleSlot(day, slot)}
-                              className={`w-full h-8 rounded-lg text-xs font-semibold transition-all border ${sel ? 'bg-violet-500 text-white border-violet-600 shadow-sm hover:bg-violet-600' : 'bg-white text-gray-300 border-gray-200 hover:bg-violet-50 hover:text-violet-500 hover:border-violet-300'}`}>
+                            <button
+                              onClick={() => toggleSlot(day, slot)}
+                              className={`w-full h-8 rounded-lg text-xs font-semibold transition-all border ${
+                                sel
+                                  ? 'bg-violet-500 text-white border-violet-600 shadow-sm hover:bg-violet-600'
+                                  : 'bg-white text-gray-300 border-gray-200 hover:bg-violet-50 hover:text-violet-500 hover:border-violet-300'
+                              }`}
+                            >
                               {sel ? '✓' : ''}
                             </button>
                           </td>
@@ -29684,11 +29969,14 @@ import { PageLoader, ErrorAlert } from '../../components/ui';
 import { useTranslation } from 'react-i18next';
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+
 const TIME_SLOTS = [
-  { start: '08:00', end: '12:00' },
+  { start: '08:00', end: '10:00' },
+  { start: '10:30', end: '12:00' },  
   { start: '13:00', end: '15:00' },
   { start: '15:30', end: '17:00' },
-  { start: '17:00', end: '19:00' },
+  { start: '17:30', end: '19:00' },  
   { start: '19:30', end: '21:30' },
 ];
 
@@ -29699,18 +29987,13 @@ function slotLabel(slot) {
 function DeadlineCard({ week, isLocked }) {
   const { i18n } = useTranslation();
   const locale = i18n.language.startsWith('fr') ? 'fr-FR' : 'en-GB';
-
   const now = new Date();
   const deadline = week.availabilityDeadline ? new Date(week.availabilityDeadline) : null;
   const isOverdue = deadline && deadline < now;
 
   return (
     <div className={`flex items-center justify-between px-4 py-3 rounded-xl border ${
-      isLocked
-        ? 'bg-amber-50 border-amber-200'
-        : isOverdue
-          ? 'bg-red-50 border-red-200'
-          : 'bg-white border-gray-200'
+      isLocked ? 'bg-amber-50 border-amber-200' : isOverdue ? 'bg-red-50 border-red-200' : 'bg-white border-gray-200'
     }`}>
       <div className="flex items-center gap-3 min-w-0">
         <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
@@ -29754,14 +30037,9 @@ function DeadlineCard({ week, isLocked }) {
 
 export default function TrainerAvailability() {
   const { t } = useTranslation();
-
-  // All published weeks across all departments this trainer has courses in
   const [allWeeks, setAllWeeks] = useState([]);
-  // Lock status per weekId: { [weekId]: boolean }
   const [lockMap, setLockMap] = useState({});
-  // The selected time slots (same grid submitted to all unlocked weeks)
   const [slots, setSlots] = useState([]);
-
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -29772,10 +30050,8 @@ export default function TrainerAvailability() {
       .then(async r => {
         const weeks = r.data || [];
         setAllWeeks(weeks);
-
         if (weeks.length === 0) { setLoading(false); return; }
 
-        // Load lock status for each week in parallel
         const lockResults = await Promise.all(
           weeks.map(w =>
             trainerApi.getLockStatus
@@ -29787,7 +30063,6 @@ export default function TrainerAvailability() {
         weeks.forEach((w, i) => { map[w.id] = lockResults[i]?.data?.isLocked || false; });
         setLockMap(map);
 
-        // Load existing availability from the first unlocked week (if any)
         const firstUnlocked = weeks.find(w => !map[w.id]);
         if (firstUnlocked) {
           const avail = await trainerApi.getAvailability({ weekId: firstUnlocked.id }).catch(() => ({ data: [] }));
@@ -29797,13 +30072,11 @@ export default function TrainerAvailability() {
             timeEnd: a.timeEnd.slice(0, 5),
           })));
         }
-
         setLoading(false);
       })
       .catch(() => { setError(t('common.failedLoad', 'Failed to load')); setLoading(false); });
   }, []);
 
-  // All weeks locked = no editing
   const allLocked = allWeeks.length > 0 && allWeeks.every(w => lockMap[w.id]);
   const unlockedWeeks = allWeeks.filter(w => !lockMap[w.id]);
 
@@ -29831,18 +30104,11 @@ export default function TrainerAvailability() {
     setSlots(all);
   }
 
-  // Submit the same availability to ALL unlocked weeks
   async function handleSave() {
     if (unlockedWeeks.length === 0) return;
-    setSaving(true);
-    setMsg('');
-    setError('');
+    setSaving(true); setMsg(''); setError('');
     try {
-      await Promise.all(
-        unlockedWeeks.map(w =>
-          trainerApi.submitAvailability({ weekId: w.id, slots })
-        )
-      );
+      await Promise.all(unlockedWeeks.map(w => trainerApi.submitAvailability({ weekId: w.id, slots })));
       setMsg(
         unlockedWeeks.length === 1
           ? t('availability.saved', 'Availability saved successfully!')
@@ -29869,7 +30135,6 @@ export default function TrainerAvailability() {
         </p>
       </div>
 
-      {/* No published weeks at all */}
       {allWeeks.length === 0 && !error && (
         <div className="card p-10 text-center">
           <Info size={32} className="mx-auto text-gray-300 mb-3" />
@@ -29886,7 +30151,6 @@ export default function TrainerAvailability() {
 
       {allWeeks.length > 0 && (
         <>
-          {/* Deadline info — one card per department, no week label */}
           <div className="space-y-2">
             <p className="text-xs font-bold text-gray-500 uppercase tracking-wider px-1">
               Active submission periods
@@ -29896,7 +30160,6 @@ export default function TrainerAvailability() {
             ))}
           </div>
 
-          {/* Note about what will be saved */}
           {unlockedWeeks.length > 0 && (
             <div className="flex items-start gap-2 text-xs text-blue-700 bg-blue-50 border border-blue-200 rounded-xl px-4 py-3">
               <Info size={13} className="flex-shrink-0 mt-0.5" />
@@ -29915,14 +30178,9 @@ export default function TrainerAvailability() {
             </div>
           )}
 
-          {/* Actions */}
           {!allLocked && (
             <div className="flex flex-wrap gap-2">
-              <button
-                className="btn-primary flex-1 justify-center"
-                onClick={handleSave}
-                disabled={saving}
-              >
+              <button className="btn-primary flex-1 justify-center" onClick={handleSave} disabled={saving}>
                 <Save size={15} />
                 {saving ? t('common.saving', 'Saving…') : t('availability.saveAvailability', 'Save Availability')}
               </button>
@@ -29941,7 +30199,6 @@ export default function TrainerAvailability() {
             </div>
           )}
 
-          {/* Availability grid */}
           <div className="card overflow-hidden">
             <div className="px-4 py-2.5 bg-blue-50 border-b border-blue-100 flex items-start gap-2 text-xs text-blue-700">
               <Info size={13} className="flex-shrink-0 mt-0.5" />

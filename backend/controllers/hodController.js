@@ -1,31 +1,28 @@
 const prisma = require("../lib/prisma");
 const { asyncHandler } = require("../middleware/errorHandler");
 
-
+// ── OFFICIAL TIME SLOTS ───────────────────────────────────────────────────────
 const TIME_SLOTS = [
-    { start: "08:00", end: "10:00", hours: 2 },
+    { start: "08:00", end: "10:00", hours: 2   },
     { start: "10:30", end: "12:00", hours: 1.5 },
-    { start: "13:00", end: "15:00", hours: 2 },
+    { start: "13:00", end: "15:00", hours: 2   },
     { start: "15:30", end: "17:00", hours: 1.5 },
-    { start: "17:00", end: "19:00", hours: 2 },
-    { start: "19:30", end: "21:30", hours: 2 },
+    { start: "17:30", end: "19:00", hours: 1.5 },
+    { start: "19:30", end: "21:30", hours: 2   },
 ];
 
 function slotHours(timeStart, timeEnd) {
     const found = TIME_SLOTS.find(s => s.start === timeStart && s.end === timeEnd);
     if (found) return found.hours;
-    // fallback: parse difference
     const [sh, sm] = timeStart.split(":").map(Number);
     const [eh, em] = timeEnd.split(":").map(Number);
     return (eh + em / 60) - (sh + sm / 60);
 }
 
-// Finds the department managed by the current logged-in HOD.
 async function getHodDept(userId) {
     return prisma.department.findFirst({ where: { hodUserId: userId } });
 }
 
-// Pulls together all the metrics an HOD needs to see on their main page.
 const getDashboard = asyncHandler(async(req, res) => {
     const dept = await getHodDept(req.user.userId);
     if (!dept) return res.status(404).json({ success: false, message: "No department assigned", code: "NO_DEPT" });
@@ -45,21 +42,27 @@ const getDashboard = asyncHandler(async(req, res) => {
         },
         select: { id: true }
     });
-    const trainerCount = trainersInDept.length;
 
     const activeWeek = await prisma.academicWeek.findFirst({
         where: { departmentId: dept.id, status: "published" },
         orderBy: { weekNumber: "desc" },
     });
-    const availabilityCount = activeWeek ? await prisma.availability.count({ where: { academicWeekId: activeWeek.id } }) : 0;
+    const availabilityCount = activeWeek
+        ? await prisma.availability.count({ where: { academicWeekId: activeWeek.id } })
+        : 0;
 
     return res.json({
         success: true,
         data: {
             department: dept.name,
             departmentCode: dept.code,
-            programs: programs.map(p => ({...p, enrollmentCount: p._count.enrollments })),
-            stats: { programCount: programs.length, trainerCount, availabilityCount, activeWeek: activeWeek ? activeWeek.label : null },
+            programs: programs.map(p => ({ ...p, enrollmentCount: p._count.enrollments })),
+            stats: {
+                programCount: programs.length,
+                trainerCount: trainersInDept.length,
+                availabilityCount,
+                activeWeek: activeWeek ? activeWeek.label : null,
+            },
         }
     });
 });
@@ -75,7 +78,7 @@ const getProgramsHandler = asyncHandler(async(req, res) => {
     return res.json({ success: true, data: programs });
 });
 
-// WEEKS
+// ── WEEKS ─────────────────────────────────────────────────────────────────────
 const createAcademicWeekHandler = asyncHandler(async(req, res) => {
     const dept = await getHodDept(req.user.userId);
     if (!dept) return res.status(404).json({ success: false, message: "No department assigned", code: "NO_DEPT" });
@@ -101,7 +104,10 @@ const createAcademicWeekHandler = asyncHandler(async(req, res) => {
 const getAcademicWeeksHandler = asyncHandler(async(req, res) => {
     const dept = await getHodDept(req.user.userId);
     if (!dept) return res.status(404).json({ success: false, message: "No department assigned", code: "NO_DEPT" });
-    const weeks = await prisma.academicWeek.findMany({ where: { departmentId: dept.id }, orderBy: { weekNumber: "desc" } });
+    const weeks = await prisma.academicWeek.findMany({
+        where: { departmentId: dept.id },
+        orderBy: { weekNumber: "desc" }
+    });
     return res.json({ success: true, data: weeks });
 });
 
@@ -121,7 +127,6 @@ const publishWeekHandler = asyncHandler(async(req, res) => {
     const existing = await prisma.academicWeek.findFirst({ where: { id: Number(req.params.id), departmentId: dept.id } });
     if (!existing) return res.status(404).json({ success: false, message: "Week not found", code: "NOT_FOUND" });
 
-    // Auto-close any currently published weeks in this department
     await prisma.academicWeek.updateMany({
         where: { departmentId: dept.id, status: "published", id: { not: Number(req.params.id) } },
         data: { status: "closed" },
@@ -129,10 +134,9 @@ const publishWeekHandler = asyncHandler(async(req, res) => {
 
     const week = await prisma.academicWeek.update({ where: { id: Number(req.params.id) }, data: { status: "published" } });
 
-    // Auto-create announcement targeted to trainers
-    const deadlineStr = week.availabilityDeadline ?
-        new Date(week.availabilityDeadline).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }) :
-        "as soon as possible";
+    const deadlineStr = week.availabilityDeadline
+        ? new Date(week.availabilityDeadline).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })
+        : "as soon as possible";
     await prisma.announcement.create({
         data: {
             title: `Availability submission required for the class scheduling`,
@@ -156,7 +160,6 @@ const deleteWeekHandler = asyncHandler(async(req, res) => {
     return res.json({ success: true, data: { deleted: true } });
 });
 
-// Close week 
 const closeWeekHandler = asyncHandler(async(req, res) => {
     const dept = await getHodDept(req.user.userId);
     if (!dept) return res.status(404).json({ success: false, message: "No department assigned", code: "NO_DEPT" });
@@ -164,12 +167,9 @@ const closeWeekHandler = asyncHandler(async(req, res) => {
     const week = await prisma.academicWeek.findFirst({ where: { id: Number(req.params.id), departmentId: dept.id } });
     if (!week) return res.status(404).json({ success: false, message: "Week not found", code: "NOT_FOUND" });
 
-    const timetable = await prisma.timetable.findFirst({
-        where: { academicWeekId: week.id, status: "published" }
-    });
-    if (!timetable) {
+    const timetable = await prisma.timetable.findFirst({ where: { academicWeekId: week.id, status: "published" } });
+    if (!timetable)
         return res.status(400).json({ success: false, message: "A timetable must be generated and published before closing the week." });
-    }
 
     const slots = await prisma.timetableSlot.findMany({
         where: { academicWeekId: week.id },
@@ -197,7 +197,7 @@ const closeWeekHandler = asyncHandler(async(req, res) => {
     return res.json({ success: true, data: { week: updated, deductions: courseHoursMap } });
 });
 
-// AVAILABILITY 
+// ── AVAILABILITY ──────────────────────────────────────────────────────────────
 const getAvailabilityHandler = asyncHandler(async(req, res) => {
     const dept = await getHodDept(req.user.userId);
     if (!dept) return res.status(404).json({ success: false, message: "No department assigned", code: "NO_DEPT" });
@@ -230,14 +230,16 @@ const getTrainerAvailabilityStatusHandler = asyncHandler(async(req, res) => {
         where: { user: { department: dept.name } },
         include: { user: { select: { id: true, fullName: true, email: true } } },
     });
-    if (!weekId) return res.json({ success: true, data: { trainers: trainers.map(t => ({...t, submitted: false, slotCount: 0 })), weekId: null } });
+    if (!weekId) return res.json({ success: true, data: { trainers: trainers.map(t => ({ ...t, submitted: false, slotCount: 0 })), weekId: null } });
     const result = await Promise.all(trainers.map(async t => {
         const count = await prisma.availability.count({ where: { trainerId: t.id, academicWeekId: Number(weekId) } });
-        const slots = count > 0 ? await prisma.availability.findMany({
-            where: { trainerId: t.id, academicWeekId: Number(weekId) },
-            orderBy: [{ dayOfWeek: "asc" }, { timeStart: "asc" }],
-        }) : [];
-        return {...t, submitted: count > 0, slotCount: count, slots };
+        const slots = count > 0
+            ? await prisma.availability.findMany({
+                where: { trainerId: t.id, academicWeekId: Number(weekId) },
+                orderBy: [{ dayOfWeek: "asc" }, { timeStart: "asc" }],
+            })
+            : [];
+        return { ...t, submitted: count > 0, slotCount: count, slots };
     }));
     return res.json({ success: true, data: { trainers: result, weekId: Number(weekId) } });
 });
@@ -272,7 +274,7 @@ const getLockStatus = asyncHandler(async(req, res) => {
     return res.json({ success: true, data: { isLocked: lock ? lock.isLocked : false } });
 });
 
-//ACADEMIC TIMETABLE GENERATION (priority-based, cross-department conflict aware)
+// ── TIMETABLE GENERATION ──────────────────────────────────────────────────────
 const generateTimetable = asyncHandler(async(req, res) => {
     const { weekId, label } = req.body;
     if (!weekId) return res.status(400).json({ success: false, message: "weekId required", code: "MISSING_FIELDS" });
@@ -282,27 +284,25 @@ const generateTimetable = asyncHandler(async(req, res) => {
     if (!week || week.status !== "published")
         return res.status(400).json({ success: false, message: "Week must be published first", code: "WEEK_NOT_PUBLISHED" });
 
-    // Ensure it's the latest published week for this department
     const latestPublished = await prisma.academicWeek.findFirst({
         where: { departmentId: dept.id, status: 'published' },
         orderBy: { weekNumber: 'desc' },
     });
-    if (!latestPublished || latestPublished.id !== week.id) {
+    if (!latestPublished || latestPublished.id !== week.id)
         return res.status(400).json({ success: false, message: "Timetable generation is only allowed for the active (latest published) week." });
-    }
 
     const rooms = await prisma.room.findMany({ where: { status: "available" }, orderBy: { id: "asc" } });
     if (!rooms.length) return res.status(400).json({ success: false, message: "No available rooms", code: "NO_ROOMS" });
 
-    // Get all trainer-course assignments for this department
+    // ── FIX: include session so we know programId for conflict checks ─────────
     const trainerCourses = await prisma.trainerCourse.findMany({
         where: { courseId: { not: null }, course: { session: { program: { departmentId: dept.id } } } },
-        include: { course: true, trainer: true },
+        include: { course: { include: { session: true } }, trainer: true },
     });
     if (!trainerCourses.length)
         return res.status(400).json({ success: false, message: "No courses assigned to trainers in this department", code: "NO_CANDIDATES" });
 
-    // Sort courses by remainingHours descending (highest priority first)
+    // Sort by remainingHours descending (highest priority first)
     const courseEntries = trainerCourses
         .filter(tc => tc.course && tc.course.remainingHours > 0)
         .sort((a, b) => b.course.remainingHours - a.course.remainingHours);
@@ -310,7 +310,6 @@ const generateTimetable = asyncHandler(async(req, res) => {
     if (!courseEntries.length)
         return res.status(400).json({ success: false, message: "All courses have 0 remaining hours", code: "NO_REMAINING" });
 
-    // Get all availabilities for this week from relevant trainers
     const trainerIds = [...new Set(courseEntries.map(tc => tc.trainerId))];
     const availabilities = await prisma.availability.findMany({
         where: { academicWeekId: Number(weekId), trainerId: { in: trainerIds } },
@@ -323,54 +322,96 @@ const generateTimetable = asyncHandler(async(req, res) => {
     // Delete old timetable for this week
     await prisma.timetable.deleteMany({ where: { academicWeekId: Number(weekId) } });
     const timetable = await prisma.timetable.create({
-        data: { academicWeekId: Number(weekId), generatedBy: req.user.userId, label: label || `${dept.name} — ${week.label}`, status: "draft" },
+        data: {
+            academicWeekId: Number(weekId),
+            generatedBy: req.user.userId,
+            label: label || `${dept.name} — ${week.label}`,
+            status: "draft"
+        },
     });
 
-    // Core scheduling loop — prioritize courses with most remaining hours first.
-    const trainerBooked = new Set(); // in-memory guard for this run
-    const roomBooked = new Set();
-    let scheduled = 0,
-        skipped = 0;
+    // ── SCHEDULING LOOP ──────────────────────────────────────────────────────
+    const trainerBooked  = new Set(); // "trainerId|day|slotStart"   — trainer already placed at this slot
+    const roomBooked     = new Set(); // "roomId|day|slotStart"       — room already taken at this slot
+    const programBooked  = new Set(); // "programId|day|slotStart"    — FIX: students can't be in two classes at once
+    const courseScheduled = new Set(); // courseId already placed this pass — prevents duplicates
+
+    let scheduled = 0, skipped = 0;
 
     for (const tc of courseEntries) {
         const course = tc.course;
         if (course.remainingHours <= 0) { skipped++; continue; }
 
+        // Skip if this courseId was already placed in this generation pass
+        if (courseScheduled.has(tc.courseId)) { skipped++; continue; }
+
+        const programId = course.session?.programId ?? null;
         const trainerAvail = availabilities.filter(a => a.trainerId === tc.trainerId);
 
+        let placed = false;
+
         for (const avail of trainerAvail) {
-            const tKey = `${tc.trainerId}|${avail.dayOfWeek}|${avail.timeStart}`;
+            // ── FIX: snap avail.timeStart to the nearest official TIME_SLOT ──
+            // Trainers submit availability with official slot starts, so an exact
+            // match is expected. Non-official times (e.g. stale 1-hour DB rows)
+            // are silently skipped to prevent bad slot times in the timetable.
+            const officialSlot = TIME_SLOTS.find(s => s.start === avail.timeStart);
+            if (!officialSlot) continue; // not an official slot start — skip
+
+            const slotStart = officialSlot.start;
+            const slotEnd   = officialSlot.end;
+
+            // ── In-memory conflict checks (fast, no DB round-trip) ───────────
+            const tKey = `${tc.trainerId}|${avail.dayOfWeek}|${slotStart}`;
             if (trainerBooked.has(tKey)) continue;
 
-            // Cross-department conflict check:
-            // Block trainer if they are already booked in ANY department's timetable
-            // for the same day+time, within any week whose dates overlap the current week.
+            // FIX: prevent two courses for the same program at the same slot
+            if (programId) {
+                const pKey = `${programId}|${avail.dayOfWeek}|${slotStart}`;
+                if (programBooked.has(pKey)) continue;
+            }
+
+            // ── DB cross-department trainer conflict (handles multi-dept trainers) ──
             const trainerConflict = await prisma.timetableSlot.findFirst({
                 where: {
                     trainerId: tc.trainerId,
                     dayOfWeek: avail.dayOfWeek,
-                    timeStart: avail.timeStart,
+                    timeStart: slotStart,
                     academicWeek: {
                         startDate: { lte: week.endDate },
-                        endDate: { gte: week.startDate },
+                        endDate:   { gte: week.startDate },
                     },
                 },
             });
             if (trainerConflict) continue;
 
-            // Find an available room for this slot
+            // FIX: DB program conflict — guards against re-generation overwriting
+            // slots already committed to the DB for this week and program
+            if (programId) {
+                const progConflict = await prisma.timetableSlot.findFirst({
+                    where: {
+                        dayOfWeek: avail.dayOfWeek,
+                        timeStart: slotStart,
+                        academicWeekId: Number(weekId),
+                        course: { session: { programId } },
+                    },
+                });
+                if (progConflict) continue;
+            }
+
+            // ── Find a free room ─────────────────────────────────────────────
             let chosenRoom = null;
             for (const room of rooms) {
-                const rKey = `${room.id}|${avail.dayOfWeek}|${avail.timeStart}`;
+                const rKey = `${room.id}|${avail.dayOfWeek}|${slotStart}`;
                 if (roomBooked.has(rKey)) continue;
                 const roomConflict = await prisma.timetableSlot.findFirst({
                     where: {
                         roomId: room.id,
                         dayOfWeek: avail.dayOfWeek,
-                        timeStart: avail.timeStart,
+                        timeStart: slotStart,
                         academicWeek: {
                             startDate: { lte: week.endDate },
-                            endDate: { gte: week.startDate },
+                            endDate:   { gte: week.startDate },
                         },
                     },
                 });
@@ -382,23 +423,33 @@ const generateTimetable = asyncHandler(async(req, res) => {
             }
             if (!chosenRoom) continue;
 
+            // ── Create the timetable slot ────────────────────────────────────
             await prisma.timetableSlot.create({
                 data: {
                     timetableId: timetable.id,
                     academicWeekId: Number(weekId),
                     dayOfWeek: avail.dayOfWeek,
-                    timeStart: avail.timeStart,
-                    timeEnd: avail.timeEnd,
-                    roomId: chosenRoom.id,
+                    timeStart: slotStart,   // always an official slot start
+                    timeEnd:   slotEnd,     // always the matching official end
+                    roomId:    chosenRoom.id,
                     trainerId: tc.trainerId,
-                    courseId: tc.courseId,
+                    courseId:  tc.courseId,
                 },
             });
+
+            // Mark all three dimensions as occupied
             trainerBooked.add(tKey);
+            courseScheduled.add(tc.courseId);
+            if (programId) programBooked.add(`${programId}|${avail.dayOfWeek}|${slotStart}`);
+
             scheduled++;
-            break; // One slot per course per pass
+            placed = true;
+            break; // one slot per course per generation pass
         }
+
+        if (!placed) skipped++;
     }
+
     return res.status(201).json({ success: true, data: { timetableId: timetable.id, scheduled, count: scheduled, skipped } });
 });
 
@@ -407,7 +458,17 @@ const getTimetablesHandler = asyncHandler(async(req, res) => {
     if (!dept) return res.status(404).json({ success: false, message: "No department assigned", code: "NO_DEPT" });
     const timetables = await prisma.timetable.findMany({
         where: { academicWeek: { departmentId: dept.id } },
-        include: { academicWeek: true, slots: { include: { room: true, trainer: { include: { user: true } }, course: { include: { session: { include: { program: true, academicLevel: true, semester: true } } } } }, orderBy: [{ dayOfWeek: "asc" }, { timeStart: "asc" }] } },
+        include: {
+            academicWeek: true,
+            slots: {
+                include: {
+                    room: true,
+                    trainer: { include: { user: true } },
+                    course: { include: { session: { include: { program: true, academicLevel: true, semester: true } } } }
+                },
+                orderBy: [{ dayOfWeek: "asc" }, { timeStart: "asc" }]
+            }
+        },
         orderBy: { generatedAt: "desc" },
     });
     const result = timetables.map(tt => {
@@ -418,68 +479,49 @@ const getTimetablesHandler = asyncHandler(async(req, res) => {
             if (!programMap[prog.id]) programMap[prog.id] = { program: prog, slots: [] };
             programMap[prog.id].slots.push(slot);
         }
-        return {...tt, programGroups: Object.values(programMap) };
+        return { ...tt, programGroups: Object.values(programMap) };
     });
     return res.json({ success: true, data: result });
 });
 
 const publishTimetableHandler = asyncHandler(async(req, res) => {
-            const timetableId = Number(req.params.id);
-
-            const timetable = await prisma.timetable.findUnique({
-                where: { id: timetableId },
+    const timetableId = Number(req.params.id);
+    const timetable = await prisma.timetable.findUnique({
+        where: { id: timetableId },
+        include: {
+            academicWeek: { include: { department: true } },
+            slots: {
                 include: {
-                    academicWeek: { include: { department: true } },
-                    slots: {
-                        include: {
-                            trainer: true,
-                            course: { include: { session: { include: { program: true } } } }
-                        }
-                    }
+                    trainer: true,
+                    course: { include: { session: { include: { program: true } } } }
                 }
-            });
-
-            if (!timetable) {
-                return res.status(404).json({ success: false, message: 'Timetable not found', code: 'NOT_FOUND' });
             }
+        }
+    });
+    if (!timetable) return res.status(404).json({ success: false, message: 'Timetable not found', code: 'NOT_FOUND' });
 
-            const dept = timetable.academicWeek ? timetable.academicWeek.department : null;
-            const weekLabel = timetable.academicWeek ? timetable.academicWeek.label : 'the upcoming week';
-            const weekId = timetable.academicWeekId;
+    const dept = timetable.academicWeek ? timetable.academicWeek.department : null;
+    const weekLabel = timetable.academicWeek ? timetable.academicWeek.label : 'the upcoming week';
+    const updated = await prisma.timetable.update({ where: { id: timetableId }, data: { status: 'published' } });
 
-            const updated = await prisma.timetable.update({
-                where: { id: timetableId },
-                data: { status: 'published' }
-            });
+    const trainerIds = [...new Set(timetable.slots.map(s => s.trainerId).filter(Boolean))];
+    const programIds = [...new Set(timetable.slots.map(s => s.course && s.course.session ? s.course.session.programId : null).filter(Boolean))];
 
-            // Auto-lock availability submissions for this week
-            if (weekId) {
-                await prisma.availabilityLock.upsert({
-                    where: { academicWeekId: weekId },
-                    update: { isLocked: true },
-                    create: { academicWeekId: weekId, isLocked: true }
-                });
-            }
+    const dateRange = timetable.academicWeek
+        ? `${new Date(timetable.academicWeek.startDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })} – ${new Date(timetable.academicWeek.endDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}`
+        : '';
 
-            const trainerIds = [...new Set(timetable.slots.map(s => s.trainerId).filter(Boolean))];
-            const programIds = [...new Set(timetable.slots.map(s => s.course && s.course.session ? s.course.session.programId : null).filter(Boolean))];
-
-            const dateRange = timetable.academicWeek ?
-                `${new Date(timetable.academicWeek.startDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })} – ${new Date(timetable.academicWeek.endDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}` :
-                '';
-
-            if (dept && trainerIds.length > 0) {
-                await prisma.announcement.create({
-                            data: {
-                                title: `Your schedule for "${weekLabel}" has been published`,
-                                body: `The timetable for ${weekLabel}${dateRange ? ` (${dateRange})` : ''} is now live. Availability submissions are now locked. Log in to view your assigned sessions.`,
+    if (dept && trainerIds.length > 0) {
+        await prisma.announcement.create({
+            data: {
+                title: `Your schedule for "${weekLabel}" has been published`,
+                body: `The timetable for ${weekLabel}${dateRange ? ` (${dateRange})` : ''} is now live. Availability submissions are now locked. Log in to view your assigned sessions.`,
                 targetRole: 'trainer',
                 departmentId: dept.id,
                 createdBy: req.user.userId,
             }
         });
     }
-
     if (dept && programIds.length > 0) {
         await prisma.announcement.create({
             data: {
@@ -491,13 +533,11 @@ const publishTimetableHandler = asyncHandler(async(req, res) => {
             }
         });
     }
-
     return res.json({ success: true, data: updated });
 });
 
-
-//  ANNOUNCEMENTS 
-const createAnnouncementHandler = asyncHandler(async (req, res) => {
+// ── ANNOUNCEMENTS ─────────────────────────────────────────────────────────────
+const createAnnouncementHandler = asyncHandler(async(req, res) => {
     const { title, body, targetRole } = req.body;
     if (!title || !body) return res.status(400).json({ success: false, message: "title and body required", code: "MISSING_FIELDS" });
     const dept = await getHodDept(req.user.userId);
@@ -508,7 +548,7 @@ const createAnnouncementHandler = asyncHandler(async (req, res) => {
     return res.status(201).json({ success: true, data: announcement });
 });
 
-const getAnnouncementsHandler = asyncHandler(async (req, res) => {
+const getAnnouncementsHandler = asyncHandler(async(req, res) => {
     const dept = await getHodDept(req.user.userId);
     if (!dept) return res.status(404).json({ success: false, message: "No department assigned", code: "NO_DEPT" });
     const announcements = await prisma.announcement.findMany({
@@ -519,7 +559,7 @@ const getAnnouncementsHandler = asyncHandler(async (req, res) => {
     return res.json({ success: true, data: announcements });
 });
 
-const deleteAnnouncementHandler = asyncHandler(async (req, res) => {
+const deleteAnnouncementHandler = asyncHandler(async(req, res) => {
     await prisma.announcement.delete({ where: { id: Number(req.params.id) } });
     return res.json({ success: true, data: { deleted: true } });
 });

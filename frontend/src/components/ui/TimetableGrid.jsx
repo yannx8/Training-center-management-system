@@ -62,6 +62,26 @@ export function SessionCard({ session, type = 'academic' }) {
   );
 }
 
+// Group sessions by time slot for visual clarity
+function groupByTimeSlot(sessions) {
+  const groups = {};
+  for (const session of sessions) {
+    const timeKey = `${session.timeStart}-${session.timeEnd}`;
+    if (!groups[timeKey]) {
+      groups[timeKey] = {
+        timeStart: session.timeStart,
+        timeEnd: session.timeEnd,
+        sessions: []
+      };
+    }
+    groups[timeKey].sessions.push(session);
+  }
+  // Sort by time start
+  return Object.values(groups).sort((a, b) => 
+    (a.timeStart || '').localeCompare(b.timeStart || '')
+  );
+}
+
 export default function TimetableGrid({ sessions = [], getDay, getType, emptyMessage }) {
   const { t } = useTranslation();
   const empty = emptyMessage || t('timetable.noTimetableYet', 'No sessions scheduled yet.');
@@ -94,6 +114,9 @@ export default function TimetableGrid({ sessions = [], getDay, getType, emptyMes
         const count = byDay[day].length;
         const countLabel = t(`timetable.sessionCount${count > 1 ? '_plural' : ''}`, `{{count}} session${count > 1 ? 's' : ''}`, { count });
 
+        // Group sessions by time slot for this day
+        const timeSlotGroups = groupByTimeSlot(byDay[day]);
+
         return (
           <div key={day} className="card overflow-hidden">
             {/* Day header */}
@@ -102,14 +125,34 @@ export default function TimetableGrid({ sessions = [], getDay, getType, emptyMes
               <h3 className="font-bold text-sm text-gray-800">{dayLabel}</h3>
               <span className="ml-auto text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">{countLabel}</span>
             </div>
-            {/* Session cards — responsive grid */}
-            <div className="p-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-              {byDay[day].map((s, i) => (
-                <SessionCard
-                  key={s.id || i}
-                  session={s}
-                  type={getType ? getType(s) : (s.type || 'academic')}
-                />
+
+            {/* Sessions grouped by time slot */}
+            <div className="p-3 space-y-4">
+              {timeSlotGroups.map((timeGroup, groupIndex) => (
+                <div key={groupIndex} className="space-y-2">
+                  {/* Time slot header */}
+                  <div className="flex items-center gap-2 text-xs text-gray-500">
+                    <Clock size={12} className="text-primary-500" />
+                    <span className="font-mono font-semibold text-gray-700">
+                      {timeGroup.timeStart?.slice(0, 5)} – {timeGroup.timeEnd?.slice(0, 5)}
+                    </span>
+                    <div className="flex-1 h-px bg-gray-200"></div>
+                    <span className="text-gray-400">
+                      {timeGroup.sessions.length} course{timeGroup.sessions.length > 1 ? 's' : ''}
+                    </span>
+                  </div>
+
+                  {/* Session cards for this time slot */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 pl-4">
+                    {timeGroup.sessions.map((s, i) => (
+                      <SessionCard
+                        key={s.id || i}
+                        session={s}
+                        type={getType ? getType(s) : (s.type || 'academic')}
+                      />
+                    ))}
+                  </div>
+                </div>
               ))}
             </div>
           </div>

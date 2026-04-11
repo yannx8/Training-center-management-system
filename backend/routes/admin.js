@@ -40,6 +40,7 @@ router.put("/rooms/:id", a.updateRoomHandler);
 router.delete("/rooms/:id", a.deleteRoomHandler);
 router.get("/academic-years", a.getAcademicYearsHandler);
 router.post("/academic-years", a.createAcademicYearHandler);
+router.put('/academic-years/:id/set-active', a.setActiveAcademicYearHandler);
 router.get("/semesters", a.getSemestersHandler);
 router.get("/complaints", a.getComplaintsHandler);
 router.put("/complaints/:id", a.updateComplaintHandler);

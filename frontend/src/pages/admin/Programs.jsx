@@ -4,7 +4,6 @@ import { adminApi } from '../../api';
 import Modal from '../../components/ui/Modal';
 import { PageLoader, ErrorAlert, SectionHeader, ConfirmModal, Badge } from '../../components/ui';
 import { useTranslation } from 'react-i18next';
-import { cn } from "@/lib/utils";
 
 const EP = { name: '', code: '', departmentId: '', durationYears: 3, status: 'active', capacity: '' };
 const EL = { name: '', levelOrder: 1 };
@@ -14,11 +13,11 @@ const EC = { name: '', code: '', credits: 3, hoursPerWeek: 2 };
 // Breadcrumb component
 function Crumbs({ prog, level, sem, goToView, t }) {
   return (
-    <div className={cn('flex', 'items-center', 'gap-1.5', 'flex-wrap', 'text-xs', 'text-gray-500', 'mb-1')}>
-      <button onClick={() => goToView('list')} className={cn('hover:text-primary-600', 'font-medium')}>{t('programs.title', 'Programs')}</button>
+    <div className="flex items-center gap-1.5 flex-wrap text-xs text-gray-500 mb-1">
+      <button onClick={() => goToView('list')} className="hover:text-primary-600 font-medium">{t('programs.title', 'Programs')}</button>
       {prog && <><ChevronRight size={12} /><button onClick={() => goToView('levels')} className="hover:text-primary-600">{prog.name}</button></>}
       {level && <><ChevronRight size={12} /><button onClick={() => goToView('semesters')} className="hover:text-primary-600">{level.name}</button></>}
-      {sem && <><ChevronRight size={12} /><span className={cn('text-gray-700', 'font-medium')}>{sem.name}</span></>}
+      {sem && <><ChevronRight size={12} /><span className="text-gray-700 font-medium">{sem.name}</span></>}
     </div>
   );
 }
@@ -139,32 +138,32 @@ export default function Programs() {
             </button>
           </SectionHeader>
 
-          <div className={cn('card', 'p-3', 'flex', 'items-center', 'gap-2')}>
-            <label className={cn('text-sm', 'font-medium', 'text-gray-600', 'whitespace-nowrap')}>{t('programs.departmentFilter', 'Department:')}</label>
-            <select className={cn('select', 'flex-1')} value={deptFilter} onChange={e => setDeptFilter(e.target.value)}>
+          <div className="card p-3 flex items-center gap-2">
+            <label className="text-sm font-medium text-gray-600 whitespace-nowrap">{t('programs.departmentFilter', 'Department:')}</label>
+            <select className="select flex-1" value={deptFilter} onChange={e => setDeptFilter(e.target.value)}>
               <option value="">{t('programs.allDepartments', 'All Departments')}</option>
               {depts.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
             </select>
-            {deptFilter && <button className={cn('text-xs', 'text-gray-400', 'hover:text-gray-600', 'whitespace-nowrap')} onClick={() => setDeptFilter('')}>{t('common.clear', 'Clear')}</button>}
+            {deptFilter && <button className="text-xs text-gray-400 hover:text-gray-600 whitespace-nowrap" onClick={() => setDeptFilter('')}>{t('common.clear', 'Clear')}</button>}
           </div>
 
-          <div className={cn('card', 'overflow-hidden')}>
-            {visiblePrograms.length === 0 && <p className={cn('p-8', 'text-sm', 'text-gray-400', 'text-center')}>{t('programs.noProgramsFound', 'No programs found.')}</p>}
-            <div className={cn('divide-y', 'divide-gray-50')}>
+          <div className="card overflow-hidden">
+            {visiblePrograms.length === 0 && <p className="p-8 text-sm text-gray-400 text-center">{t('programs.noProgramsFound', 'No programs found.')}</p>}
+            <div className="divide-y divide-gray-50">
               {visiblePrograms.map(p => (
-                <div key={p.id} className={cn('px-4', 'py-3', 'flex', 'items-center', 'gap-3')}>
-                  <div className={cn('flex-1', 'min-w-0')}>
-                    <p className={cn('text-sm', 'font-semibold', 'text-gray-900')}>{p.name}</p>
-                    <p className={cn('text-xs', 'text-gray-400')}>{p.code} · {p.durationYears}yr · {p.department?.name || '—'}</p>
+                <div key={p.id} className="px-4 py-3 flex items-center gap-3">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-gray-900">{p.name}</p>
+                    <p className="text-xs text-gray-400">{p.code} · {p.durationYears}yr · {p.department?.name || '—'}</p>
                   </div>
                   <Badge value={p.status} />
-                  <button className={cn('btn-secondary', 'btn-sm')} onClick={() => openProgram(p)}>
+                  <button className="btn-secondary btn-sm" onClick={() => openProgram(p)}>
                     {t('programs.manageCourses', 'Manage')} <ChevronRight size={12} />
                   </button>
-                  <button className={cn('btn-ghost', 'btn-sm', 'btn-icon')} onClick={() => { setForm({ name: p.name, code: p.code, departmentId: p.departmentId || '', durationYears: p.durationYears, status: p.status, capacity: p.capacity || '' }); setEditing(p); setModal('program'); }}>
+                  <button className="btn-ghost btn-sm btn-icon" onClick={() => { setForm({ name: p.name, code: p.code, departmentId: p.departmentId || '', durationYears: p.durationYears, status: p.status, capacity: p.capacity || '' }); setEditing(p); setModal('program'); }}>
                     <Pencil size={13} />
                   </button>
-                  <button className={cn('btn-ghost', 'btn-sm', 'btn-icon', 'text-red-500', 'hover:bg-red-50')} onClick={() => { setDelId(p.id); setDelType('program'); }}>
+                  <button className="btn-ghost btn-sm btn-icon text-red-500 hover:bg-red-50" onClick={() => { setDelId(p.id); setDelType('program'); }}>
                     <Trash2 size={13} />
                   </button>
                 </div>
@@ -183,20 +182,20 @@ export default function Programs() {
               <Plus size={16} /> {t('programs.addLevel', 'Add Level')}
             </button>
           </SectionHeader>
-          <div className={cn('card', 'overflow-hidden')}>
-            {levels.length === 0 && <p className={cn('p-8', 'text-sm', 'text-gray-400', 'text-center')}>{t('programs.noLevelsYet', 'No levels yet. Add Year 1, Year 2…')}</p>}
-            <div className={cn('divide-y', 'divide-gray-50')}>
+          <div className="card overflow-hidden">
+            {levels.length === 0 && <p className="p-8 text-sm text-gray-400 text-center">{t('programs.noLevelsYet', 'No levels yet. Add Year 1, Year 2…')}</p>}
+            <div className="divide-y divide-gray-50">
               {levels.map(lv => (
-                <div key={lv.id} className={cn('px-4', 'py-3', 'flex', 'items-center', 'gap-3')}>
-                  <div className={cn('flex-1', 'min-w-0')}>
-                    <p className={cn('text-sm', 'font-semibold', 'text-gray-900')}>{lv.name}</p>
-                    <p className={cn('text-xs', 'text-gray-400')}>{t('common.order', 'Order')}: {lv.levelOrder}</p>
+                <div key={lv.id} className="px-4 py-3 flex items-center gap-3">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-gray-900">{lv.name}</p>
+                    <p className="text-xs text-gray-400">{t('common.order', 'Order')}: {lv.levelOrder}</p>
                   </div>
-                  <button className={cn('btn-secondary', 'btn-sm')} onClick={() => openLevel(lv)}>
+                  <button className="btn-secondary btn-sm" onClick={() => openLevel(lv)}>
                     {t('programs.viewSemesters', 'Semesters')} <ChevronRight size={12} />
                   </button>
-                  <button className={cn('btn-ghost', 'btn-sm', 'btn-icon')} onClick={() => { setForm({ name: lv.name, levelOrder: lv.levelOrder }); setEditing(lv); setModal('level'); }}><Pencil size={13} /></button>
-                  <button className={cn('btn-ghost', 'btn-sm', 'btn-icon', 'text-red-500', 'hover:bg-red-50')} onClick={() => { setDelId(lv.id); setDelType('level'); }}><Trash2 size={13} /></button>
+                  <button className="btn-ghost btn-sm btn-icon" onClick={() => { setForm({ name: lv.name, levelOrder: lv.levelOrder }); setEditing(lv); setModal('level'); }}><Pencil size={13} /></button>
+                  <button className="btn-ghost btn-sm btn-icon text-red-500 hover:bg-red-50" onClick={() => { setDelId(lv.id); setDelType('level'); }}><Trash2 size={13} /></button>
                 </div>
               ))}
             </div>
@@ -213,20 +212,20 @@ export default function Programs() {
               <Plus size={16} /> {t('programs.addSemester', 'Add Semester')}
             </button>
           </SectionHeader>
-          <div className={cn('card', 'overflow-hidden')}>
-            {semesters.length === 0 && <p className={cn('p-8', 'text-sm', 'text-gray-400', 'text-center')}>{t('programs.noSemestersYet', 'No semesters configured yet.')}</p>}
-            <div className={cn('divide-y', 'divide-gray-50')}>
+          <div className="card overflow-hidden">
+            {semesters.length === 0 && <p className="p-8 text-sm text-gray-400 text-center">{t('programs.noSemestersYet', 'No semesters configured yet.')}</p>}
+            <div className="divide-y divide-gray-50">
               {semesters.map(sem => (
-                <div key={sem.id} className={cn('px-4', 'py-3', 'flex', 'items-center', 'gap-3')}>
-                  <button className={cn('flex-1', 'text-left')} onClick={() => openSemester(sem)}>
-                    <p className={cn('text-sm', 'font-semibold', 'text-gray-900', 'hover:text-primary-600')}>{sem.name}</p>
-                    <p className={cn('text-xs', 'text-gray-400')}>{t('common.order', 'Order')}: {sem.semesterOrder}</p>
+                <div key={sem.id} className="px-4 py-3 flex items-center gap-3">
+                  <button className="flex-1 text-left" onClick={() => openSemester(sem)}>
+                    <p className="text-sm font-semibold text-gray-900 hover:text-primary-600">{sem.name}</p>
+                    <p className="text-xs text-gray-400">{t('common.order', 'Order')}: {sem.semesterOrder}</p>
                   </button>
-                  <button className={cn('btn-secondary', 'btn-sm')} onClick={() => openSemester(sem)}>
+                  <button className="btn-secondary btn-sm" onClick={() => openSemester(sem)}>
                     {t('programs.courses', 'Courses')} <ChevronRight size={12} />
                   </button>
-                  <button className={cn('btn-ghost', 'btn-sm', 'btn-icon')} onClick={e => { e.stopPropagation(); setForm({ name: sem.name, semesterOrder: sem.semesterOrder }); setEditing(sem); setModal('semester'); }}><Pencil size={13} /></button>
-                  <button className={cn('btn-ghost', 'btn-sm', 'btn-icon', 'text-red-500', 'hover:bg-red-50')} onClick={e => { e.stopPropagation(); setDelId(sem.id); setDelType('semester'); }}><Trash2 size={13} /></button>
+                  <button className="btn-ghost btn-sm btn-icon" onClick={e => { e.stopPropagation(); setForm({ name: sem.name, semesterOrder: sem.semesterOrder }); setEditing(sem); setModal('semester'); }}><Pencil size={13} /></button>
+                  <button className="btn-ghost btn-sm btn-icon text-red-500 hover:bg-red-50" onClick={e => { e.stopPropagation(); setDelId(sem.id); setDelType('semester'); }}><Trash2 size={13} /></button>
                 </div>
               ))}
             </div>
@@ -243,26 +242,26 @@ export default function Programs() {
               <Plus size={16} /> {t('programs.addCourse', 'Add Course')}
             </button>
           </SectionHeader>
-          <div className={cn('card', 'overflow-hidden')}>
-            {courses.length === 0 && <p className={cn('p-8', 'text-sm', 'text-gray-400', 'text-center')}>{t('programs.noCoursesYet', 'No courses yet.')}</p>}
-            <div className={cn('divide-y', 'divide-gray-50')}>
+          <div className="card overflow-hidden">
+            {courses.length === 0 && <p className="p-8 text-sm text-gray-400 text-center">{t('programs.noCoursesYet', 'No courses yet.')}</p>}
+            <div className="divide-y divide-gray-50">
               {courses.map(c => {
                 const trainer = c.trainerCourses?.[0]?.trainer?.user;
                 return (
-                  <div key={c.id} className={cn('px-4', 'py-3', 'flex', 'items-center', 'gap-3')}>
-                    <div className={cn('flex-1', 'min-w-0')}>
-                      <p className={cn('text-sm', 'font-semibold', 'text-gray-900')}>{c.name}</p>
-                      <p className={cn('text-xs', 'text-gray-400')}>{c.code} · {c.credits}cr · {c.hoursPerWeek}h/wk</p>
+                  <div key={c.id} className="px-4 py-3 flex items-center gap-3">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-gray-900">{c.name}</p>
+                      <p className="text-xs text-gray-400">{c.code} · {c.credits}cr · {c.hoursPerWeek}h/wk</p>
                     </div>
                     {trainer
-                      ? <span className={cn('text-xs', 'badge-green')}>{trainer.fullName}</span>
-                      : <span className={cn('text-xs', 'badge-yellow')}>{t('programs.noTrainer', 'No trainer')}</span>}
-                    <button className={cn('btn-ghost', 'btn-sm', 'text-xs', 'text-blue-600', 'font-medium', 'flex', 'items-center', 'gap-1')}
+                      ? <span className="text-xs badge-green">{trainer.fullName}</span>
+                      : <span className="text-xs badge-yellow">{t('programs.noTrainer', 'No trainer')}</span>}
+                    <button className="btn-ghost btn-sm text-xs text-blue-600 font-medium flex items-center gap-1"
                       onClick={() => { setAssignModal({ courseId: c.id }); setSelTrainer(String(c.trainerCourses?.[0]?.trainer?.id || '')); }}>
                       <UserCheck size={13} /> {t('common.assign', 'Assign')}
                     </button>
-                    <button className={cn('btn-ghost', 'btn-sm', 'btn-icon')} onClick={() => { setForm({ name: c.name, code: c.code, credits: c.credits, hoursPerWeek: c.hoursPerWeek }); setEditing(c); setModal('course'); }}><Pencil size={13} /></button>
-                    <button className={cn('btn-ghost', 'btn-sm', 'btn-icon', 'text-red-500', 'hover:bg-red-50')} onClick={() => { setDelId(c.id); setDelType('course'); }}><Trash2 size={13} /></button>
+                    <button className="btn-ghost btn-sm btn-icon" onClick={() => { setForm({ name: c.name, code: c.code, credits: c.credits, hoursPerWeek: c.hoursPerWeek }); setEditing(c); setModal('course'); }}><Pencil size={13} /></button>
+                    <button className="btn-ghost btn-sm btn-icon text-red-500 hover:bg-red-50" onClick={() => { setDelId(c.id); setDelType('course'); }}><Trash2 size={13} /></button>
                   </div>
                 );
               })}
@@ -282,7 +281,7 @@ export default function Programs() {
               {depts.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
             </select>
           </div>
-          <div className={cn('grid', 'grid-cols-2', 'gap-3')}>
+          <div className="grid grid-cols-2 gap-3">
             <div><label className="label">{t('programs.duration', 'Duration (years)')}</label><input type="number" min={1} max={6} className="input" value={form.durationYears || 3} onChange={e => setForm(f => ({ ...f, durationYears: +e.target.value }))} /></div>
             <div><label className="label">{t('programs.maxStudents', 'Max students')}</label><input type="number" min={1} className="input" placeholder={t('common.noLimit', 'No limit')} value={form.capacity || ''} onChange={e => setForm(f => ({ ...f, capacity: e.target.value }))} /></div>
           </div>
@@ -303,7 +302,7 @@ export default function Programs() {
 
       <Modal open={modal === 'semester'} onClose={() => setModal(null)} title={editing ? t('programs.editSemester', 'Edit Semester') : t('programs.addSemester', 'Add Semester')} footer={<SaveCancel />}>
         <div className="space-y-4">
-          <p className={cn('text-xs', 'text-amber-600', 'bg-amber-50', 'border', 'border-amber-100', 'rounded-xl', 'px-3', 'py-2')}>{t('programs.semesterWarning', 'Semesters are global — editing a semester name changes it everywhere.')}</p>
+          <p className="text-xs text-amber-600 bg-amber-50 border border-amber-100 rounded-xl px-3 py-2">{t('programs.semesterWarning', 'Semesters are global — editing a semester name changes it everywhere.')}</p>
           <div><label className="label">{t('programs.semesterName', 'Semester name')}</label><input className="input" value={form.name || ''} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} /></div>
           <div><label className="label">{t('programs.order', 'Order')}</label><input type="number" min={1} className="input" value={form.semesterOrder || 1} onChange={e => setForm(f => ({ ...f, semesterOrder: +e.target.value }))} /></div>
         </div>
@@ -313,15 +312,14 @@ export default function Programs() {
         <div className="space-y-4">
           <div><label className="label">{t('common.name', 'Course Name')}</label><input className="input" value={form.name || ''} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} /></div>
           <div><label className="label">{t('common.code', 'Code')}</label><input className="input" value={form.code || ''} onChange={e => setForm(f => ({ ...f, code: e.target.value }))} /></div>
-          <div className={cn('grid', 'grid-cols-2', 'gap-3')}>
+          <div className="grid grid-cols-2 gap-3">
             <div><label className="label">{t('programs.credits', 'Credits')}</label><input type="number" min={1} className="input" value={form.credits || 3} onChange={e => setForm(f => ({ ...f, credits: +e.target.value }))} /></div>
             <div><label className="label">{t('programs.hoursPerWeek', 'Hours/week')}</label><input type="number" min={1} className="input" value={form.hoursPerWeek || 2} onChange={e => setForm(f => ({ ...f, hoursPerWeek: +e.target.value }))} /></div>
           </div>
         </div>
       </Modal>
 
-      {/* FIX: was tr.fullName — must use tr.user?.fullName since getAllTrainers returns { id, user: { fullName } } */}
-      <Modal open={!!assignModal} onClose={() => setAssignModal(null)} title={t('programs.assignTrainer', 'Assign Trainer')}
+       <Modal open={!!assignModal} onClose={() => setAssignModal(null)} title={t('programs.assignTrainer', 'Assign Trainer')}
         footer={<><button className="btn-secondary" onClick={() => setAssignModal(null)}>{t('common.cancel', 'Cancel')}</button><button className="btn-primary" onClick={handleAssignTrainer}>{t('common.assign', 'Assign')}</button></>}>
         <div>
           <label className="label">{t('programs.selectTrainer', 'Select Trainer')}</label>
